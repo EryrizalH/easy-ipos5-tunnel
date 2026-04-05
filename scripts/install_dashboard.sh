@@ -35,6 +35,8 @@ main() {
 
   install -m 0644 "${PROJECT_ROOT}/assets/windows/install-service.ps1.tpl" "${resources_dir}/assets/windows/install-service.ps1.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-service.ps1.tpl" "${resources_dir}/assets/windows/uninstall-service.ps1.tpl"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/install-service.cmd.tpl" "${resources_dir}/assets/windows/install-service.cmd.tpl"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-service.cmd.tpl" "${resources_dir}/assets/windows/uninstall-service.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/linux/install-client.sh.tpl" "${resources_dir}/assets/linux/install-client.sh.tpl"
   install -m 0644 "${PROJECT_ROOT}/templates/rathole/client.toml.tpl" "${resources_dir}/templates/rathole/client.toml.tpl"
 

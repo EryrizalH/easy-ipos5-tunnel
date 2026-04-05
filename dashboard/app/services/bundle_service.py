@@ -110,6 +110,8 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
 
         install_ps1_tpl = resources_dir() / "assets/windows/install-service.ps1.tpl"
         uninstall_ps1_tpl = resources_dir() / "assets/windows/uninstall-service.ps1.tpl"
+        install_cmd_tpl = resources_dir() / "assets/windows/install-service.cmd.tpl"
+        uninstall_cmd_tpl = resources_dir() / "assets/windows/uninstall-service.cmd.tpl"
 
         (temp_dir / "install-service.ps1").write_text(
             render_template(install_ps1_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
@@ -119,6 +121,14 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
             render_template(uninstall_ps1_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
             encoding="utf-8",
         )
+        (temp_dir / "install-service.cmd").write_text(
+            render_template(install_cmd_tpl, {}),
+            encoding="utf-8",
+        )
+        (temp_dir / "uninstall-service.cmd").write_text(
+            render_template(uninstall_cmd_tpl, {}),
+            encoding="utf-8",
+        )
 
         (temp_dir / "README.txt").write_text(
             "\n".join(
@@ -126,9 +136,9 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "Easy Rathole Windows Client",
                     "",
                     "1) Extract this ZIP.",
-                    "2) Right click install-service.ps1, Run as Administrator.",
+                    "2) Right click install-service.cmd, Run as Administrator.",
                     "3) Service will auto start on boot.",
-                    "4) To remove service, run uninstall-service.ps1 as Administrator.",
+                    "4) To remove service, run uninstall-service.cmd as Administrator.",
                 ]
             )
             + "\n",

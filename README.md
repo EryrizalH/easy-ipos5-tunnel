@@ -99,12 +99,12 @@ Fitur:
 
 1. Download bundle dari dashboard
 2. Extract ZIP
-3. Run `install-service.ps1` sebagai Administrator
+3. Run `install-service.cmd` sebagai Administrator
 4. Service akan auto-start saat boot
 
 Uninstall:
 
-- Run `uninstall-service.ps1` sebagai Administrator
+- Run `uninstall-service.cmd` sebagai Administrator
 
 ---
 

@@ -4,8 +4,16 @@ function Ensure-Admin {
     $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) {
-        Write-Host "Please run this script as Administrator." -ForegroundColor Red
-        exit 1
+        Write-Host "Re-launching with Administrator privileges..." -ForegroundColor Yellow
+        $argList = @(
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            '"' + $PSCommandPath + '"'
+        )
+        Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList ($argList -join ' ')
+        exit 0
     }
 }
 
@@ -63,4 +71,15 @@ $nssm = Ensure-Nssm -BaseDir $baseDir
 & $nssm set $serviceName Description "Auto-start rathole client tunnel"
 
 Start-Service -Name $serviceName
-Write-Host "Service $serviceName installed and started." -ForegroundColor Green
+Start-Sleep -Seconds 1
+
+$svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+if ($null -eq $svc) {
+    throw "Service $serviceName was not created"
+}
+
+if ($svc.Status -ne 'Running') {
+    throw "Service $serviceName created but not running. Check Windows Event Viewer and ensure local ports 5444/5480/5485 are open on client side."
+}
+
+Write-Host "Service $serviceName installed and running." -ForegroundColor Green
