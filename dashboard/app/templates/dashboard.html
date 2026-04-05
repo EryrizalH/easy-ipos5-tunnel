@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Easy Rathole Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; background: #f5f7fb; color: #1f2937; }
+    .card { background: #fff; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 16px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .ok { color: #065f46; }
+    .warn { color: #92400e; }
+    input[type=text] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; }
+    button, .btn { background: #2563eb; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn.secondary { background: #374151; }
+    .ports span { display:inline-block; background:#e5e7eb; border-radius:999px; padding:4px 10px; margin-right:8px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <h1>Easy Rathole Dashboard</h1>
+
+  {% if message %}
+    <div class="card warn">{{ message }}</div>
+  {% endif %}
+
+  <div class="grid">
+    <div class="card">
+      <h3>Server Info</h3>
+      <p><strong>Public IP:</strong> <span class="mono">{{ public_ip }}</span></p>
+      <p><strong>Rathole Control Port:</strong> <span class="mono">{{ control_port }}</span></p>
+      <p><strong>Dashboard Port:</strong> <span class="mono">{{ dashboard_port }}</span></p>
+      <div class="ports">
+        <strong>Exposed TCP:</strong><br/>
+        {% for p in exposed_ports %}
+          <span class="mono">{{ p }}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Service Status</h3>
+      <p><strong>{{ rathole_service }}</strong>: <span class="mono {% if rathole_status == 'active' %}ok{% else %}warn{% endif %}">{{ rathole_status }}</span></p>
+      <p><strong>{{ dashboard_service }}</strong>: <span class="mono {% if dashboard_status == 'active' %}ok{% else %}warn{% endif %}">{{ dashboard_status }}</span></p>
+      <p><strong>Last Update:</strong> <span class="mono">{{ updated_at }}</span></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Global Token</h3>
+    <p>Current token: <span class="mono">{{ token_masked }}</span></p>
+    <form method="post" action="/token">
+      <label for="token"><strong>Set / Rotate Token</strong></label><br/><br/>
+      <input id="token" name="token" type="text" placeholder="Input token baru (minimal 8 karakter)" required />
+      <br/><br/>
+      <button type="submit">Save Token</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Client Installer</h3>
+    <p>Setelah token disimpan, download bundle client yang sudah auto-config.</p>
+    <a class="btn" href="/download/windows">Download Windows Client ZIP</a>
+    <a class="btn secondary" href="/download/linux">Download Linux Client ZIP</a>
+  </div>
+</body>
+</html>
