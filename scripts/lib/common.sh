@@ -81,24 +81,18 @@ fetch_latest_rathole_release_json() {
 }
 
 get_release_tag() {
-  python3 - <<'PY'
-import json,sys
-data=json.load(sys.stdin)
-print(data.get("tag_name", ""))
-PY
+  python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get("tag_name", ""))'
 }
 
 get_release_asset_url() {
   local asset_name="$1"
-  python3 - "$asset_name" <<'PY'
-import json,sys
+  python3 -c 'import json,sys
 target=sys.argv[1]
 data=json.load(sys.stdin)
 for a in data.get("assets", []):
     if a.get("name") == target:
         print(a.get("browser_download_url", ""))
-        break
-PY
+        break' "$asset_name"
 }
 
 port_in_use() {
@@ -169,7 +163,17 @@ if not path.exists():
     print(default)
     raise SystemExit(0)
 
-data = json.loads(path.read_text(encoding="utf-8"))
+raw = path.read_text(encoding="utf-8").strip()
+if not raw:
+  print(default)
+  raise SystemExit(0)
+
+try:
+  data = json.loads(raw)
+except json.JSONDecodeError:
+  print(default)
+  raise SystemExit(0)
+
 value = data.get(key, default)
 if isinstance(value, (dict, list)):
     print(json.dumps(value))
@@ -191,9 +195,16 @@ path = pathlib.Path(sys.argv[1])
 patch = json.loads(sys.argv[2])
 
 if path.exists():
-    data = json.loads(path.read_text(encoding="utf-8"))
-else:
+  raw = path.read_text(encoding="utf-8").strip()
+  if raw:
+    try:
+      data = json.loads(raw)
+    except json.JSONDecodeError:
+      data = {}
+  else:
     data = {}
+else:
+  data = {}
 
 data.update(patch)
 path.parent.mkdir(parents=True, exist_ok=True)

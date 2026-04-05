@@ -27,16 +27,13 @@ download_rathole() {
   asset="$(detect_arch)"
   local api="https://api.github.com/repos/rathole-org/rathole/releases/latest"
   local url
-  url="$(curl -fsSL "$api" | python3 - "$asset" <<'PY'
-import json,sys
+  url="$(curl -fsSL "$api" | python3 -c 'import json,sys
 asset=sys.argv[1]
 data=json.load(sys.stdin)
 for item in data.get("assets", []):
     if item.get("name") == asset:
         print(item.get("browser_download_url", ""))
-        break
-PY
-)"
+        break' "$asset")"
 
   [[ -n "$url" ]] || {
     echo "Failed to resolve rathole download URL"
