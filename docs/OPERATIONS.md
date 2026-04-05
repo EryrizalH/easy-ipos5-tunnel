@@ -5,6 +5,29 @@
 ```bash
 systemctl is-active rathole
 systemctl is-active easy-rathole-dashboard
+systemctl is-active fail2ban
+```
+
+## Verifikasi hardening baseline
+
+```bash
+sudo ufw status verbose
+sudo fail2ban-client status sshd
+sysctl net.ipv4.tcp_syncookies
+```
+
+Lihat metadata hardening pada state file:
+
+```bash
+python3 - <<'PY'
+import json
+with open('/opt/easy-rathole/state/install-state.json') as f:
+    d = json.load(f)
+print('hardening_applied=', d.get('hardening_applied'))
+print('hardening_ssh_port=', d.get('hardening_ssh_port'))
+print('hardening_disable_ssh_password=', d.get('hardening_disable_ssh_password'))
+print('hardening_ssh_allow_cidr=', d.get('hardening_ssh_allow_cidr'))
+PY
 ```
 
 ## Restart service
@@ -66,3 +89,11 @@ Namun setelah re-run:
 - cek ulang service status
 - cek state file
 - verifikasi dashboard masih bisa login
+
+## Catatan aman sebelum disable SSH password
+
+Jika ingin menjalankan dengan `EASY_RATHOLE_DISABLE_SSH_PASSWORD=1`, pastikan:
+
+1. Login SSH pakai private key sudah teruji
+2. Minimal ada satu file `authorized_keys` valid
+3. Jangan menutup sesi SSH aktif sampai verifikasi login sesi baru berhasil

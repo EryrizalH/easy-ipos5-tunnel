@@ -14,9 +14,55 @@ Auto installer berbasis Bash untuk **Ubuntu 22+** yang menyiapkan:
 
 ## 1) Install Server (Ubuntu 22+)
 
+### Opsi A (paling gampang) — langsung dari repo publik
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pruedence21/easy-ipos5-tunnel/main/public-install.sh | sudo bash
+```
+
+Installer akan **menyiapkan hardening server dulu** sebelum install Rathole/dashboard:
+
+- update package index
+- install dan aktifkan `ufw` + baseline rule (deny incoming, allow outgoing, allow SSH)
+- install & aktifkan `fail2ban` untuk SSH
+- aktifkan `unattended-upgrades`
+- apply baseline `sysctl` hardening network
+- apply baseline `sshd` hardening (aman default, tanpa memaksa disable password)
+
+### Opsi B — clone repo lalu jalankan installer
+
+```bash
+git clone https://github.com/pruedence21/easy-ipos5-tunnel.git
+cd easy-ipos5-tunnel
+sudo bash install.sh
+```
+
+### Opsi C — jika sudah berada di folder project lokal
+
 ```bash
 sudo bash install.sh
 ```
+
+### Opsi parameter hardening (opsional)
+
+```bash
+# skip hardening (tidak direkomendasikan)
+sudo EASY_RATHOLE_HARDENING=0 bash install.sh
+
+# tetap hardening, tapi skip apt upgrade (lebih cepat)
+sudo EASY_RATHOLE_RUN_UPGRADE=0 bash install.sh
+
+# disable SSH password auth (HANYA jika key-based login sudah siap)
+sudo EASY_RATHOLE_DISABLE_SSH_PASSWORD=1 bash install.sh
+
+# batasi akses SSH hanya dari CIDR tertentu
+sudo EASY_RATHOLE_SSH_ALLOW_CIDR="1.2.3.4/32" bash install.sh
+
+# batasi akses dashboard hanya dari CIDR tertentu
+sudo EASY_RATHOLE_DASHBOARD_ALLOW_CIDR="1.2.3.4/32" bash install.sh
+```
+
+> ⚠️ **Penting**: Gunakan `EASY_RATHOLE_DISABLE_SSH_PASSWORD=1` hanya jika Anda sudah bisa login SSH pakai key. Installer akan menolak setting ini jika tidak menemukan `authorized_keys`.
 
 Setelah selesai, installer akan menampilkan:
 
