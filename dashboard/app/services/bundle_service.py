@@ -112,6 +112,11 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         uninstall_ps1_tpl = resources_dir() / "assets/windows/uninstall-service.ps1.tpl"
         install_cmd_tpl = resources_dir() / "assets/windows/install-service.cmd.tpl"
         uninstall_cmd_tpl = resources_dir() / "assets/windows/uninstall-service.cmd.tpl"
+        setup_cmd_tpl = resources_dir() / "assets/windows/setup-client.cmd.tpl"
+        nssm_exe = resources_dir() / "assets/windows/nssm.exe"
+
+        if not nssm_exe.exists():
+            raise FileNotFoundError(f"nssm.exe not found: {nssm_exe}")
 
         (temp_dir / "install-service.ps1").write_text(
             render_template(install_ps1_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
@@ -129,6 +134,11 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
             render_template(uninstall_cmd_tpl, {}),
             encoding="utf-8",
         )
+        (temp_dir / "setup-client.cmd").write_text(
+            render_template(setup_cmd_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
+            encoding="utf-8",
+        )
+        shutil.copy2(nssm_exe, temp_dir / "nssm.exe")
 
         (temp_dir / "README.txt").write_text(
             "\n".join(
@@ -136,9 +146,10 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "Easy Rathole Windows Client",
                     "",
                     "1) Extract this ZIP.",
-                    "2) Right click install-service.cmd, Run as Administrator.",
+                    "2) Double-click setup-client.cmd (auto ask Administrator/UAC).",
                     "3) Service will auto start on boot.",
-                    "4) To remove service, run uninstall-service.cmd as Administrator.",
+                    "   (nssm.exe already included in this package)",
+                    "4) Advanced/manual: install-service.cmd and uninstall-service.cmd are still available.",
                 ]
             )
             + "\n",

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import sqlite3
+import socket
 import subprocess
 from pathlib import Path
+from typing import Any
 from urllib.parse import quote_plus
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
@@ -12,7 +14,13 @@ from fastapi.templating import Jinja2Templates
 
 from .auth import verify_password
 from .db import connect, get_setting, get_user
-from .services.bundle_service import generate_linux_bundle, generate_windows_bundle
+from .services.bundle_service import (
+    LINUX_SERVICE_NAME,
+    WINDOWS_ASSET_NAME,
+    WINDOWS_SERVICE_NAME,
+    generate_linux_bundle,
+    generate_windows_bundle,
+)
 from .services.token_service import update_global_token
 from .state import load_state
 
@@ -55,6 +63,126 @@ def service_status(name: str) -> str:
     return (result.stdout or "unknown").strip() or "unknown"
 
 
+def extract_port(local_addr: str) -> int | None:
+    if ":" not in local_addr:
+        return None
+    candidate = local_addr.rsplit(":", 1)[-1].strip(" ]")
+    if not candidate.isdigit():
+        return None
+    return int(candidate)
+
+
+def collect_listener_details() -> dict[int, dict[str, str]]:
+    try:
+        result = subprocess.run(
+            ["ss", "-ltnpH"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return {}
+
+    if result.returncode != 0:
+        return {}
+
+    listeners: dict[int, dict[str, str]] = {}
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+
+        local_addr = parts[3]
+        port = extract_port(local_addr)
+        if port is None:
+            continue
+
+        process = " ".join(parts[5:]) if len(parts) > 5 else "-"
+        listeners[port] = {
+            "listener": local_addr,
+            "process": process or "-",
+        }
+
+    return listeners
+
+
+def is_local_port_open(port: int) -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.25):
+            return True
+    except OSError:
+        return False
+
+
+def build_forward_port_status(exposed_ports: list[Any]) -> list[dict[str, Any]]:
+    listener_map = collect_listener_details()
+    details: list[dict[str, Any]] = []
+
+    for item in exposed_ports:
+        try:
+            port = int(item)
+        except (TypeError, ValueError):
+            continue
+
+        open_now = is_local_port_open(port)
+        listener = listener_map.get(port, {})
+        details.append(
+            {
+                "service": f"port_{port}",
+                "protocol": "tcp",
+                "port": port,
+                "status": "active" if open_now else "inactive",
+                "listener": listener.get("listener", "-"),
+                "process": listener.get("process", "-"),
+            }
+        )
+
+    return details
+
+
+def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str, str]]:
+    endpoint = f"{public_ip}:{control_port}" if public_ip and control_port else "<unknown>"
+    return [
+        {
+            "platform": "Linux",
+            "architecture": "x86_64, aarch64/arm64",
+            "service_name": LINUX_SERVICE_NAME,
+            "delivery": "ZIP (client.toml + install-client.sh)",
+            "binary_source": "Install script auto-download latest rathole per arsitektur",
+            "setup_hint": "sudo ./install-client.sh",
+            "remote_endpoint": endpoint,
+        },
+        {
+            "platform": "Windows",
+            "architecture": "x86_64",
+            "service_name": WINDOWS_SERVICE_NAME,
+            "delivery": "ZIP (rathole.exe + client.toml + setup scripts)",
+            "binary_source": f"Bundled dari release asset: {WINDOWS_ASSET_NAME}",
+            "setup_hint": "setup-client.cmd (auto UAC/Admin)",
+            "remote_endpoint": endpoint,
+        },
+    ]
+
+
+def build_client_tunnel_details(exposed_ports: list[Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for item in exposed_ports:
+        try:
+            port = int(item)
+        except (TypeError, ValueError):
+            continue
+
+        rows.append(
+            {
+                "service": f"port_{port}",
+                "protocol": "tcp",
+                "remote_port": str(port),
+                "client_local_addr": f"127.0.0.1:{port}",
+            }
+        )
+    return rows
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -71,12 +199,19 @@ def dashboard(
     current_token = get_setting(conn, "global_token", state.get("token", ""))
     rathole_service = str(state.get("rathole_service_name", "rathole"))
     dashboard_service = str(state.get("dashboard_service_name", "easy-rathole-dashboard"))
+    raw_exposed_ports = state.get("exposed_ports", [5444, 5480, 5485])
+    if isinstance(raw_exposed_ports, list):
+        exposed_ports = raw_exposed_ports
+    else:
+        exposed_ports = [raw_exposed_ports]
+    public_ip = str(state.get("public_ip", "<unknown>"))
+    control_port = str(state.get("rathole_control_port", "<unknown>"))
 
     context = {
         "request": request,
         "message": message,
-        "public_ip": state.get("public_ip", "<unknown>"),
-        "control_port": state.get("rathole_control_port", "<unknown>"),
+        "public_ip": public_ip,
+        "control_port": control_port,
         "dashboard_port": state.get("dashboard_port", 8088),
         "token_masked": mask_token(current_token),
         "token_exists": bool(current_token),
@@ -84,7 +219,10 @@ def dashboard(
         "rathole_status": service_status(rathole_service),
         "dashboard_service": dashboard_service,
         "dashboard_status": service_status(dashboard_service),
-        "exposed_ports": state.get("exposed_ports", [5444, 5480, 5485]),
+        "exposed_ports": exposed_ports,
+        "forward_port_status": build_forward_port_status(exposed_ports),
+        "supported_clients": build_supported_clients(public_ip, control_port),
+        "client_tunnel_details": build_client_tunnel_details(exposed_ports),
         "updated_at": state.get("updated_at", "-"),
     }
     return templates.TemplateResponse("dashboard.html", context)

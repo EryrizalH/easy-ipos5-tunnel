@@ -1,0 +1,69 @@
+@echo off
+setlocal EnableExtensions
+
+title Easy Rathole Windows Client Setup
+
+echo ==================================================
+echo   Easy Rathole - Windows Client One-Click Setup
+echo ==================================================
+echo.
+
+:: Auto re-launch as Administrator if needed
+powershell.exe -NoProfile -Command "$p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent()); if ($p.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) { exit 0 } else { exit 1 }"
+if not "%ERRORLEVEL%"=="0" (
+  echo [INFO] Script butuh hak Administrator. Meminta izin UAC...
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+  exit /b 0
+)
+
+cd /d "%~dp0"
+
+echo [CHECK] Verifikasi file bundle...
+if not exist "client.toml" (
+  echo [ERROR] File client.toml tidak ditemukan.
+  echo         Pastikan ZIP sudah di-extract penuh lalu jalankan ulang script ini.
+  pause
+  exit /b 1
+)
+
+set "RATHOLE_BIN="
+if exist "ipos5-rathole.exe" set "RATHOLE_BIN=ipos5-rathole.exe"
+if not defined RATHOLE_BIN if exist "rathole.exe" set "RATHOLE_BIN=rathole.exe"
+
+if not defined RATHOLE_BIN (
+  echo [ERROR] Binary rathole tidak ditemukan.
+  echo         Cari salah satu file ini di folder yang sama:
+  echo         - ipos5-rathole.exe
+  echo         - rathole.exe
+  pause
+  exit /b 1
+)
+
+echo [OK] Binary ditemukan: %RATHOLE_BIN%
+echo.
+echo [STEP 1/2] Install service Windows...
+call "%~dp0install-service.cmd"
+if not "%ERRORLEVEL%"=="0" (
+  echo.
+  echo [ERROR] Install service gagal.
+  pause
+  exit /b 1
+)
+
+echo.
+echo [STEP 2/2] Verifikasi service...
+sc query "{{WINDOWS_SERVICE_NAME}}" | findstr /I "RUNNING" >nul
+if not "%ERRORLEVEL%"=="0" (
+  echo [WARN] Service belum status RUNNING.
+  echo        Silakan cek Event Viewer jika diperlukan.
+) else (
+  echo [OK] Service {{WINDOWS_SERVICE_NAME}} aktif (RUNNING).
+)
+
+echo.
+echo Selesai.
+echo Jika aplikasi POS lokal Anda aktif di port 5444/5480/5485,
+echo tunnel akan langsung bekerja.
+echo.
+pause
+exit /b 0

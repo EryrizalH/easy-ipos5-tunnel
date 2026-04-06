@@ -99,8 +99,11 @@ Fitur:
 
 1. Download bundle dari dashboard
 2. Extract ZIP
-3. Run `install-service.cmd` sebagai Administrator
+3. Run `setup-client.cmd` (auto minta Administrator/UAC)
 4. Service akan auto-start saat boot
+
+> `setup-client.cmd` mendukung binary `ipos5-rathole.exe` maupun `rathole.exe`.
+> `nssm.exe` sudah include di bundle, jadi client tidak perlu download nssm lagi.
 
 Uninstall:
 

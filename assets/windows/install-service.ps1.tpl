@@ -26,33 +26,27 @@ function Ensure-Nssm {
     if (Test-Path $nssmPath) {
         return $nssmPath
     }
-
-    $tempZip = Join-Path $env:TEMP "nssm-2.24.zip"
-    $tempDir = Join-Path $env:TEMP "nssm-2.24"
-    Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile $tempZip
-    if (Test-Path $tempDir) {
-        Remove-Item -Recurse -Force $tempDir
-    }
-
-    Expand-Archive -Path $tempZip -DestinationPath $tempDir
-    $binary = Join-Path $tempDir "nssm-2.24\win64\nssm.exe"
-    if (-not (Test-Path $binary)) {
-        throw "Cannot locate nssm.exe in extracted archive"
-    }
-
-    Copy-Item $binary $nssmPath -Force
-    return $nssmPath
+    throw "nssm.exe is missing from bundle folder"
 }
 
 Ensure-Admin
 
 $baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ratholeExe = Join-Path $baseDir "rathole.exe"
+$ratholeExe = $null
+$exeCandidates = @("ipos5-rathole.exe", "rathole.exe")
+foreach ($exeName in $exeCandidates) {
+    $candidate = Join-Path $baseDir $exeName
+    if (Test-Path $candidate) {
+        $ratholeExe = $candidate
+        break
+    }
+}
+
 $configFile = Join-Path $baseDir "client.toml"
 $serviceName = "{{WINDOWS_SERVICE_NAME}}"
 
-if (-not (Test-Path $ratholeExe)) {
-    throw "rathole.exe is missing from bundle folder"
+if (-not $ratholeExe) {
+    throw "Cannot find ipos5-rathole.exe or rathole.exe in bundle folder"
 }
 
 if (-not (Test-Path $configFile)) {
@@ -82,4 +76,5 @@ if ($svc.Status -ne 'Running') {
     throw "Service $serviceName created but not running. Check Windows Event Viewer and ensure local ports 5444/5480/5485 are open on client side."
 }
 
+Write-Host "Using executable: $(Split-Path -Leaf $ratholeExe)" -ForegroundColor Cyan
 Write-Host "Service $serviceName installed and running." -ForegroundColor Green

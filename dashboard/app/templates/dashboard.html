@@ -9,12 +9,20 @@
     .card { background: #fff; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
     .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 16px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .small { font-size: 12px; }
+    .muted { color: #6b7280; }
     .ok { color: #065f46; }
+    .bad { color: #991b1b; }
     .warn { color: #92400e; }
     input[type=text] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; }
     button, .btn { background: #2563eb; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; }
     .btn.secondary { background: #374151; }
     .ports span { display:inline-block; background:#e5e7eb; border-radius:999px; padding:4px 10px; margin-right:8px; margin-top:8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+    th { font-size: 13px; color: #374151; background: #f9fafb; }
+    td { font-size: 14px; }
+    .break { word-break: break-word; }
   </style>
 </head>
 <body>
@@ -44,6 +52,89 @@
       <p><strong>{{ dashboard_service }}</strong>: <span class="mono {% if dashboard_status == 'active' %}ok{% else %}warn{% endif %}">{{ dashboard_status }}</span></p>
       <p><strong>Last Update:</strong> <span class="mono">{{ updated_at }}</span></p>
     </div>
+  </div>
+
+  <div class="card">
+    <h3>Forward Port Status</h3>
+    <p class="muted small">Status <strong>active</strong> berarti port dapat diakses lokal di server (listener aktif).</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Protocol</th>
+          <th>Forward Port</th>
+          <th>Status</th>
+          <th>Listener</th>
+          <th>Process</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in forward_port_status %}
+          <tr>
+            <td class="mono">{{ row.service }}</td>
+            <td class="mono">{{ row.protocol }}</td>
+            <td class="mono">{{ row.port }}</td>
+            <td>
+              <span class="mono {% if row.status == 'active' %}ok{% else %}bad{% endif %}">{{ row.status }}</span>
+            </td>
+            <td class="mono break">{{ row.listener }}</td>
+            <td class="mono break small">{{ row.process }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Rathole Client Support Detail</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Platform</th>
+          <th>Architecture</th>
+          <th>Service Name</th>
+          <th>Delivery Bundle</th>
+          <th>Binary Source</th>
+          <th>Setup</th>
+          <th>Remote Endpoint</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in supported_clients %}
+          <tr>
+            <td>{{ row.platform }}</td>
+            <td class="mono">{{ row.architecture }}</td>
+            <td class="mono">{{ row.service_name }}</td>
+            <td>{{ row.delivery }}</td>
+            <td>{{ row.binary_source }}</td>
+            <td class="mono">{{ row.setup_hint }}</td>
+            <td class="mono">{{ row.remote_endpoint }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <br/>
+    <h4>Default Tunnel Mapping (client side)</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Protocol</th>
+          <th>Remote Port (Server)</th>
+          <th>Client Local Address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in client_tunnel_details %}
+          <tr>
+            <td class="mono">{{ row.service }}</td>
+            <td class="mono">{{ row.protocol }}</td>
+            <td class="mono">{{ row.remote_port }}</td>
+            <td class="mono">{{ row.client_local_addr }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
   <div class="card">
