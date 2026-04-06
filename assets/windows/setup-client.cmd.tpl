@@ -69,6 +69,24 @@ if not "%ERRORLEVEL%"=="0" (
   echo [OK] Service {{WINDOWS_SERVICE_NAME}} aktif (RUNNING).
 )
 
+echo [CHECK] Verifikasi task auto-start GUI...
+schtasks /Query /TN "{{WINDOWS_GUI_TASK_NAME}}" >nul 2>&1
+if not "%ERRORLEVEL%"=="0" (
+  echo [WARN] Task auto-start GUI tidak ditemukan: {{WINDOWS_GUI_TASK_NAME}}
+  echo        Silakan jalankan ulang setup-client.cmd sebagai Administrator.
+) else (
+  echo [OK] Task auto-start GUI terdaftar: {{WINDOWS_GUI_TASK_NAME}}
+)
+
+echo [CHECK] Verifikasi GUI berjalan (tray)...
+tasklist /FI "IMAGENAME eq {{WINDOWS_GUI_BINARY_NAME}}" | findstr /I "{{WINDOWS_GUI_BINARY_NAME}}" >nul
+if not "%ERRORLEVEL%"=="0" (
+  echo [WARN] GUI belum terdeteksi berjalan.
+  echo        Coba buka manual {{WINDOWS_GUI_BINARY_NAME}} sekali, lalu cek icon tray.
+) else (
+  echo [OK] GUI terdeteksi berjalan. Icon tray seharusnya muncul.
+)
+
 echo.
 echo Selesai.
 echo Jika aplikasi POS lokal Anda aktif di port 5444/5480/5485,

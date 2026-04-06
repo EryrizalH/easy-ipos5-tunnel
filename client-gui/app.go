@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"sync"
 	"time"
@@ -11,6 +12,9 @@ import (
 	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+//go:embed icon.ico
+var trayIcon []byte
 
 type App struct {
 	ctx         context.Context
@@ -64,6 +68,9 @@ func (a *App) shutdown(ctx context.Context) {
 func (a *App) onTrayReady() {
 	systray.SetTitle("Easy Rathole")
 	systray.SetTooltip("Easy Rathole Client GUI")
+	if len(trayIcon) > 0 {
+		systray.SetIcon(trayIcon)
+	}
 
 	openItem := systray.AddMenuItem("Open Dashboard", "Tampilkan dashboard")
 	refreshItem := systray.AddMenuItem("Refresh", "Refresh status")

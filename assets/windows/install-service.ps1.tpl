@@ -56,11 +56,10 @@ if (-not (Test-Path $configFile)) {
 if (-not (Test-Path $guiSetupScript)) {
     throw "install-gui-autostart.ps1 tidak ditemukan pada folder bundle"
 }
-
 $nssm = Ensure-Nssm -BaseDir $baseDir
 
-& $nssm stop $serviceName | Out-Null
-& sc.exe delete $serviceName | Out-Null
+& $nssm stop $serviceName *> $null
+& sc.exe delete $serviceName *> $null
 
 & $nssm install $serviceName $ratholeExe $configFile
 & $nssm set $serviceName AppDirectory $baseDir
