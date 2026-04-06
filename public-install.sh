@@ -87,6 +87,10 @@ main() {
 
   [[ -f "${work_tree}/install.sh" ]] || fail "install.sh tidak ditemukan dalam repo"
 
+  local deployed_commit
+  deployed_commit="$(git -C "$work_tree" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+  log "Using source commit: ${deployed_commit} (branch: ${REPO_BRANCH})"
+
   log "Running installer from ${work_tree}"
   bash "${work_tree}/install.sh"
 }
