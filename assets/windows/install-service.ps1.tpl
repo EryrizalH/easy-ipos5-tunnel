@@ -73,6 +73,9 @@ foreach ($exeName in $exeCandidates) {
 $configFile = Join-Path $baseDir "client.toml"
 $serviceName = "{{WINDOWS_SERVICE_NAME}}"
 $guiSetupScript = Join-Path $baseDir "install-gui-autostart.ps1"
+$logRoot = Join-Path $env:ProgramData "easy-rathole-client\\logs"
+$stdoutLog = Join-Path $logRoot ($serviceName + ".stdout.log")
+$stderrLog = Join-Path $logRoot ($serviceName + ".stderr.log")
 
 if (-not $ratholeExe) {
     throw "Tidak menemukan ipos5-rathole.exe atau rathole.exe pada folder bundle"
@@ -87,11 +90,19 @@ if (-not (Test-Path $guiSetupScript)) {
 $nssm = Ensure-Nssm -BaseDir $baseDir
 Remove-ExistingServiceIfAny -ServiceName $serviceName
 
+New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
+
 & $nssm install $serviceName $ratholeExe $configFile
 & $nssm set $serviceName AppDirectory $baseDir
 & $nssm set $serviceName Start SERVICE_AUTO_START
 & $nssm set $serviceName DisplayName "IPOS5TunnelPublik Client"
 & $nssm set $serviceName Description "Auto-start tunnel client untuk akses publik"
+& $nssm set $serviceName AppStdout $stdoutLog
+& $nssm set $serviceName AppStderr $stderrLog
+& $nssm set $serviceName AppRotateFiles 1
+& $nssm set $serviceName AppRotateOnline 1
+& $nssm set $serviceName AppRotateSeconds 86400
+& $nssm set $serviceName AppRotateBytes 1048576
 
 Start-Service -Name $serviceName
 Start-Sleep -Seconds 1
@@ -114,4 +125,5 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Executable terpakai: $(Split-Path -Leaf $ratholeExe)" -ForegroundColor Cyan
 Write-Host "GUI executable: {{WINDOWS_GUI_BINARY_NAME}}" -ForegroundColor Cyan
 Write-Host "Task autostart GUI: {{WINDOWS_GUI_TASK_NAME}}" -ForegroundColor Cyan
+Write-Host "Log stderr: $stderrLog" -ForegroundColor Cyan
 Write-Host "Service $serviceName berhasil diinstal dan berjalan." -ForegroundColor Green

@@ -5,6 +5,7 @@ Desktop GUI berbasis Go + Wails v2 untuk monitor dan kontrol service `EasyRathol
 ## Fitur
 
 - Monitor status koneksi (`Connected` / `Disconnected`)
+- Deteksi kegagalan autentikasi token (`Auth Failed`) dari log/event Windows
 - Monitor status service client
 - Monitor status server (`Dashboard Up/Down`, `Control Port Up/Down`)
 - Tampilkan IP publik server dari resolve `remote_addr` di `client.toml`
@@ -34,3 +35,10 @@ go test ./...
 
 > Untuk menjalankan sebagai Wails app, gunakan workflow build/run Wails di mesin yang sudah terpasang Wails CLI.
 
+## Catatan Log Service (Windows)
+
+Installer service menulis log ke:
+
+`%ProgramData%\easy-rathole-client\logs\EasyRatholeClient.stderr.log`
+
+GUI menggunakan log tersebut (dan fallback event log Windows) untuk mendeteksi indikasi token mismatch/auth failure.

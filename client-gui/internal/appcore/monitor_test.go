@@ -65,13 +65,16 @@ func TestResolvePublicIPLookupError(t *testing.T) {
 }
 
 func TestEvaluateConnection(t *testing.T) {
-	if got := evaluateConnection("running", true, false); got != "Connected" {
+	if got := evaluateConnection("running", true, false, false); got != "Connected" {
 		t.Fatalf("expected Connected, got %s", got)
 	}
-	if got := evaluateConnection("running", false, false); got != "Disconnected" {
+	if got := evaluateConnection("running", false, false, false); got != "Disconnected" {
 		t.Fatalf("expected Disconnected, got %s", got)
 	}
-	if got := evaluateConnection("stopped", true, true); got != "Disconnected" {
+	if got := evaluateConnection("stopped", true, true, false); got != "Disconnected" {
 		t.Fatalf("expected Disconnected, got %s", got)
+	}
+	if got := evaluateConnection("running", true, true, true); got != "Auth Failed" {
+		t.Fatalf("expected Auth Failed, got %s", got)
 	}
 }

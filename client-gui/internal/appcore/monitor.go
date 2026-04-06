@@ -43,14 +43,14 @@ func (m *Monitor) Snapshot(configPath string) StatusSnapshot {
 	remoteAddr, parseErr := parseRemoteAddr(configPath)
 	if parseErr != nil {
 		appendErr(&result.LastError, parseErr)
-		result.ConnectionState = evaluateConnection(serviceState, false, false)
+		result.ConnectionState = evaluateConnection(serviceState, false, false, false)
 		return result
 	}
 
 	host, port, splitErr := splitHostPort(remoteAddr)
 	if splitErr != nil {
 		appendErr(&result.LastError, splitErr)
-		result.ConnectionState = evaluateConnection(serviceState, false, false)
+		result.ConnectionState = evaluateConnection(serviceState, false, false, false)
 		return result
 	}
 
@@ -66,7 +66,14 @@ func (m *Monitor) Snapshot(configPath string) StatusSnapshot {
 
 	result.DashboardReachable = checkDashboardHealth(host, 8088)
 	result.ControlPortReachable = checkTCPReachability(host, port)
-	result.ConnectionState = evaluateConnection(serviceState, result.DashboardReachable, result.ControlPortReachable)
+	authFailed, authErr := detectRecentAuthFailure(m.serviceName)
+	if authErr != nil {
+		appendErr(&result.LastError, authErr)
+	}
+	if authFailed {
+		appendErr(&result.LastError, errors.New("autentikasi gagal: kemungkinan token client tidak cocok dengan server"))
+	}
+	result.ConnectionState = evaluateConnection(serviceState, result.DashboardReachable, result.ControlPortReachable, authFailed)
 
 	return result
 }
@@ -139,7 +146,10 @@ func checkTCPReachability(host, port string) bool {
 	return true
 }
 
-func evaluateConnection(serviceState string, dashboardReachable bool, controlPortReachable bool) string {
+func evaluateConnection(serviceState string, dashboardReachable bool, controlPortReachable bool, authFailed bool) string {
+	if authFailed {
+		return "Auth Failed"
+	}
 	if strings.EqualFold(serviceState, "running") && (dashboardReachable || controlPortReachable) {
 		return "Connected"
 	}
