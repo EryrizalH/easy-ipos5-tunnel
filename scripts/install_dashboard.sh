@@ -39,7 +39,10 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-service.cmd.tpl" "${resources_dir}/assets/windows/uninstall-service.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/setup-client.cmd.tpl" "${resources_dir}/assets/windows/setup-client.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe" "${resources_dir}/assets/windows/ipos5-rathole.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole-gui.exe" "${resources_dir}/assets/windows/ipos5-rathole-gui.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/nssm.exe" "${resources_dir}/assets/windows/nssm.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/install-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/install-gui-autostart.ps1.tpl"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/uninstall-gui-autostart.ps1.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/linux/install-client.sh.tpl" "${resources_dir}/assets/linux/install-client.sh.tpl"
   install -m 0644 "${PROJECT_ROOT}/templates/rathole/client.toml.tpl" "${resources_dir}/templates/rathole/client.toml.tpl"
 
