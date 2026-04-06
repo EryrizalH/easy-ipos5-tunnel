@@ -40,6 +40,15 @@ if not defined RATHOLE_BIN (
 )
 
 echo [OK] Binary ditemukan: %RATHOLE_BIN%
+
+if not exist "{{WINDOWS_GUI_BINARY_NAME}}" (
+  echo [ERROR] GUI binary tidak ditemukan: {{WINDOWS_GUI_BINARY_NAME}}
+  echo         Pastikan ZIP client windows diextract lengkap.
+  pause
+  exit /b 1
+)
+
+echo [OK] GUI binary ditemukan: {{WINDOWS_GUI_BINARY_NAME}}
 echo.
 echo [STEP 1/2] Install service Windows...
 call "%~dp0install-service.cmd"

@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any
 
 WINDOWS_BINARY_NAME = "ipos5-rathole.exe"
+WINDOWS_GUI_BINARY_NAME = "ipos5-rathole-gui.exe"
 WINDOWS_NSSM_NAME = "nssm.exe"
 LINUX_SERVICE_NAME = "easy-rathole-client"
 WINDOWS_SERVICE_NAME = "EasyRatholeClient"
+WINDOWS_GUI_TASK_NAME = "EasyRatholeClientGUI"
 
 
 def timestamp_slug() -> str:
@@ -65,8 +67,10 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
 
 def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     windows_bin = resources_dir() / f"assets/windows/{WINDOWS_BINARY_NAME}"
+    windows_gui_bin = resources_dir() / f"assets/windows/{WINDOWS_GUI_BINARY_NAME}"
     nssm_exe = resources_dir() / f"assets/windows/{WINDOWS_NSSM_NAME}"
     require_file(windows_bin, WINDOWS_BINARY_NAME)
+    require_file(windows_gui_bin, WINDOWS_GUI_BINARY_NAME)
     require_file(nssm_exe, WINDOWS_NSSM_NAME)
 
     bundle_name = f"windows-client-{timestamp_slug()}.zip"
@@ -75,6 +79,7 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     temp_dir = Path(tempfile.mkdtemp(prefix="easy-rathole-win-"))
     try:
         shutil.copy2(windows_bin, temp_dir / WINDOWS_BINARY_NAME)
+        shutil.copy2(windows_gui_bin, temp_dir / WINDOWS_GUI_BINARY_NAME)
 
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
 
@@ -83,18 +88,35 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         install_cmd_tpl = resources_dir() / "assets/windows/install-service.cmd.tpl"
         uninstall_cmd_tpl = resources_dir() / "assets/windows/uninstall-service.cmd.tpl"
         setup_cmd_tpl = resources_dir() / "assets/windows/setup-client.cmd.tpl"
+        install_gui_ps1_tpl = resources_dir() / "assets/windows/install-gui-autostart.ps1.tpl"
+        uninstall_gui_ps1_tpl = resources_dir() / "assets/windows/uninstall-gui-autostart.ps1.tpl"
         require_file(install_ps1_tpl, "install-service.ps1.tpl")
         require_file(uninstall_ps1_tpl, "uninstall-service.ps1.tpl")
         require_file(install_cmd_tpl, "install-service.cmd.tpl")
         require_file(uninstall_cmd_tpl, "uninstall-service.cmd.tpl")
         require_file(setup_cmd_tpl, "setup-client.cmd.tpl")
+        require_file(install_gui_ps1_tpl, "install-gui-autostart.ps1.tpl")
+        require_file(uninstall_gui_ps1_tpl, "uninstall-gui-autostart.ps1.tpl")
 
         (temp_dir / "install-service.ps1").write_text(
-            render_template(install_ps1_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
+            render_template(
+                install_ps1_tpl,
+                {
+                    "WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME,
+                    "WINDOWS_GUI_BINARY_NAME": WINDOWS_GUI_BINARY_NAME,
+                    "WINDOWS_GUI_TASK_NAME": WINDOWS_GUI_TASK_NAME,
+                },
+            ),
             encoding="utf-8",
         )
         (temp_dir / "uninstall-service.ps1").write_text(
-            render_template(uninstall_ps1_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
+            render_template(
+                uninstall_ps1_tpl,
+                {
+                    "WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME,
+                    "WINDOWS_GUI_TASK_NAME": WINDOWS_GUI_TASK_NAME,
+                },
+            ),
             encoding="utf-8",
         )
         (temp_dir / "install-service.cmd").write_text(
@@ -106,7 +128,27 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
             encoding="utf-8",
         )
         (temp_dir / "setup-client.cmd").write_text(
-            render_template(setup_cmd_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
+            render_template(
+                setup_cmd_tpl,
+                {
+                    "WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME,
+                    "WINDOWS_GUI_BINARY_NAME": WINDOWS_GUI_BINARY_NAME,
+                },
+            ),
+            encoding="utf-8",
+        )
+        (temp_dir / "install-gui-autostart.ps1").write_text(
+            render_template(
+                install_gui_ps1_tpl,
+                {
+                    "WINDOWS_GUI_BINARY_NAME": WINDOWS_GUI_BINARY_NAME,
+                    "WINDOWS_GUI_TASK_NAME": WINDOWS_GUI_TASK_NAME,
+                },
+            ),
+            encoding="utf-8",
+        )
+        (temp_dir / "uninstall-gui-autostart.ps1").write_text(
+            render_template(uninstall_gui_ps1_tpl, {"WINDOWS_GUI_TASK_NAME": WINDOWS_GUI_TASK_NAME}),
             encoding="utf-8",
         )
         shutil.copy2(nssm_exe, temp_dir / WINDOWS_NSSM_NAME)
@@ -120,8 +162,10 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "2) Jalankan setup-client.cmd (otomatis meminta Administrator/UAC).",
                     "3) Service client akan aktif otomatis saat boot.",
                     f"   (binary termasuk paket: {WINDOWS_BINARY_NAME})",
+                    f"   (GUI termasuk paket: {WINDOWS_GUI_BINARY_NAME})",
                     "   (nssm.exe sudah termasuk paket ini)",
-                    "4) Mode manual tetap tersedia: install-service.cmd dan uninstall-service.cmd.",
+                    "4) GUI client akan diaktifkan auto-start (Task Scheduler) dan berjalan hidden/system tray.",
+                    "5) Mode manual tetap tersedia: install-service.cmd dan uninstall-service.cmd.",
                 ]
             )
             + "\n",

@@ -1,0 +1,114 @@
+:root {
+  --bg: #0f172a;
+  --bg-2: #1e293b;
+  --card: #111827;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --ok: #10b981;
+  --bad: #ef4444;
+  --warn: #f59e0b;
+  --accent: #0ea5e9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at top left, var(--bg-2), var(--bg));
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.hero p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.card,
+.panel {
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.card h2,
+.panel h3 {
+  margin-top: 0;
+}
+
+.value {
+  font-size: 1.4rem;
+  margin: 8px 0;
+  font-weight: 700;
+}
+
+.actions,
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+input {
+  flex: 1;
+  min-width: 280px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: #0b1220;
+  color: var(--text);
+}
+
+.message {
+  margin: 0;
+  color: var(--muted);
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.bad {
+  color: var(--bad);
+}
+
+.warn {
+  color: var(--warn);
+}
+

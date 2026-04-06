@@ -17,6 +17,7 @@ from .db import connect, get_setting, get_user
 from .services.bundle_service import (
     LINUX_SERVICE_NAME,
     WINDOWS_BINARY_NAME,
+    WINDOWS_GUI_BINARY_NAME,
     WINDOWS_NSSM_NAME,
     WINDOWS_SERVICE_NAME,
     generate_linux_bundle,
@@ -171,8 +172,11 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (ipos5-rathole.exe + nssm.exe + client.toml + script setup)",
-            "binary_source": f"Bundled dari aset lokal dashboard: {WINDOWS_BINARY_NAME} + {WINDOWS_NSSM_NAME}",
+            "delivery": "Paket ZIP (ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml + script setup)",
+            "binary_source": (
+                "Bundled dari aset lokal dashboard: "
+                f"{WINDOWS_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
+            ),
             "setup_hint": "setup-client.cmd (auto UAC/Admin)",
             "remote_endpoint": endpoint,
         },

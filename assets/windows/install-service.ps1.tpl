@@ -44,6 +44,7 @@ foreach ($exeName in $exeCandidates) {
 
 $configFile = Join-Path $baseDir "client.toml"
 $serviceName = "{{WINDOWS_SERVICE_NAME}}"
+$guiSetupScript = Join-Path $baseDir "install-gui-autostart.ps1"
 
 if (-not $ratholeExe) {
     throw "Tidak menemukan ipos5-rathole.exe atau rathole.exe pada folder bundle"
@@ -51,6 +52,9 @@ if (-not $ratholeExe) {
 
 if (-not (Test-Path $configFile)) {
     throw "client.toml tidak ditemukan pada folder bundle"
+}
+if (-not (Test-Path $guiSetupScript)) {
+    throw "install-gui-autostart.ps1 tidak ditemukan pada folder bundle"
 }
 
 $nssm = Ensure-Nssm -BaseDir $baseDir
@@ -76,5 +80,13 @@ if ($svc.Status -ne 'Running') {
     throw "Service $serviceName berhasil dibuat tetapi belum berjalan. Cek Windows Event Viewer dan pastikan port lokal 5444/5480/5485 pada sisi client tersedia."
 }
 
+Write-Host "Menyiapkan GUI autostart..." -ForegroundColor Cyan
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guiSetupScript
+if ($LASTEXITCODE -ne 0) {
+    throw "Setup GUI autostart gagal dengan exit code $LASTEXITCODE"
+}
+
 Write-Host "Executable terpakai: $(Split-Path -Leaf $ratholeExe)" -ForegroundColor Cyan
+Write-Host "GUI executable: {{WINDOWS_GUI_BINARY_NAME}}" -ForegroundColor Cyan
+Write-Host "Task autostart GUI: {{WINDOWS_GUI_TASK_NAME}}" -ForegroundColor Cyan
 Write-Host "Service $serviceName berhasil diinstal dan berjalan." -ForegroundColor Green
