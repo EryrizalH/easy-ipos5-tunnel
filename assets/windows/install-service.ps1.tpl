@@ -29,6 +29,34 @@ function Ensure-Nssm {
     throw "nssm.exe tidak ditemukan pada folder bundle"
 }
 
+function Remove-ExistingServiceIfAny {
+    param(
+        [string]$ServiceName
+    )
+
+    $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($null -eq $existing) {
+        return
+    }
+
+    Write-Host "Service lama ditemukan ($ServiceName), menyiapkan reinstall..." -ForegroundColor Yellow
+
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    & sc.exe delete $ServiceName | Out-Null
+
+    # Tunggu sampai service benar-benar hilang agar install ulang tidak bentrok.
+    $deadline = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $deadline) {
+        $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        if ($null -eq $svc) {
+            return
+        }
+        Start-Sleep -Milliseconds 500
+    }
+
+    throw "Service lama $ServiceName belum terhapus sepenuhnya. Tutup Services/Event Viewer yang sedang membuka service lalu jalankan ulang installer."
+}
+
 Ensure-Admin
 
 $baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -57,9 +85,7 @@ if (-not (Test-Path $guiSetupScript)) {
     throw "install-gui-autostart.ps1 tidak ditemukan pada folder bundle"
 }
 $nssm = Ensure-Nssm -BaseDir $baseDir
-
-& $nssm stop $serviceName *> $null
-& sc.exe delete $serviceName *> $null
+Remove-ExistingServiceIfAny -ServiceName $serviceName
 
 & $nssm install $serviceName $ratholeExe $configFile
 & $nssm set $serviceName AppDirectory $baseDir
