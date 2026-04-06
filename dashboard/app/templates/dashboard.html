@@ -1,158 +1,292 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Easy Rathole Dashboard</title>
+  <title>IPOS5TunnelPublik Dashboard</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; background: #f5f7fb; color: #1f2937; }
-    .card { background: #fff; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 16px; }
+    :root {
+      --bg: #f3f6fc;
+      --card: #ffffff;
+      --line: #e5e7eb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #047857;
+      --warning: #b45309;
+      --error: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    .container { max-width: 1120px; margin: 0 auto; padding: 24px 16px 40px; }
+    .hero {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      color: #fff;
+      border-radius: 16px;
+      padding: 22px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 24px rgba(37,99,235,0.22);
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 26px; }
+    .hero p { margin: 0; opacity: 0.95; }
+
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .card h2, .card h3 { margin-top: 0; margin-bottom: 8px; }
+    .card p { margin: 8px 0; }
+
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    .small { font-size: 12px; }
-    .muted { color: #6b7280; }
-    .ok { color: #065f46; }
-    .bad { color: #991b1b; }
-    .warn { color: #92400e; }
-    input[type=text] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; }
-    button, .btn { background: #2563eb; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; }
+    .badge {
+      display: inline-block;
+      background: #e5e7eb;
+      border-radius: 999px;
+      padding: 3px 10px;
+      margin-right: 6px;
+      margin-top: 6px;
+      font-size: 13px;
+    }
+
+    .status-active { color: var(--success); font-weight: 600; }
+    .status-inactive { color: var(--error); font-weight: 600; }
+
+    .flash { border-left: 5px solid; }
+    .flash.success { border-color: var(--success); background: #ecfdf5; }
+    .flash.warning { border-color: var(--warning); background: #fffbeb; }
+    .flash.error { border-color: var(--error); background: #fef2f2; }
+    .flash.info { border-color: var(--primary); background: #eff6ff; }
+
+    .steps { margin: 10px 0 0; padding-left: 18px; }
+    .steps li { margin-bottom: 8px; }
+
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      color: #fff;
+      background: var(--primary);
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-top: 8px;
+    }
+    .btn:hover { background: var(--primary-dark); }
     .btn.secondary { background: #374151; }
-    .ports span { display:inline-block; background:#e5e7eb; border-radius:999px; padding:4px 10px; margin-right:8px; margin-top:8px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
-    th { font-size: 13px; color: #374151; background: #f9fafb; }
+
+    input[type=text] {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { font-size: 13px; background: #f9fafb; color: #374151; }
     td { font-size: 14px; }
     .break { word-break: break-word; }
+
+    details {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-top: 10px;
+    }
+    summary { cursor: pointer; font-weight: 600; }
   </style>
 </head>
 <body>
-  <h1>Easy Rathole Dashboard</h1>
+  <div class="container">
+    <div class="hero">
+      <h1>IPOS5TunnelPublik Dashboard</h1>
+      <p>Kelola token tunnel dan unduh installer client dalam beberapa langkah mudah.</p>
+    </div>
 
-  {% if message %}
-    <div class="card warn">{{ message }}</div>
-  {% endif %}
+    {% if flash_message %}
+      <div class="card flash {{ flash_type }}">
+        <strong>Informasi:</strong> {{ flash_message }}
+      </div>
+    {% endif %}
 
-  <div class="grid">
     <div class="card">
-      <h3>Server Info</h3>
-      <p><strong>Public IP:</strong> <span class="mono">{{ public_ip }}</span></p>
-      <p><strong>Rathole Control Port:</strong> <span class="mono">{{ control_port }}</span></p>
-      <p><strong>Dashboard Port:</strong> <span class="mono">{{ dashboard_port }}</span></p>
-      <div class="ports">
-        <strong>Exposed TCP:</strong><br/>
-        {% for p in exposed_ports %}
-          <span class="mono">{{ p }}</span>
-        {% endfor %}
+      <h2>Mulai Cepat (untuk pengguna baru)</h2>
+      <p class="muted">Ikuti urutan ini agar instalasi client berjalan lancar.</p>
+      <ol class="steps">
+        <li>
+          <strong>Atur Global Token.</strong>
+          {% if token_exists %}
+            <span class="status-active">Sudah tersimpan</span>
+          {% else %}
+            <span class="status-inactive">Belum diset</span>
+          {% endif %}
+        </li>
+        <li><strong>Unduh installer client</strong> sesuai sistem operasi perangkat Anda.</li>
+        <li><strong>Jalankan installer client</strong> di perangkat tujuan (Windows/Linux).</li>
+      </ol>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Informasi Server</h3>
+        <p><strong>Public IP:</strong> <span class="mono">{{ public_ip }}</span></p>
+        <p><strong>Port Control Rathole:</strong> <span class="mono">{{ control_port }}</span></p>
+        <p><strong>Port Dashboard:</strong> <span class="mono">{{ dashboard_port }}</span></p>
+        <p><strong>Port TCP Dibuka:</strong></p>
+        <div>
+          {% for p in exposed_ports %}
+            <span class="badge mono">{{ p }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Status Layanan</h3>
+        <p>
+          <strong>{{ rathole_service }}</strong>:
+          <span class="mono {% if rathole_status == 'active' %}status-active{% else %}status-inactive{% endif %}">{{ rathole_status }}</span>
+        </p>
+        <p>
+          <strong>{{ dashboard_service }}</strong>:
+          <span class="mono {% if dashboard_status == 'active' %}status-active{% else %}status-inactive{% endif %}">{{ dashboard_status }}</span>
+        </p>
+        <p><strong>Update terakhir:</strong> <span class="mono">{{ updated_at }}</span></p>
       </div>
     </div>
 
     <div class="card">
-      <h3>Service Status</h3>
-      <p><strong>{{ rathole_service }}</strong>: <span class="mono {% if rathole_status == 'active' %}ok{% else %}warn{% endif %}">{{ rathole_status }}</span></p>
-      <p><strong>{{ dashboard_service }}</strong>: <span class="mono {% if dashboard_status == 'active' %}ok{% else %}warn{% endif %}">{{ dashboard_status }}</span></p>
-      <p><strong>Last Update:</strong> <span class="mono">{{ updated_at }}</span></p>
+      <h2>Langkah 1 — Atur / Rotasi Global Token</h2>
+      <p>
+        Token saat ini: <span class="mono">{{ token_masked }}</span>
+      </p>
+      <form method="post" action="/token">
+        <label for="token"><strong>Global Token Baru</strong></label>
+        <input id="token" name="token" type="text" placeholder="Contoh: TokenAman12345" required />
+        <p class="muted small">Ketentuan: minimal 8 karakter, maksimal 128 karakter.</p>
+        <button class="btn" type="submit">Simpan Token</button>
+      </form>
     </div>
-  </div>
 
-  <div class="card">
-    <h3>Forward Port Status</h3>
-    <p class="muted small">Status <strong>active</strong> berarti port dapat diakses lokal di server (listener aktif).</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Service</th>
-          <th>Protocol</th>
-          <th>Forward Port</th>
-          <th>Status</th>
-          <th>Listener</th>
-          <th>Process</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in forward_port_status %}
+    <div class="card">
+      <h2>Langkah 2 — Unduh Installer Client</h2>
+      <p>Setelah token disimpan, unduh paket installer client yang sudah otomatis dikonfigurasi.</p>
+      <a class="btn" href="/download/windows">Unduh ZIP Client Windows</a>
+      <a class="btn secondary" href="/download/linux">Unduh ZIP Client Linux</a>
+      <p class="small muted">Jika token belum diset, proses download akan ditolak sistem.</p>
+    </div>
+
+    <details>
+      <summary>Detail Lanjutan: Status Port Forward</summary>
+      <p class="muted small">Ringkasan: <strong>{{ forward_active_count }}</strong> dari <strong>{{ forward_port_status|length }}</strong> port dalam kondisi aktif.</p>
+      <table>
+        <thead>
           <tr>
-            <td class="mono">{{ row.service }}</td>
-            <td class="mono">{{ row.protocol }}</td>
-            <td class="mono">{{ row.port }}</td>
-            <td>
-              <span class="mono {% if row.status == 'active' %}ok{% else %}bad{% endif %}">{{ row.status }}</span>
-            </td>
-            <td class="mono break">{{ row.listener }}</td>
-            <td class="mono break small">{{ row.process }}</td>
+            <th>Nama Port</th>
+            <th>Protokol</th>
+            <th>Port Forward</th>
+            <th>Status</th>
+            <th>Alamat Listener</th>
+            <th>Aplikasi/Proses</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+        </thead>
+        <tbody>
+          {% for row in forward_port_status %}
+            <tr>
+              <td class="mono">{{ row.service }}</td>
+              <td class="mono">{{ row.protocol }}</td>
+              <td class="mono">{{ row.port }}</td>
+              <td>
+                <span class="mono {% if row.status == 'active' %}status-active{% else %}status-inactive{% endif %}">{{ row.status }}</span>
+              </td>
+              <td class="mono break">{{ row.listener }}</td>
+              <td class="mono break small">{{ row.process }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
 
-  <div class="card">
-    <h3>Rathole Client Support Detail</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Platform</th>
-          <th>Architecture</th>
-          <th>Service Name</th>
-          <th>Delivery Bundle</th>
-          <th>Binary Source</th>
-          <th>Setup</th>
-          <th>Remote Endpoint</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in supported_clients %}
+    <details>
+      <summary>Detail Lanjutan: Dukungan Client & Mapping Tunnel</summary>
+      <h3>Dukungan Platform Client</h3>
+      <table>
+        <thead>
           <tr>
-            <td>{{ row.platform }}</td>
-            <td class="mono">{{ row.architecture }}</td>
-            <td class="mono">{{ row.service_name }}</td>
-            <td>{{ row.delivery }}</td>
-            <td>{{ row.binary_source }}</td>
-            <td class="mono">{{ row.setup_hint }}</td>
-            <td class="mono">{{ row.remote_endpoint }}</td>
+            <th>Platform</th>
+            <th>Arsitektur</th>
+            <th>Nama Service</th>
+            <th>Paket</th>
+            <th>Sumber Binary</th>
+            <th>Cara Jalankan</th>
+            <th>Endpoint Remote</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <br/>
-    <h4>Default Tunnel Mapping (client side)</h4>
-    <table>
-      <thead>
-        <tr>
-          <th>Service</th>
-          <th>Protocol</th>
-          <th>Remote Port (Server)</th>
-          <th>Client Local Address</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in client_tunnel_details %}
+        </thead>
+        <tbody>
+          {% for row in supported_clients %}
+            <tr>
+              <td>{{ row.platform }}</td>
+              <td class="mono">{{ row.architecture }}</td>
+              <td class="mono">{{ row.service_name }}</td>
+              <td>{{ row.delivery }}</td>
+              <td>{{ row.binary_source }}</td>
+              <td class="mono">{{ row.setup_hint }}</td>
+              <td class="mono">{{ row.remote_endpoint }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h3>Mapping Tunnel Default (Sisi Client)</h3>
+      <table>
+        <thead>
           <tr>
-            <td class="mono">{{ row.service }}</td>
-            <td class="mono">{{ row.protocol }}</td>
-            <td class="mono">{{ row.remote_port }}</td>
-            <td class="mono">{{ row.client_local_addr }}</td>
+            <th>Nama Port</th>
+            <th>Protokol</th>
+            <th>Port Remote (Server)</th>
+            <th>Alamat Lokal Client</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h3>Global Token</h3>
-    <p>Current token: <span class="mono">{{ token_masked }}</span></p>
-    <form method="post" action="/token">
-      <label for="token"><strong>Set / Rotate Token</strong></label><br/><br/>
-      <input id="token" name="token" type="text" placeholder="Input token baru (minimal 8 karakter)" required />
-      <br/><br/>
-      <button type="submit">Save Token</button>
-    </form>
-  </div>
-
-  <div class="card">
-    <h3>Client Installer</h3>
-    <p>Setelah token disimpan, download bundle client yang sudah auto-config.</p>
-    <a class="btn" href="/download/windows">Download Windows Client ZIP</a>
-    <a class="btn secondary" href="/download/linux">Download Linux Client ZIP</a>
+        </thead>
+        <tbody>
+          {% for row in client_tunnel_details %}
+            <tr>
+              <td class="mono">{{ row.service }}</td>
+              <td class="mono">{{ row.protocol }}</td>
+              <td class="mono">{{ row.remote_port }}</td>
+              <td class="mono">{{ row.client_local_addr }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
   </div>
 </body>
 </html>

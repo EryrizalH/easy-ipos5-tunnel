@@ -15,18 +15,18 @@ fail() {
 }
 
 require_root() {
-  [[ "${EUID}" -eq 0 ]] || fail "This script must be run as root (sudo)."
+  [[ "${EUID}" -eq 0 ]] || fail "Script ini wajib dijalankan sebagai root (sudo)."
 }
 
 ensure_ubuntu_22_plus() {
-  [[ -f /etc/os-release ]] || fail "/etc/os-release not found"
+  [[ -f /etc/os-release ]] || fail "File /etc/os-release tidak ditemukan"
   # shellcheck disable=SC1091
   source /etc/os-release
-  [[ "${ID:-}" == "ubuntu" ]] || fail "Only Ubuntu is supported. Found: ${ID:-unknown}"
+  [[ "${ID:-}" == "ubuntu" ]] || fail "Hanya Ubuntu yang didukung. Terdeteksi: ${ID:-unknown}"
 
   local major="${VERSION_ID%%.*}"
-  [[ "$major" =~ ^[0-9]+$ ]] || fail "Cannot parse Ubuntu VERSION_ID=${VERSION_ID:-unknown}"
-  (( major >= 22 )) || fail "Ubuntu 22+ is required. Found: ${VERSION_ID}"
+  [[ "$major" =~ ^[0-9]+$ ]] || fail "Gagal membaca Ubuntu VERSION_ID=${VERSION_ID:-unknown}"
+  (( major >= 22 )) || fail "Wajib Ubuntu 22 ke atas. Versi saat ini: ${VERSION_ID}"
 }
 
 ensure_dir() {
@@ -37,14 +37,14 @@ ensure_dir() {
 
 ensure_command() {
   local cmd="$1"
-  command -v "$cmd" >/dev/null 2>&1 || fail "Missing required command: $cmd"
+  command -v "$cmd" >/dev/null 2>&1 || fail "Perintah wajib tidak ditemukan: $cmd"
 }
 
 detect_arch() {
   case "$(uname -m)" in
     x86_64) echo "x86_64" ;;
     aarch64|arm64) echo "aarch64" ;;
-    *) fail "Unsupported architecture: $(uname -m)" ;;
+    *) fail "Arsitektur tidak didukung: $(uname -m)" ;;
   esac
 }
 
@@ -53,7 +53,7 @@ asset_name_for_linux_arch() {
   case "$arch" in
     x86_64) echo "rathole-x86_64-unknown-linux-gnu.zip" ;;
     aarch64) echo "rathole-aarch64-unknown-linux-musl.zip" ;;
-    *) fail "No release asset mapping for architecture: $arch" ;;
+    *) fail "Tidak ada mapping release asset untuk arsitektur: $arch" ;;
   esac
 }
 
@@ -72,7 +72,7 @@ detect_public_ip() {
   if [[ -z "$ip" ]]; then
     ip="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
   fi
-  [[ -n "$ip" ]] || fail "Unable to detect public IP. Set one manually in state file."
+  [[ -n "$ip" ]] || fail "Gagal mendeteksi public IP. Isi manual di state file."
   echo "$ip"
 }
 
@@ -115,7 +115,7 @@ pick_random_free_port() {
     attempts=$((attempts + 1))
   done
 
-  fail "Unable to find a free port between ${start}-${end}"
+  fail "Gagal menemukan port kosong pada rentang ${start}-${end}"
 }
 
 render_template() {
@@ -132,7 +132,7 @@ output_path = pathlib.Path(sys.argv[2])
 pairs = sys.argv[3:]
 
 if len(pairs) % 2 != 0:
-    raise SystemExit("render_template requires key/value pairs")
+  raise SystemExit("render_template membutuhkan pasangan key/value")
 
 text = template_path.read_text(encoding="utf-8")
 for i in range(0, len(pairs), 2):

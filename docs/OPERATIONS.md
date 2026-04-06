@@ -1,4 +1,4 @@
-# Easy Rathole Operations Guide
+# Panduan Operasional IPOS5TunnelPublik
 
 ## Cek status service
 
@@ -46,10 +46,10 @@ sudo systemctl restart easy-rathole-dashboard
 
 ## Rotasi token
 
-1. Login dashboard
+1. Login ke dashboard
 2. Set token baru
-3. Download ulang installer client
-4. Re-deploy client dengan bundle baru
+3. Unduh ulang installer client
+4. Deploy ulang client dengan bundle terbaru
 
 > Catatan: client dengan token lama akan gagal autentikasi setelah rotasi.
 
@@ -59,7 +59,7 @@ sudo systemctl restart easy-rathole-dashboard
 sudo ss -ltnp | grep -E ':5444|:5480|:5485|:8088'
 ```
 
-Untuk control port Rathole, lihat dari state file:
+Untuk control port rathole, lihat dari state file:
 
 ```bash
 python3 - <<'PY'
@@ -78,7 +78,7 @@ journalctl -u easy-rathole-dashboard -f
 
 ## Jalankan ulang installer
 
-Installer bersifat idempotent dasar. Aman dijalankan ulang:
+Installer bersifat idempotent dasar, sehingga aman dijalankan ulang:
 
 ```bash
 sudo bash install.sh
@@ -86,7 +86,7 @@ sudo bash install.sh
 
 Namun setelah re-run:
 
-- cek ulang service status
+- cek ulang status service
 - cek state file
 - verifikasi dashboard masih bisa login
 

@@ -17,7 +17,7 @@ configure_firewall_ports() {
 
   if command -v ufw >/dev/null 2>&1; then
     if ufw status 2>/dev/null | grep -q "Status: active"; then
-      log INFO "Configuring UFW rules..."
+      log INFO "Mengonfigurasi aturan UFW..."
       for p in "${ports[@]}"; do
         [[ "$p" =~ ^[0-9]+$ ]] || continue
         ufw allow "${p}/tcp" >/dev/null || true
@@ -30,11 +30,11 @@ configure_firewall_ports() {
         ufw allow "${dashboard_port}/tcp" >/dev/null || true
       fi
     else
-      log WARN "UFW is installed but inactive. Skipping firewall automation."
+      log WARN "UFW terpasang tetapi tidak aktif. Otomasi firewall dilewati."
     fi
   elif command -v firewall-cmd >/dev/null 2>&1; then
     if systemctl is-active --quiet firewalld; then
-      log INFO "Configuring firewalld rules..."
+      log INFO "Mengonfigurasi aturan firewalld..."
       for p in "${ports[@]}"; do
         [[ "$p" =~ ^[0-9]+$ ]] || continue
         firewall-cmd --permanent --add-port="${p}/tcp" >/dev/null || true
@@ -50,7 +50,7 @@ configure_firewall_ports() {
 
       firewall-cmd --reload >/dev/null || true
     else
-      log WARN "firewalld detected but not active. Skipping firewall automation."
+      log WARN "firewalld terdeteksi tetapi tidak aktif. Otomasi firewall dilewati."
     fi
   else
     log WARN "No supported firewall manager detected (ufw/firewalld)."
@@ -65,10 +65,10 @@ main() {
   export EASY_RATHOLE_CONFIG_DIR="${EASY_RATHOLE_CONFIG_DIR:-/etc/easy-rathole}"
   export EASY_RATHOLE_STATE_FILE="${EASY_RATHOLE_STATE_FILE:-${EASY_RATHOLE_ROOT}/state/install-state.json}"
 
-  log INFO "Preparing server security baseline..."
+  log INFO "Menyiapkan baseline keamanan server..."
   bash "${SCRIPT_DIR}/scripts/prepare_server.sh"
 
-  log INFO "Installing dependencies..."
+  log INFO "Menginstal dependensi..."
   apt-get update -y
   DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
@@ -80,13 +80,13 @@ main() {
     systemd \
     iproute2
 
-  log INFO "Installing rathole server..."
+  log INFO "Menginstal server rathole..."
   bash "${SCRIPT_DIR}/scripts/install_rathole_server.sh"
 
-  log INFO "Installing dashboard..."
+  log INFO "Menginstal dashboard..."
   bash "${SCRIPT_DIR}/scripts/install_dashboard.sh"
 
-  log INFO "Configuring firewall ports..."
+  log INFO "Mengonfigurasi port firewall..."
   configure_firewall_ports "${EASY_RATHOLE_STATE_FILE}"
 
   local public_ip
@@ -108,22 +108,22 @@ main() {
   cat <<EOF
 
 ============================================================
-Easy Rathole installation completed.
+Instalasi IPOS5TunnelPublik selesai.
 
-Dashboard URL   : http://${public_ip}:${dashboard_port}
-Dashboard user  : ${admin_username}
-Password source : ${credentials_file}
+URL Dashboard     : http://${public_ip}:${dashboard_port}
+Pengguna Dashboard: ${admin_username}
+Sumber Password   : ${credentials_file}
 
-Rathole control : ${control_port}
-Forwarded ports : 5444, 5480, 5485
+Control Rathole   : ${control_port}
+Port Forward      : 5444, 5480, 5485
 
 Services:
   - rathole
   - easy-rathole-dashboard
 
-Security baseline:
-  - hardening applied : ${hardening_applied}
-  - SSH port allowed  : ${hardening_ssh_port}
+Baseline keamanan:
+  - hardening diterapkan : ${hardening_applied}
+  - port SSH diizinkan   : ${hardening_ssh_port}
 ============================================================
 EOF
 }

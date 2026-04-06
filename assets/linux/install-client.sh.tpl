@@ -9,7 +9,7 @@ WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 require_root() {
   [[ "$EUID" -eq 0 ]] || {
-    echo "Please run with sudo"
+    echo "Silakan jalankan dengan sudo"
     exit 1
   }
 }
@@ -18,7 +18,7 @@ detect_arch() {
   case "$(uname -m)" in
     x86_64) echo "rathole-x86_64-unknown-linux-gnu.zip" ;;
     aarch64|arm64) echo "rathole-aarch64-unknown-linux-musl.zip" ;;
-    *) echo "Unsupported architecture $(uname -m)"; exit 1 ;;
+    *) echo "Arsitektur tidak didukung: $(uname -m)"; exit 1 ;;
   esac
 }
 
@@ -36,7 +36,7 @@ for item in data.get("assets", []):
         break' "$asset")"
 
   [[ -n "$url" ]] || {
-    echo "Failed to resolve rathole download URL"
+    echo "Gagal mendapatkan URL unduhan rathole"
     exit 1
   }
 
@@ -51,7 +51,7 @@ for item in data.get("assets", []):
 install_service() {
   cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
 [Unit]
-Description=Easy Rathole Client
+Description=IPOS5TunnelPublik Client
 After=network-online.target
 Wants=network-online.target
 
@@ -90,7 +90,7 @@ main() {
 
   download_rathole
   install_service
-  echo "Installed and started service: ${SERVICE_NAME}"
+  echo "Service berhasil diinstal dan dijalankan: ${SERVICE_NAME}"
 }
 
 main "$@"

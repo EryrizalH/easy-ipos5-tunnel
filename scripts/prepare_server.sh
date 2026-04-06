@@ -34,7 +34,7 @@ has_authorized_keys() {
 }
 
 configure_unattended_upgrades() {
-  log INFO "Configuring unattended security upgrades..."
+  log INFO "Mengonfigurasi pembaruan keamanan otomatis..."
 
   cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
@@ -53,7 +53,7 @@ EOF
 }
 
 configure_sysctl_hardening() {
-  log INFO "Applying network sysctl hardening..."
+  log INFO "Menerapkan hardening sysctl jaringan..."
 
   cat > /etc/sysctl.d/99-easy-rathole-hardening.conf <<'EOF'
 net.ipv4.conf.all.accept_redirects = 0
@@ -73,7 +73,7 @@ EOF
 }
 
 configure_ssh_baseline() {
-  log INFO "Applying SSH baseline hardening..."
+  log INFO "Menerapkan hardening baseline SSH..."
 
   local drop_in="/etc/ssh/sshd_config.d/99-easy-rathole-hardening.conf"
   ensure_dir "/etc/ssh/sshd_config.d" 755
@@ -90,14 +90,14 @@ EOF
 
   if [[ "$EASY_RATHOLE_DISABLE_SSH_PASSWORD" == "1" ]]; then
     if ! has_authorized_keys; then
-      fail "EASY_RATHOLE_DISABLE_SSH_PASSWORD=1 but no authorized_keys found. Refusing unsafe SSH hardening."
+      fail "EASY_RATHOLE_DISABLE_SSH_PASSWORD=1 tetapi authorized_keys tidak ditemukan. Hardening SSH dibatalkan demi keamanan."
     fi
     cat >> "$drop_in" <<'EOF'
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 ChallengeResponseAuthentication no
 EOF
-    log INFO "SSH password authentication disabled (key-based auth required)."
+    log INFO "Autentikasi SSH berbasis password dinonaktifkan (wajib key-based auth)."
   fi
 
   systemctl reload ssh >/dev/null 2>&1 || systemctl reload sshd >/dev/null 2>&1 || true
@@ -105,7 +105,7 @@ EOF
 
 configure_fail2ban() {
   local ssh_port="$1"
-  log INFO "Configuring fail2ban for SSH protection..."
+  log INFO "Mengonfigurasi fail2ban untuk proteksi SSH..."
 
   ensure_dir "/etc/fail2ban/jail.d" 755
   cat > /etc/fail2ban/jail.d/easy-rathole.local <<EOF
@@ -124,7 +124,7 @@ EOF
 
 configure_ufw_baseline() {
   local ssh_port="$1"
-  log INFO "Configuring UFW baseline policy..."
+  log INFO "Mengonfigurasi kebijakan baseline UFW..."
 
   ufw default deny incoming >/dev/null || true
   ufw default allow outgoing >/dev/null || true
@@ -145,11 +145,11 @@ main() {
   ensure_ubuntu_22_plus
 
   if [[ "$EASY_RATHOLE_HARDENING" != "1" ]]; then
-    log WARN "Hardening disabled via EASY_RATHOLE_HARDENING=${EASY_RATHOLE_HARDENING}. Skipping server preparation."
+    log WARN "Hardening dinonaktifkan via EASY_RATHOLE_HARDENING=${EASY_RATHOLE_HARDENING}. Melewati persiapan server."
     return 0
   fi
 
-  log INFO "Preparing fresh VPS with secure baseline..."
+  log INFO "Menyiapkan VPS dengan baseline keamanan..."
   apt-get update -y
   DEBIAN_FRONTEND=noninteractive apt-get install -y \
     ca-certificates \
@@ -162,7 +162,7 @@ main() {
     apt-transport-https
 
   if [[ "$EASY_RATHOLE_RUN_UPGRADE" == "1" ]]; then
-    log INFO "Running security package upgrade..."
+    log INFO "Menjalankan upgrade paket keamanan..."
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
   fi
 
@@ -183,7 +183,7 @@ main() {
     \"hardening_ssh_allow_cidr\": \"${EASY_RATHOLE_SSH_ALLOW_CIDR}\"\
   }"
 
-  log INFO "Server preparation completed."
+  log INFO "Persiapan server selesai."
 }
 
 main "$@"

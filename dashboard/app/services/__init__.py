@@ -1,1 +1,1 @@
-"""Service layer for Easy Rathole dashboard."""
+"""Service layer for IPOS5TunnelPublik dashboard."""

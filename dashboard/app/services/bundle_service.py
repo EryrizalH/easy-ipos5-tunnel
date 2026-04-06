@@ -114,14 +114,14 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         (temp_dir / "README.txt").write_text(
             "\n".join(
                 [
-                    "Easy Rathole Windows Client",
+                    "IPOS5TunnelPublik - Client Windows",
                     "",
-                    "1) Extract this ZIP.",
-                    "2) Double-click setup-client.cmd (auto ask Administrator/UAC).",
-                    "3) Service will auto start on boot.",
-                    f"   (binary included: {WINDOWS_BINARY_NAME})",
-                    "   (nssm.exe already included in this package)",
-                    "4) Advanced/manual: install-service.cmd and uninstall-service.cmd are still available.",
+                    "1) Ekstrak file ZIP ini.",
+                    "2) Jalankan setup-client.cmd (otomatis meminta Administrator/UAC).",
+                    "3) Service client akan aktif otomatis saat boot.",
+                    f"   (binary termasuk paket: {WINDOWS_BINARY_NAME})",
+                    "   (nssm.exe sudah termasuk paket ini)",
+                    "4) Mode manual tetap tersedia: install-service.cmd dan uninstall-service.cmd.",
                 ]
             )
             + "\n",
@@ -159,11 +159,11 @@ def generate_linux_bundle(state: dict[str, Any], token: str) -> Path:
         (temp_dir / "README.txt").write_text(
             "\n".join(
                 [
-                    "Easy Rathole Linux Client",
+                    "IPOS5TunnelPublik - Client Linux",
                     "",
-                    "1) Unzip this package on Linux client machine.",
-                    "2) Run: sudo ./install-client.sh",
-                    "3) Service will auto start on boot.",
+                    "1) Ekstrak paket ini di mesin client Linux.",
+                    "2) Jalankan: sudo ./install-client.sh",
+                    "3) Service client akan aktif otomatis saat boot.",
                 ]
             )
             + "\n",

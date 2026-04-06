@@ -53,20 +53,20 @@ main() {
 
   local release_tag
   release_tag="$(echo "$release_json" | get_release_tag)"
-  [[ -n "$release_tag" ]] || fail "Cannot determine rathole release tag"
+  [[ -n "$release_tag" ]] || fail "Tidak dapat menentukan tag rilis rathole"
 
   local asset_name
   asset_name="$(asset_name_for_linux_arch "$arch")"
 
   local asset_url
   asset_url="$(echo "$release_json" | get_release_asset_url "$asset_name")"
-  [[ -n "$asset_url" ]] || fail "Cannot find release asset URL for ${asset_name}"
+  [[ -n "$asset_url" ]] || fail "Tidak menemukan URL asset rilis untuk ${asset_name}"
 
   local zip_file="${cache_dir}/${asset_name}"
   local temp_extract
   temp_extract="$(mktemp -d)"
 
-  log INFO "Downloading ${asset_name} (${release_tag})"
+  log INFO "Mengunduh ${asset_name} (${release_tag})"
   curl -fL "$asset_url" -o "$zip_file"
   unzip -qo "$zip_file" -d "$temp_extract"
 
@@ -83,7 +83,7 @@ main() {
 
   cat > "/etc/systemd/system/${rathole_service}.service" <<EOF
 [Unit]
-Description=Rathole Reverse Tunnel Server
+Description=IPOS5TunnelPublik - Rathole Reverse Tunnel Server
 After=network-online.target
 Wants=network-online.target
 
@@ -99,7 +99,9 @@ WantedBy=multi-user.target
 EOF
 
   systemctl daemon-reload
-  systemctl enable --now "$rathole_service"
+  systemctl enable "$rathole_service" >/dev/null
+  systemctl restart "$rathole_service"
+  systemctl is-active --quiet "$rathole_service" || fail "Gagal menjalankan service: ${rathole_service}"
 
   local now
   now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -117,7 +119,7 @@ EOF
   }"
 
   chmod 0600 "$state_file"
-  log INFO "Rathole server installation complete."
+  log INFO "Instalasi server rathole selesai."
 }
 
 main "$@"

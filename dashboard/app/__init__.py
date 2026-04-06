@@ -1,1 +1,1 @@
-"""Easy Rathole dashboard application package."""
+"""IPOS5TunnelPublik dashboard application package."""

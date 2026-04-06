@@ -89,7 +89,9 @@ EOF
     RESOURCES_DIR "$resources_dir"
 
   systemctl daemon-reload
-  systemctl enable --now easy-rathole-dashboard
+  systemctl enable easy-rathole-dashboard >/dev/null
+  systemctl restart easy-rathole-dashboard
+  systemctl is-active --quiet easy-rathole-dashboard || fail "Gagal menjalankan service: easy-rathole-dashboard"
 
   local now
   now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -106,7 +108,7 @@ EOF
   }"
 
   chmod 0600 "$state_file"
-  log INFO "Dashboard installation complete."
+  log INFO "Instalasi dashboard IPOS5TunnelPublik selesai."
 }
 
 main "$@"

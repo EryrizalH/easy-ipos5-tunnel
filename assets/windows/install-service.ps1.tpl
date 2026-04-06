@@ -4,7 +4,7 @@ function Ensure-Admin {
     $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) {
-        Write-Host "Re-launching with Administrator privileges..." -ForegroundColor Yellow
+        Write-Host "Menjalankan ulang dengan hak Administrator..." -ForegroundColor Yellow
         $argList = @(
             '-NoProfile',
             '-ExecutionPolicy',
@@ -26,7 +26,7 @@ function Ensure-Nssm {
     if (Test-Path $nssmPath) {
         return $nssmPath
     }
-    throw "nssm.exe is missing from bundle folder"
+    throw "nssm.exe tidak ditemukan pada folder bundle"
 }
 
 Ensure-Admin
@@ -46,11 +46,11 @@ $configFile = Join-Path $baseDir "client.toml"
 $serviceName = "{{WINDOWS_SERVICE_NAME}}"
 
 if (-not $ratholeExe) {
-    throw "Cannot find ipos5-rathole.exe or rathole.exe in bundle folder"
+    throw "Tidak menemukan ipos5-rathole.exe atau rathole.exe pada folder bundle"
 }
 
 if (-not (Test-Path $configFile)) {
-    throw "client.toml is missing from bundle folder"
+    throw "client.toml tidak ditemukan pada folder bundle"
 }
 
 $nssm = Ensure-Nssm -BaseDir $baseDir
@@ -61,20 +61,20 @@ $nssm = Ensure-Nssm -BaseDir $baseDir
 & $nssm install $serviceName $ratholeExe $configFile
 & $nssm set $serviceName AppDirectory $baseDir
 & $nssm set $serviceName Start SERVICE_AUTO_START
-& $nssm set $serviceName DisplayName "Easy Rathole Client"
-& $nssm set $serviceName Description "Auto-start rathole client tunnel"
+& $nssm set $serviceName DisplayName "IPOS5TunnelPublik Client"
+& $nssm set $serviceName Description "Auto-start tunnel client untuk akses publik"
 
 Start-Service -Name $serviceName
 Start-Sleep -Seconds 1
 
 $svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 if ($null -eq $svc) {
-    throw "Service $serviceName was not created"
+    throw "Service $serviceName gagal dibuat"
 }
 
 if ($svc.Status -ne 'Running') {
-    throw "Service $serviceName created but not running. Check Windows Event Viewer and ensure local ports 5444/5480/5485 are open on client side."
+    throw "Service $serviceName berhasil dibuat tetapi belum berjalan. Cek Windows Event Viewer dan pastikan port lokal 5444/5480/5485 pada sisi client tersedia."
 }
 
-Write-Host "Using executable: $(Split-Path -Leaf $ratholeExe)" -ForegroundColor Cyan
-Write-Host "Service $serviceName installed and running." -ForegroundColor Green
+Write-Host "Executable terpakai: $(Split-Path -Leaf $ratholeExe)" -ForegroundColor Cyan
+Write-Host "Service $serviceName berhasil diinstal dan berjalan." -ForegroundColor Green

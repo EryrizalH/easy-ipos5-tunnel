@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-echo [Easy Rathole] Removing Windows client service...
+echo [IPOS5TunnelPublik] Menghapus service client Windows...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0uninstall-service.ps1"
 set "rc=%ERRORLEVEL%"
 
@@ -13,6 +13,6 @@ if not "%rc%"=="0" (
 )
 
 echo.
-echo [OK] Uninstall selesai.
+echo [OK] Proses uninstall selesai.
 pause
 exit /b 0

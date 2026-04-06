@@ -1,5 +1,5 @@
 [Unit]
-Description=Easy Rathole Dashboard
+Description=IPOS5TunnelPublik Dashboard
 After=network-online.target
 Wants=network-online.target
 

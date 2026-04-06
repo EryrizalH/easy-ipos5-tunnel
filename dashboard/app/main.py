@@ -25,9 +25,23 @@ from .services.bundle_service import (
 from .services.token_service import update_global_token
 from .state import load_state
 
-app = FastAPI(title="Easy Rathole Dashboard", version="0.1.0")
+app = FastAPI(title="IPOS5TunnelPublik Dashboard", version="0.2.0")
 security = HTTPBasic()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+def classify_flash_message(message: str) -> str:
+    if not message:
+        return "info"
+
+    lowered = message.lower()
+    if any(word in lowered for word in ("berhasil", "sukses", "selesai", "ok")):
+        return "success"
+    if any(word in lowered for word in ("gagal", "error", "tidak", "invalid", "failed")):
+        return "error"
+    if "tapi" in lowered:
+        return "warning"
+    return "info"
 
 
 def get_db() -> sqlite3.Connection:
@@ -148,8 +162,8 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Linux",
             "architecture": "x86_64, aarch64/arm64",
             "service_name": LINUX_SERVICE_NAME,
-            "delivery": "ZIP (client.toml + install-client.sh)",
-            "binary_source": "Install script auto-download latest rathole per arsitektur",
+            "delivery": "Paket ZIP (client.toml + install-client.sh)",
+            "binary_source": "Script installer akan mengunduh rathole terbaru sesuai arsitektur",
             "setup_hint": "sudo ./install-client.sh",
             "remote_endpoint": endpoint,
         },
@@ -157,7 +171,7 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "ZIP (ipos5-rathole.exe + nssm.exe + client.toml + setup scripts)",
+            "delivery": "Paket ZIP (ipos5-rathole.exe + nssm.exe + client.toml + script setup)",
             "binary_source": f"Bundled dari aset lokal dashboard: {WINDOWS_BINARY_NAME} + {WINDOWS_NSSM_NAME}",
             "setup_hint": "setup-client.cmd (auto UAC/Admin)",
             "remote_endpoint": endpoint,
@@ -193,6 +207,7 @@ def health() -> dict[str, str]:
 def dashboard(
     request: Request,
     message: str = "",
+    notice: str = "",
     _: str = Depends(require_auth),
     conn: sqlite3.Connection = Depends(get_db),
 ):
@@ -208,20 +223,27 @@ def dashboard(
     public_ip = str(state.get("public_ip", "<unknown>"))
     control_port = str(state.get("rathole_control_port", "<unknown>"))
 
+    flash_message = message or notice
+    flash_type = classify_flash_message(flash_message)
+    token_exists = bool(current_token)
+    forward_status = build_forward_port_status(exposed_ports)
+
     context = {
         "request": request,
-        "message": message,
+        "flash_message": flash_message,
+        "flash_type": flash_type,
         "public_ip": public_ip,
         "control_port": control_port,
         "dashboard_port": state.get("dashboard_port", 8088),
         "token_masked": mask_token(current_token),
-        "token_exists": bool(current_token),
+        "token_exists": token_exists,
         "rathole_service": rathole_service,
         "rathole_status": service_status(rathole_service),
         "dashboard_service": dashboard_service,
         "dashboard_status": service_status(dashboard_service),
         "exposed_ports": exposed_ports,
-        "forward_port_status": build_forward_port_status(exposed_ports),
+        "forward_port_status": forward_status,
+        "forward_active_count": sum(1 for row in forward_status if row["status"] == "active"),
         "supported_clients": build_supported_clients(public_ip, control_port),
         "client_tunnel_details": build_client_tunnel_details(exposed_ports),
         "updated_at": state.get("updated_at", "-"),

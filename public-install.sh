@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Easy Rathole public bootstrap installer
+# IPOS5TunnelPublik public bootstrap installer
 # Usage (recommended):
 #   curl -fsSL https://raw.githubusercontent.com/pruedence21/easy-ipos5-tunnel/main/public-install.sh | sudo bash
 
@@ -72,7 +72,7 @@ main() {
       fail "Direktori ${work_tree} sudah berisi repo lain (origin: ${current_origin}). Hapus/ubah REPO_BASE_DIR dulu."
     fi
 
-    log "Repo sudah ada, melakukan update terbaru (git pull)..."
+    log "Repo sudah ada, mengambil pembaruan terbaru (git pull)..."
     git -C "$work_tree" fetch --prune origin
     git -C "$work_tree" checkout "$REPO_BRANCH"
     git -C "$work_tree" pull --ff-only origin "$REPO_BRANCH"
@@ -81,7 +81,7 @@ main() {
       fail "Path ${work_tree} sudah ada tapi bukan git repo. Pindahkan/hapus dulu, atau ganti REPO_BASE_DIR."
     fi
 
-    log "Cloning source from ${REPO_URL} (branch: ${REPO_BRANCH})"
+    log "Meng-clone source dari ${REPO_URL} (branch: ${REPO_BRANCH})"
     git clone --branch "$REPO_BRANCH" --single-branch "$REPO_URL" "$work_tree"
   fi
 
@@ -89,9 +89,9 @@ main() {
 
   local deployed_commit
   deployed_commit="$(git -C "$work_tree" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
-  log "Using source commit: ${deployed_commit} (branch: ${REPO_BRANCH})"
+  log "Menggunakan commit source: ${deployed_commit} (branch: ${REPO_BRANCH})"
 
-  log "Running installer from ${work_tree}"
+  log "Menjalankan installer dari ${work_tree}"
   bash "${work_tree}/install.sh"
 }
 

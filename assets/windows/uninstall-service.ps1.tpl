@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) {
-    Write-Host "Re-launching uninstall with Administrator privileges..." -ForegroundColor Yellow
+    Write-Host "Menjalankan ulang uninstall dengan hak Administrator..." -ForegroundColor Yellow
     $argList = @(
         '-NoProfile',
         '-ExecutionPolicy',
@@ -20,7 +20,7 @@ $serviceName = "{{WINDOWS_SERVICE_NAME}}"
 if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
     Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
     sc.exe delete $serviceName | Out-Null
-    Write-Host "Service $serviceName removed." -ForegroundColor Green
+    Write-Host "Service $serviceName berhasil dihapus." -ForegroundColor Green
 } else {
-    Write-Host "Service $serviceName does not exist." -ForegroundColor Yellow
+    Write-Host "Service $serviceName tidak ditemukan." -ForegroundColor Yellow
 }

@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableExtensions
 
-title Easy Rathole Windows Client Setup
+title IPOS5TunnelPublik Windows Client Setup
 
 echo ==================================================
-echo   Easy Rathole - Windows Client One-Click Setup
+echo   IPOS5TunnelPublik - Setup Client Windows Sekali Klik
 echo ==================================================
 echo.
 
@@ -63,7 +63,7 @@ if not "%ERRORLEVEL%"=="0" (
 echo.
 echo Selesai.
 echo Jika aplikasi POS lokal Anda aktif di port 5444/5480/5485,
-echo tunnel akan langsung bekerja.
+echo tunnel publik akan langsung bekerja.
 echo.
 pause
 exit /b 0
