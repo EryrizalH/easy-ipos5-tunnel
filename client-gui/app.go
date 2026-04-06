@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ type App struct {
 	cfg         appcore.AppConfig
 	cfgMu       sync.RWMutex
 	windowMu    sync.Mutex
+	uiReady     bool
 	pendingShow bool
 	startHidden bool
 }
@@ -46,13 +48,22 @@ func NewApp(startHidden bool) (*App, error) {
 }
 
 func (a *App) startup(ctx context.Context) {
+	a.windowMu.Lock()
 	a.ctx = ctx
+	a.windowMu.Unlock()
 	go systray.Run(a.onTrayReady, func() {})
-	a.flushPendingShow()
+	_ = a.flushPendingShow()
 }
 
 func (a *App) domReady(ctx context.Context) {
-	a.flushPendingShow()
+	a.windowMu.Lock()
+	a.uiReady = true
+	a.windowMu.Unlock()
+
+	if a.flushPendingShow() {
+		return
+	}
+
 	if a.startHidden {
 		runtime.WindowHide(ctx)
 		return
@@ -61,25 +72,42 @@ func (a *App) domReady(ctx context.Context) {
 }
 
 func (a *App) onSecondInstanceLaunch() {
-	a.windowMu.Lock()
-	defer a.windowMu.Unlock()
-	if a.ctx == nil {
-		a.pendingShow = true
-		return
-	}
-	runtime.WindowUnminimise(a.ctx)
-	runtime.WindowShow(a.ctx)
+	a.requestShowWindow()
 }
 
-func (a *App) flushPendingShow() {
+func (a *App) requestShowWindow() {
 	a.windowMu.Lock()
 	defer a.windowMu.Unlock()
-	if a.ctx == nil || !a.pendingShow {
+	if a.ctx == nil || !a.uiReady {
+		a.pendingShow = true
 		return
 	}
 	a.pendingShow = false
 	runtime.WindowUnminimise(a.ctx)
 	runtime.WindowShow(a.ctx)
+}
+
+func (a *App) flushPendingShow() bool {
+	a.windowMu.Lock()
+	defer a.windowMu.Unlock()
+	if a.ctx == nil || !a.pendingShow {
+		return false
+	}
+	a.pendingShow = false
+	runtime.WindowUnminimise(a.ctx)
+	runtime.WindowShow(a.ctx)
+	return true
+}
+
+func (a *App) dispatchTrayAction(action func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("tray action panic recovered: %v", r)
+			}
+		}()
+		action()
+	}()
 }
 
 func (a *App) beforeClose(ctx context.Context) (prevent bool) {
@@ -111,22 +139,26 @@ func (a *App) onTrayReady() {
 		for {
 			select {
 			case <-openItem.ClickedCh:
-				if a.ctx != nil {
-					runtime.WindowUnminimise(a.ctx)
-					runtime.WindowShow(a.ctx)
-				}
+				a.dispatchTrayAction(a.requestShowWindow)
 			case <-refreshItem.ClickedCh:
-				_ = a.GetStatus()
+				a.dispatchTrayAction(func() { _ = a.GetStatus() })
 			case <-startItem.ClickedCh:
-				_ = a.StartService()
+				a.dispatchTrayAction(func() { _ = a.StartService() })
 			case <-stopItem.ClickedCh:
-				_ = a.StopService()
+				a.dispatchTrayAction(func() { _ = a.StopService() })
 			case <-restartItem.ClickedCh:
-				_ = a.RestartService()
+				a.dispatchTrayAction(func() { _ = a.RestartService() })
 			case <-exitItem.ClickedCh:
-				if a.ctx != nil {
-					runtime.Quit(a.ctx)
-				}
+				a.dispatchTrayAction(func() {
+					a.windowMu.Lock()
+					ctx := a.ctx
+					a.windowMu.Unlock()
+					if ctx != nil {
+						runtime.Quit(ctx)
+						return
+					}
+					systray.Quit()
+				})
 				return
 			}
 		}

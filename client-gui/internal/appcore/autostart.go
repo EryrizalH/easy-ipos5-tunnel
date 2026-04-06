@@ -3,7 +3,6 @@ package appcore
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -14,7 +13,7 @@ func EnableTaskSchedulerAutoStart() error {
 	}
 
 	tr := fmt.Sprintf("\"%s\" --hidden", exePath)
-	cmd := exec.Command(
+	out, err := commandCombinedOutput(
 		"schtasks",
 		"/Create",
 		"/TN", taskName,
@@ -22,7 +21,6 @@ func EnableTaskSchedulerAutoStart() error {
 		"/SC", "ONLOGON",
 		"/F",
 	)
-	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("gagal membuat task autostart: %s", strings.TrimSpace(string(out)))
 	}
@@ -30,8 +28,7 @@ func EnableTaskSchedulerAutoStart() error {
 }
 
 func DisableTaskSchedulerAutoStart() error {
-	cmd := exec.Command("schtasks", "/Delete", "/TN", taskName, "/F")
-	out, err := cmd.CombinedOutput()
+	out, err := commandCombinedOutput("schtasks", "/Delete", "/TN", taskName, "/F")
 	if err != nil {
 		// If task doesn't exist, treat as success.
 		text := strings.ToLower(string(out))

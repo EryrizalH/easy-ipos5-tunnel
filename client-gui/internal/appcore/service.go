@@ -2,13 +2,12 @@ package appcore
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 )
 
 func queryServiceState(name string) (string, error) {
-	out, err := exec.Command("sc", "query", name).CombinedOutput()
+	out, err := commandCombinedOutput("sc", "query", name)
 	text := strings.ToUpper(string(out))
 	if err != nil && !strings.Contains(text, "STATE") {
 		return "unknown", fmt.Errorf("gagal query service %s: %s", name, strings.TrimSpace(string(out)))
@@ -31,7 +30,7 @@ func queryServiceState(name string) (string, error) {
 }
 
 func startService(name string) error {
-	out, err := exec.Command("sc", "start", name).CombinedOutput()
+	out, err := commandCombinedOutput("sc", "start", name)
 	if err != nil {
 		return fmt.Errorf("gagal start service %s: %s", name, strings.TrimSpace(string(out)))
 	}
@@ -39,7 +38,7 @@ func startService(name string) error {
 }
 
 func stopService(name string) error {
-	out, err := exec.Command("sc", "stop", name).CombinedOutput()
+	out, err := commandCombinedOutput("sc", "stop", name)
 	if err != nil {
 		text := strings.ToLower(string(out))
 		// If already stopped keep behavior idempotent.
