@@ -36,6 +36,12 @@ func main() {
 		BackgroundColour:  &options.RGBA{R: 16, G: 22, B: 34, A: 1},
 		StartHidden:       *startHidden,
 		HideWindowOnClose: true,
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "com.easy-rathole.client-gui",
+			OnSecondInstanceLaunch: func(options.SecondInstanceData) {
+				app.onSecondInstanceLaunch()
+			},
+		},
 		Bind: []interface{}{
 			app,
 		},

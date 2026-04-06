@@ -87,6 +87,35 @@ if not "%ERRORLEVEL%"=="0" (
   echo [OK] GUI terdeteksi berjalan. Icon tray seharusnya muncul.
 )
 
+echo [STEP] Membuat icon desktop GUI (ipos5-rathole)...
+set "GUI_EXE=%~dp0{{WINDOWS_GUI_BINARY_NAME}}"
+set "GUI_SHORTCUT_NAME=ipos5-rathole.lnk"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ErrorActionPreference = 'Stop';" ^
+  "$target = $env:GUI_EXE;" ^
+  "$shortcutName = $env:GUI_SHORTCUT_NAME;" ^
+  "$desktopUser = [Environment]::GetFolderPath('Desktop');" ^
+  "$desktopPublic = Join-Path $env:Public 'Desktop';" ^
+  "$destinations = @($desktopUser, $desktopPublic) | Select-Object -Unique;" ^
+  "$shell = New-Object -ComObject WScript.Shell;" ^
+  "foreach ($dir in $destinations) {" ^
+  "  if ([string]::IsNullOrWhiteSpace($dir)) { continue }" ^
+  "  if (-not (Test-Path -LiteralPath $dir)) { continue }" ^
+  "  $shortcutPath = Join-Path $dir $shortcutName;" ^
+  "  $shortcut = $shell.CreateShortcut($shortcutPath);" ^
+  "  $shortcut.TargetPath = $target;" ^
+  "  $shortcut.WorkingDirectory = Split-Path -Parent $target;" ^
+  "  $shortcut.IconLocation = $target;" ^
+  "  $shortcut.WindowStyle = 1;" ^
+  "  $shortcut.Save();" ^
+  "}"
+if not "%ERRORLEVEL%"=="0" (
+  echo [WARN] Gagal membuat icon desktop GUI.
+  echo        Anda bisa membuat shortcut manual ke {{WINDOWS_GUI_BINARY_NAME}}.
+) else (
+  echo [OK] Icon desktop berhasil dibuat dengan nama: ipos5-rathole
+)
+
 echo.
 echo Selesai.
 echo Jika aplikasi POS lokal Anda aktif di port 5444/5480/5485,

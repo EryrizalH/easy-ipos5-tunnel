@@ -22,6 +22,8 @@ type App struct {
 	cfgStore    *appcore.ConfigStore
 	cfg         appcore.AppConfig
 	cfgMu       sync.RWMutex
+	windowMu    sync.Mutex
+	pendingShow bool
 	startHidden bool
 }
 
@@ -46,14 +48,38 @@ func NewApp(startHidden bool) (*App, error) {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	go systray.Run(a.onTrayReady, func() {})
+	a.flushPendingShow()
 }
 
 func (a *App) domReady(ctx context.Context) {
+	a.flushPendingShow()
 	if a.startHidden {
 		runtime.WindowHide(ctx)
 		return
 	}
 	runtime.WindowShow(ctx)
+}
+
+func (a *App) onSecondInstanceLaunch() {
+	a.windowMu.Lock()
+	defer a.windowMu.Unlock()
+	if a.ctx == nil {
+		a.pendingShow = true
+		return
+	}
+	runtime.WindowUnminimise(a.ctx)
+	runtime.WindowShow(a.ctx)
+}
+
+func (a *App) flushPendingShow() {
+	a.windowMu.Lock()
+	defer a.windowMu.Unlock()
+	if a.ctx == nil || !a.pendingShow {
+		return
+	}
+	a.pendingShow = false
+	runtime.WindowUnminimise(a.ctx)
+	runtime.WindowShow(a.ctx)
 }
 
 func (a *App) beforeClose(ctx context.Context) (prevent bool) {
