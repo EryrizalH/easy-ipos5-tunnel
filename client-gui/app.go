@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"easy-rathole/client-gui/internal/appcore"
@@ -27,6 +28,11 @@ type App struct {
 	uiReady     bool
 	pendingShow bool
 	startHidden bool
+	quitting    atomic.Bool
+	trayQuit    sync.Once
+	hideWindow  func(context.Context)
+	quitApp     func(context.Context)
+	quitTrayFn  func()
 }
 
 func NewApp(startHidden bool) (*App, error) {
@@ -44,6 +50,9 @@ func NewApp(startHidden bool) (*App, error) {
 		cfgStore:    cfgStore,
 		cfg:         cfg,
 		startHidden: startHidden,
+		hideWindow:  runtime.WindowHide,
+		quitApp:     runtime.Quit,
+		quitTrayFn:  systray.Quit,
 	}, nil
 }
 
@@ -111,12 +120,15 @@ func (a *App) dispatchTrayAction(action func()) {
 }
 
 func (a *App) beforeClose(ctx context.Context) (prevent bool) {
-	runtime.WindowHide(ctx)
+	if a.isQuitting() {
+		return false
+	}
+	a.hideWindow(ctx)
 	return true
 }
 
 func (a *App) shutdown(ctx context.Context) {
-	systray.Quit()
+	a.quitTray()
 }
 
 func (a *App) onTrayReady() {
@@ -149,20 +161,40 @@ func (a *App) onTrayReady() {
 			case <-restartItem.ClickedCh:
 				a.dispatchTrayAction(func() { _ = a.RestartService() })
 			case <-exitItem.ClickedCh:
-				a.dispatchTrayAction(func() {
-					a.windowMu.Lock()
-					ctx := a.ctx
-					a.windowMu.Unlock()
-					if ctx != nil {
-						runtime.Quit(ctx)
-						return
-					}
-					systray.Quit()
-				})
+				a.requestQuit()
 				return
 			}
 		}
 	}()
+}
+
+func (a *App) setQuitting() {
+	a.quitting.Store(true)
+}
+
+func (a *App) isQuitting() bool {
+	return a.quitting.Load()
+}
+
+func (a *App) requestQuit() {
+	a.setQuitting()
+	a.windowMu.Lock()
+	ctx := a.ctx
+	a.windowMu.Unlock()
+
+	if ctx != nil {
+		a.quitApp(ctx)
+		return
+	}
+	a.quitTray()
+}
+
+func (a *App) quitTray() {
+	a.trayQuit.Do(func() {
+		if a.quitTrayFn != nil {
+			a.quitTrayFn()
+		}
+	})
 }
 
 func (a *App) GetStatus() appcore.StatusSnapshot {

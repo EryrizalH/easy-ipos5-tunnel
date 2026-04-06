@@ -24,10 +24,11 @@ func main() {
 
 	err = wails.Run(&options.App{
 		Title:             "Easy Rathole Client",
-		Width:             980,
-		Height:            700,
-		MinWidth:          860,
+		Width:             420,
+		Height:            560,
+		MinWidth:          420,
 		MinHeight:         560,
+		DisableResize:     true,
 		AssetServer:       &assetserver.Options{Assets: assets},
 		OnStartup:         app.startup,
 		OnDomReady:        app.domReady,

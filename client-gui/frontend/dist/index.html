@@ -7,38 +7,37 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main class="container">
-      <header class="hero">
-        <h1>Easy Rathole Client</h1>
-        <p>Windows GUI monitor + service control</p>
+    <main class="shell">
+      <header class="topbar">
+        <h1>Easy Rathole</h1>
+        <small id="lastChecked">Last checked: -</small>
       </header>
 
-      <section class="grid">
-        <article class="card">
-          <h2>Connection</h2>
+      <section class="status-grid">
+        <article class="tile">
+          <span class="label">Connection</span>
           <p id="connectionState" class="value">-</p>
-          <small id="lastChecked">Last checked: -</small>
         </article>
-        <article class="card">
-          <h2>Client Service</h2>
+        <article class="tile">
+          <span class="label">Service</span>
           <p id="serviceState" class="value">-</p>
           <small id="serviceName">EasyRatholeClient</small>
         </article>
-        <article class="card">
-          <h2>Server Public IP</h2>
+        <article class="tile tile-wide">
+          <span class="label">Server Public IP</span>
           <p id="serverPublicIP" class="value">-</p>
           <small id="serverHost">Host: -</small>
         </article>
-        <article class="card">
-          <h2>Server Status</h2>
+        <article class="tile tile-wide">
+          <span class="label">Server Status</span>
           <p id="dashboardStatus" class="value">Dashboard: -</p>
           <small id="controlStatus">Control Port: -</small>
         </article>
       </section>
 
-      <section class="panel">
-        <h3>Service Control</h3>
-        <div class="actions">
+      <section class="panel compact">
+        <h2>Service Control</h2>
+        <div class="actions-grid">
           <button id="btnStart">Start</button>
           <button id="btnStop">Stop</button>
           <button id="btnRestart">Restart</button>
@@ -46,21 +45,21 @@
         </div>
       </section>
 
-      <section class="panel">
-        <h3>Settings</h3>
+      <section class="panel compact">
+        <h2>Settings</h2>
         <label for="configPath">client.toml path</label>
-        <div class="row">
+        <div class="row tight">
           <input id="configPath" type="text" />
           <button id="btnSaveConfig">Save</button>
         </div>
-        <div class="row">
+        <div class="row tight">
           <button id="btnEnableAutostart">Enable Auto-Start</button>
           <button id="btnDisableAutostart">Disable Auto-Start</button>
         </div>
       </section>
 
-      <section class="panel">
-        <h3>Messages</h3>
+      <section class="panel compact">
+        <h2>Messages</h2>
         <p id="message" class="message">Ready.</p>
       </section>
     </main>
@@ -68,4 +67,3 @@
     <script src="./app.js"></script>
   </body>
 </html>
-
