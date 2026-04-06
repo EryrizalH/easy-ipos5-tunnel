@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-import io
-import json
 import os
 import shutil
 import tempfile
-import urllib.request
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-WINDOWS_ASSET_NAME = "rathole-x86_64-pc-windows-msvc.zip"
+WINDOWS_BINARY_NAME = "ipos5-rathole.exe"
+WINDOWS_NSSM_NAME = "nssm.exe"
 LINUX_SERVICE_NAME = "easy-rathole-client"
 WINDOWS_SERVICE_NAME = "EasyRatholeClient"
-RELEASE_API = "https://api.github.com/repos/rathole-org/rathole/releases/latest"
 
 
 def timestamp_slug() -> str:
@@ -31,38 +28,15 @@ def bundles_dir() -> Path:
     return path
 
 
-def cache_dir() -> Path:
-    path = get_env_path("EASY_RATHOLE_CACHE_DIR", "/opt/easy-rathole/cache")
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
 def resources_dir() -> Path:
     return get_env_path("EASY_RATHOLE_RESOURCES_DIR", "/opt/easy-rathole/resources")
 
 
-def fetch_latest_release() -> dict[str, Any]:
-    req = urllib.request.Request(RELEASE_API, headers={"User-Agent": "easy-rathole"})
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        return json.loads(resp.read().decode("utf-8"))
-
-
-def get_asset_url(release: dict[str, Any], asset_name: str) -> str:
-    for asset in release.get("assets", []):
-        if asset.get("name") == asset_name:
-            return str(asset.get("browser_download_url", ""))
-    return ""
-
-
-def cached_download(url: str, cache_file: Path) -> Path:
-    if cache_file.exists() and cache_file.stat().st_size > 0:
-        return cache_file
-
-    req = urllib.request.Request(url, headers={"User-Agent": "easy-rathole"})
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        cache_file.write_bytes(resp.read())
-
-    return cache_file
+def require_file(path: Path, label: str) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"{label} not found: {path}")
+    if path.stat().st_size <= 0:
+        raise RuntimeError(f"{label} invalid (empty file): {path}")
 
 
 def render_template(template_path: Path, replacements: dict[str, str]) -> str:
@@ -90,21 +64,17 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
 
 
 def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
-    release = fetch_latest_release()
-    asset_url = get_asset_url(release, WINDOWS_ASSET_NAME)
-    if not asset_url:
-        raise RuntimeError("Windows asset rathole tidak ditemukan pada release terbaru")
-
-    windows_zip = cached_download(asset_url, cache_dir() / WINDOWS_ASSET_NAME)
+    windows_bin = resources_dir() / f"assets/windows/{WINDOWS_BINARY_NAME}"
+    nssm_exe = resources_dir() / f"assets/windows/{WINDOWS_NSSM_NAME}"
+    require_file(windows_bin, WINDOWS_BINARY_NAME)
+    require_file(nssm_exe, WINDOWS_NSSM_NAME)
 
     bundle_name = f"windows-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
 
     temp_dir = Path(tempfile.mkdtemp(prefix="easy-rathole-win-"))
     try:
-        with zipfile.ZipFile(windows_zip, "r") as zf:
-            with zf.open("rathole.exe", "r") as src:
-                (temp_dir / "rathole.exe").write_bytes(src.read())
+        shutil.copy2(windows_bin, temp_dir / WINDOWS_BINARY_NAME)
 
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
 
@@ -113,10 +83,11 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         install_cmd_tpl = resources_dir() / "assets/windows/install-service.cmd.tpl"
         uninstall_cmd_tpl = resources_dir() / "assets/windows/uninstall-service.cmd.tpl"
         setup_cmd_tpl = resources_dir() / "assets/windows/setup-client.cmd.tpl"
-        nssm_exe = resources_dir() / "assets/windows/nssm.exe"
-
-        if not nssm_exe.exists():
-            raise FileNotFoundError(f"nssm.exe not found: {nssm_exe}")
+        require_file(install_ps1_tpl, "install-service.ps1.tpl")
+        require_file(uninstall_ps1_tpl, "uninstall-service.ps1.tpl")
+        require_file(install_cmd_tpl, "install-service.cmd.tpl")
+        require_file(uninstall_cmd_tpl, "uninstall-service.cmd.tpl")
+        require_file(setup_cmd_tpl, "setup-client.cmd.tpl")
 
         (temp_dir / "install-service.ps1").write_text(
             render_template(install_ps1_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
@@ -138,7 +109,7 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
             render_template(setup_cmd_tpl, {"WINDOWS_SERVICE_NAME": WINDOWS_SERVICE_NAME}),
             encoding="utf-8",
         )
-        shutil.copy2(nssm_exe, temp_dir / "nssm.exe")
+        shutil.copy2(nssm_exe, temp_dir / WINDOWS_NSSM_NAME)
 
         (temp_dir / "README.txt").write_text(
             "\n".join(
@@ -148,6 +119,7 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "1) Extract this ZIP.",
                     "2) Double-click setup-client.cmd (auto ask Administrator/UAC).",
                     "3) Service will auto start on boot.",
+                    f"   (binary included: {WINDOWS_BINARY_NAME})",
                     "   (nssm.exe already included in this package)",
                     "4) Advanced/manual: install-service.cmd and uninstall-service.cmd are still available.",
                 ]
