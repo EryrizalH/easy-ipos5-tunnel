@@ -300,7 +300,23 @@ def download_windows(
     if not token:
         raise HTTPException(status_code=400, detail="Token belum diset")
 
-    bundle = generate_windows_bundle(state, token)
+    try:
+        bundle = generate_windows_bundle(state, token)
+    except (FileNotFoundError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Bundle Windows belum siap. "
+                f"{exc}. "
+                "Pastikan aset berikut tersedia pada server resources: "
+                "assets/windows/ipos5-rathole.exe, "
+                "assets/windows/ipos5-rathole-gui.exe, "
+                "assets/windows/nssm.exe, "
+                "assets/windows/install-gui-autostart.ps1.tpl, "
+                "assets/windows/uninstall-gui-autostart.ps1.tpl."
+            ),
+        ) from exc
+
     return FileResponse(
         path=bundle,
         media_type="application/zip",
