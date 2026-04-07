@@ -99,10 +99,11 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "   - Uninstall Service IP Public",
                     "   - Kunci/Lepas Kunci pembuatan database baru",
                     "4) Saat Install Service, aplikasi otomatis membuat shortcut desktop",
-                    "   'ipos5-rathole' untuk membuka GUI dengan Run as Administrator.",
+                    "   'ipos5-rathole' untuk membuka GUI dengan Run as Administrator (UAC prompt).",
                     "5) Saat Uninstall Service, shortcut desktop GUI ikut dihapus.",
                     f"6) Service default yang dipakai: {WINDOWS_SERVICE_NAME}",
-                    "6) Paket ini wajib utuh (setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml).",
+                    "7) Paket ini wajib utuh:",
+                    "   setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml",
                 ]
             )
             + "\n",
