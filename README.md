@@ -142,30 +142,28 @@ Health check endpoint:
 
 ### Isi bundle Windows
 
+- `setup.exe`
 - `ipos5-rathole.exe`
 - `ipos5-rathole-gui.exe`
 - `nssm.exe`
 - `client.toml`
-- `setup-client.cmd`, `install-service.cmd`, `uninstall-service.cmd`
-- script auto-start GUI (`install-gui-autostart.ps1`, `uninstall-gui-autostart.ps1`)
+- `README.txt`
 
 ### Cara install (disarankan)
 
 1. Download bundle dari dashboard.
 2. Extract ZIP.
-3. Jalankan `setup-client.cmd` (akan auto request Administrator/UAC).
+3. Jalankan `setup.exe` sebagai Administrator.
 
-`setup-client.cmd` akan:
+`setup.exe` akan menyediakan menu untuk:
 
-- install service Windows `EasyRatholeClient` via NSSM
-- set auto-start service saat boot
-- setup Scheduled Task GUI `EasyRatholeClientGUI` (run at logon)
-- membuat shortcut desktop `ipos5-rathole.lnk`
+- install/uninstall service Windows `EasyRatholeClient`
+- menjalankan/stop aplikasi GUI client
+- aksi lock/unlock pembuatan database baru
 
 ### Uninstall
 
-- Jalankan `uninstall-service.cmd` sebagai Administrator.
-- Script ini menghapus service `EasyRatholeClient` dan task GUI autostart.
+- Jalankan `setup.exe` sebagai Administrator lalu pilih menu uninstall/cleanup service.
 
 ---
 
