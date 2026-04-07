@@ -1,0 +1,333 @@
+[2026-02-13 14:50:06] [INFO] === Application Started ===
+[2026-02-13 14:50:06] [INFO] Executable: D:\Koding\lock-ipos\lock-ipos.exe
+[2026-02-13 14:50:06] [INFO] Log file: D:\Koding\lock-ipos\log.txt
+[2026-02-13 14:50:06] [INFO] Model initialized, starting TUI
+[2026-02-13 14:50:06] [INFO] Searching for PostgreSQL binary in default paths...
+[2026-02-13 14:50:06] [INFO] PostgreSQL binary found at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\bin
+[2026-02-13 14:50:06] [INFO] PostgreSQL binary found, transitioning to main menu
+[2026-02-13 14:50:07] [INFO] Checking current PostgreSQL permissions...
+[2026-02-13 14:50:07] [INFO] Current permission: CAN CREATE DATABASE (CREATEDB)
+[2026-02-13 14:50:07] [INFO] Permission check complete, showing main menu
+[2026-02-13 14:50:08] [INFO] User confirmed option 1 - showing confirmation
+[2026-02-13 14:50:11] [INFO] User confirmed action - executing permission change
+[2026-02-13 14:50:11] [INFO] Updating permission to: NOCREATEDB
+[2026-02-13 14:50:11] [ERROR] Failed to update permission: psql error: exit status 1, stderr: ERROR:  permission denied
+
+[2026-02-13 14:50:11] [ERROR] Permission update failed: psql error: exit status 1, stderr: ERROR:  permission denied
+
+[2026-02-13 15:11:52] [INFO] === Application Started ===
+[2026-02-13 15:11:52] [INFO] Executable: D:\Koding\lock-ipos\lock-ipos.exe
+[2026-02-13 15:11:52] [INFO] Log file: D:\Koding\lock-ipos\log.txt
+[2026-02-13 15:11:52] [INFO] Model initialized, starting TUI
+[2026-02-13 15:11:52] [INFO] Searching for PostgreSQL binary in default paths...
+[2026-02-13 15:11:52] [INFO] PostgreSQL binary found at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\bin
+[2026-02-13 15:11:52] [INFO] PostgreSQL binary found, transitioning to main menu
+[2026-02-13 15:11:52] [INFO] Checking current PostgreSQL permissions...
+[2026-02-13 15:11:52] [INFO] Current permission: CAN CREATE DATABASE (CREATEDB)
+[2026-02-13 15:11:52] [INFO] Permission check complete, showing main menu
+[2026-02-13 15:11:55] [INFO] User confirmed option 1 - showing confirmation
+[2026-02-13 15:11:57] [INFO] User confirmed action - executing permission change
+[2026-02-13 15:11:57] [INFO] Updating permission to: NOCREATEDB
+[2026-02-13 15:11:58] [INFO] === Starting Permission Workaround Workflow ===
+[2026-02-13 15:11:58] [INFO] Searching for pg_hba.conf...
+[2026-02-13 15:11:58] [ERROR] Failed to update permission via workaround: failed to find pg_hba.conf: pg_hba.conf error during find pg_hba.conf: pg_hba.conf not found in data directory: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data
+[2026-02-13 15:11:58] [ERROR] Permission workaround failed: failed to find pg_hba.conf: pg_hba.conf error during find pg_hba.conf: pg_hba.conf not found in data directory: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data
+[2026-02-13 15:12:03] [INFO] Program exited successfully
+[2026-02-13 15:12:03] [INFO] === Application Closed ===
+[2026-02-13 15:13:30] [INFO] === Application Started ===
+[2026-02-13 15:13:31] [INFO] Executable: D:\Koding\lock-ipos\lock-ipos.exe
+[2026-02-13 15:13:31] [INFO] Log file: D:\Koding\lock-ipos\log.txt
+[2026-02-13 15:13:31] [INFO] Model initialized, starting TUI
+[2026-02-13 15:13:31] [INFO] Searching for PostgreSQL binary in default paths...
+[2026-02-13 15:13:31] [INFO] PostgreSQL binary found at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\bin
+[2026-02-13 15:13:31] [INFO] PostgreSQL binary found, transitioning to main menu
+[2026-02-13 15:13:31] [INFO] Checking current PostgreSQL permissions...
+[2026-02-13 15:13:31] [INFO] Current permission: CAN CREATE DATABASE (CREATEDB)
+[2026-02-13 15:13:31] [INFO] Permission check complete, showing main menu
+[2026-02-13 15:13:36] [INFO] User confirmed option 1 - showing confirmation
+[2026-02-13 15:13:37] [INFO] User confirmed action - executing permission change
+[2026-02-13 15:13:37] [INFO] Updating permission to: NOCREATEDB
+[2026-02-13 15:13:37] [INFO] === Starting Permission Workaround Workflow ===
+[2026-02-13 15:13:37] [INFO] Searching for pg_hba.conf...
+[2026-02-13 15:13:37] [ERROR] Failed to update permission via workaround: failed to find pg_hba.conf: pg_hba.conf error during find pg_hba.conf: pg_hba.conf not found in data directory: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data
+[2026-02-13 15:13:37] [ERROR] Permission workaround failed: failed to find pg_hba.conf: pg_hba.conf error during find pg_hba.conf: pg_hba.conf not found in data directory: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data
+[2026-02-13 15:15:15] [INFO] Program exited successfully
+[2026-02-13 15:15:15] [INFO] === Application Closed ===
+[2026-02-13 15:17:16] [INFO] === Application Started ===
+[2026-02-13 15:17:16] [INFO] Executable: D:\Koding\lock-ipos\lock-ipos.exe
+[2026-02-13 15:17:16] [INFO] Log file: D:\Koding\lock-ipos\log.txt
+[2026-02-13 15:17:16] [INFO] Model initialized, starting TUI
+[2026-02-13 15:17:16] [INFO] Searching for PostgreSQL binary in default paths...
+[2026-02-13 15:17:16] [INFO] PostgreSQL binary found at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\bin
+[2026-02-13 15:17:16] [INFO] PostgreSQL binary found, transitioning to main menu
+[2026-02-13 15:17:16] [INFO] Checking current PostgreSQL permissions...
+[2026-02-13 15:17:16] [INFO] Current permission: CAN CREATE DATABASE (CREATEDB)
+[2026-02-13 15:17:16] [INFO] Permission check complete, showing main menu
+[2026-02-13 15:17:18] [INFO] User confirmed option 1 - showing confirmation
+[2026-02-13 15:17:18] [INFO] User confirmed action - executing permission change
+[2026-02-13 15:17:19] [INFO] Updating permission to: NOCREATEDB
+[2026-02-13 15:17:19] [INFO] === Starting Permission Workaround Workflow ===
+[2026-02-13 15:17:19] [INFO] Searching for pg_hba.conf...
+[2026-02-13 15:17:19] [DEBUG] Bin dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5
+[2026-02-13 15:17:19] [DEBUG] Parent dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0
+[2026-02-13 15:17:19] [DEBUG] Data dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data
+[2026-02-13 15:17:19] [DEBUG] Checking path 1: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:17:19] [DEBUG] Path 1 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:17:19] [DEBUG] Checking path 2: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:17:19] [DEBUG] Path 2 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:17:19] [DEBUG] Checking path 3: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:17:19] [DEBUG] Path 3 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:17:19] [DEBUG] Checking path 4: C:\Program Files (x86)\Inspirasibiz\data\pg_hba.conf
+[2026-02-13 15:17:19] [DEBUG] Path 4 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:17:19] [DEBUG] Checking path 5: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pg_hba.conf
+[2026-02-13 15:17:19] [DEBUG] Path 5 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pg_hba.conf: The system cannot find the file specified.
+[2026-02-13 15:17:19] [DEBUG] Checking path 6: C:\Program Files (x86)\Inspirasibiz\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:17:19] [DEBUG] Path 6 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:17:20] [DEBUG] Checking path 7: D:\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:17:20] [DEBUG] Path 7 not accessible: GetFileAttributesEx D:\Server System 1.0\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:17:20] [DEBUG] Checking path 8: D:\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:17:20] [DEBUG] Path 8 not accessible: GetFileAttributesEx D:\Server System 1.0\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:17:20] [INFO] Path-based search failed, trying direct search in common locations...
+[2026-02-13 15:17:20] [INFO] Performing direct search for pg_hba.conf in common paths...
+[2026-02-13 15:17:20] [DEBUG] Checking: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:17:20] [INFO] Found pg_hba.conf at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:17:20] [INFO] Creating backup of pg_hba.conf to: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213151720
+[2026-02-13 15:17:20] [INFO] Backup created successfully at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213151720
+[2026-02-13 15:17:20] [INFO] Modifying pg_hba.conf to use 'trust' authentication...
+[2026-02-13 15:17:20] [DEBUG] Changed line: host	all	all	0.0.0.0	0.0.0.0	md5 -> host	all	all	0.0.0.0	0.0.0.0	trust
+[2026-02-13 15:17:20] [DEBUG] Changed line: host	all	all	::	::	md5 -> host	all	all	::	::	trust
+[2026-02-13 15:17:20] [INFO] Modified pg_hba.conf: changed 2 lines from md5 to trust
+[2026-02-13 15:17:20] [INFO] Restarting PostgreSQL service to apply trust authentication...
+[2026-02-13 15:17:20] [INFO] Stopping PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:17:21] [INFO] PostgreSQL service stopped successfully
+[2026-02-13 15:17:21] [INFO] Starting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:17:23] [INFO] PostgreSQL service started successfully
+[2026-02-13 15:17:23] [INFO] Executing ALTER USER sysi5adm as mainpower...
+[2026-02-13 15:17:23] [INFO] Executing as mainpower: ALTER USER sysi5adm NOCREATEDB;
+[2026-02-13 15:17:23] [INFO] ALTER USER command executed successfully
+[2026-02-13 15:17:23] [INFO] Verifying permission change...
+[2026-02-13 15:17:24] [INFO] Verification successful: Permission is now set to false
+[2026-02-13 15:17:24] [INFO] === Workaround Workflow Completed Successfully ===
+[2026-02-13 15:17:24] [INFO] Cleanup (restore + restart) will execute via defer
+[2026-02-13 15:17:24] [INFO] === Starting Cleanup ===
+[2026-02-13 15:17:24] [INFO] Restoring pg_hba.conf from backup: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213151720
+[2026-02-13 15:17:24] [INFO] pg_hba.conf restored successfully
+[2026-02-13 15:17:24] [INFO] Restarting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:17:24] [INFO] Stopping PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:17:25] [INFO] PostgreSQL service stopped successfully
+[2026-02-13 15:17:27] [INFO] Starting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:17:28] [INFO] PostgreSQL service started successfully
+[2026-02-13 15:17:28] [INFO] PostgreSQL service restarted successfully
+[2026-02-13 15:17:29] [INFO] === Cleanup Completed Successfully ===
+[2026-02-13 15:17:29] [INFO] Permission update command executed successfully
+[2026-02-13 15:17:29] [INFO] Verifying new permission setting...
+[2026-02-13 15:17:29] [INFO] Verified: Permission is now NOCREATEDB (cannot create databases)
+[2026-02-13 15:17:29] [INFO] Permission workaround completed successfully
+[2026-02-13 15:17:32] [INFO] User pressed Enter after seeing result - returning to menu
+[2026-02-13 15:17:32] [INFO] Checking current PostgreSQL permissions...
+[2026-02-13 15:17:32] [INFO] Current permission: CANNOT CREATE DATABASE (NOCREATEDB)
+[2026-02-13 15:17:32] [INFO] Permission check complete, showing main menu
+[2026-02-13 15:18:03] [INFO] User confirmed option 2 - showing confirmation
+[2026-02-13 15:18:04] [INFO] User confirmed action - executing permission change
+[2026-02-13 15:18:04] [INFO] Updating permission to: CREATEDB
+[2026-02-13 15:18:04] [INFO] === Starting Permission Workaround Workflow ===
+[2026-02-13 15:18:04] [INFO] Searching for pg_hba.conf...
+[2026-02-13 15:18:05] [DEBUG] Bin dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5
+[2026-02-13 15:18:05] [DEBUG] Parent dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0
+[2026-02-13 15:18:05] [DEBUG] Data dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data
+[2026-02-13 15:18:05] [DEBUG] Checking path 1: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:18:05] [DEBUG] Path 1 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:18:05] [DEBUG] Checking path 2: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:18:05] [DEBUG] Path 2 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:18:05] [DEBUG] Checking path 3: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:18:05] [DEBUG] Path 3 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:18:05] [DEBUG] Checking path 4: C:\Program Files (x86)\Inspirasibiz\data\pg_hba.conf
+[2026-02-13 15:18:05] [DEBUG] Path 4 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:18:05] [DEBUG] Checking path 5: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pg_hba.conf
+[2026-02-13 15:18:05] [DEBUG] Path 5 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pg_hba.conf: The system cannot find the file specified.
+[2026-02-13 15:18:05] [DEBUG] Checking path 6: C:\Program Files (x86)\Inspirasibiz\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:18:05] [DEBUG] Path 6 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:18:05] [DEBUG] Checking path 7: D:\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:18:05] [DEBUG] Path 7 not accessible: GetFileAttributesEx D:\Server System 1.0\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:18:06] [DEBUG] Checking path 8: D:\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:18:06] [DEBUG] Path 8 not accessible: GetFileAttributesEx D:\Server System 1.0\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:18:06] [INFO] Path-based search failed, trying direct search in common locations...
+[2026-02-13 15:18:06] [INFO] Performing direct search for pg_hba.conf in common paths...
+[2026-02-13 15:18:06] [DEBUG] Checking: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:18:06] [INFO] Found pg_hba.conf at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:18:06] [INFO] Creating backup of pg_hba.conf to: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213151806
+[2026-02-13 15:18:06] [INFO] Backup created successfully at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213151806
+[2026-02-13 15:18:06] [INFO] Modifying pg_hba.conf to use 'trust' authentication...
+[2026-02-13 15:18:06] [DEBUG] Changed line: host	all	all	0.0.0.0	0.0.0.0	md5 -> host	all	all	0.0.0.0	0.0.0.0	trust
+[2026-02-13 15:18:06] [DEBUG] Changed line: host	all	all	::	::	md5 -> host	all	all	::	::	trust
+[2026-02-13 15:18:06] [INFO] Modified pg_hba.conf: changed 2 lines from md5 to trust
+[2026-02-13 15:18:06] [INFO] Restarting PostgreSQL service to apply trust authentication...
+[2026-02-13 15:18:06] [INFO] Stopping PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:18:07] [INFO] PostgreSQL service stopped successfully
+[2026-02-13 15:18:07] [INFO] Starting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:18:09] [INFO] PostgreSQL service started successfully
+[2026-02-13 15:18:09] [INFO] Executing ALTER USER sysi5adm as mainpower...
+[2026-02-13 15:18:09] [INFO] Executing as mainpower: ALTER USER sysi5adm CREATEDB;
+[2026-02-13 15:18:09] [INFO] ALTER USER command executed successfully
+[2026-02-13 15:18:09] [INFO] Verifying permission change...
+[2026-02-13 15:18:10] [INFO] Verification successful: Permission is now set to true
+[2026-02-13 15:18:10] [INFO] === Workaround Workflow Completed Successfully ===
+[2026-02-13 15:18:10] [INFO] Cleanup (restore + restart) will execute via defer
+[2026-02-13 15:18:10] [INFO] === Starting Cleanup ===
+[2026-02-13 15:18:10] [INFO] Restoring pg_hba.conf from backup: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213151806
+[2026-02-13 15:18:10] [INFO] pg_hba.conf restored successfully
+[2026-02-13 15:18:10] [INFO] Restarting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:18:10] [INFO] Stopping PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:18:11] [INFO] PostgreSQL service stopped successfully
+[2026-02-13 15:18:13] [INFO] Starting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:18:14] [INFO] PostgreSQL service started successfully
+[2026-02-13 15:18:14] [INFO] PostgreSQL service restarted successfully
+[2026-02-13 15:18:14] [INFO] === Cleanup Completed Successfully ===
+[2026-02-13 15:18:15] [INFO] Permission update command executed successfully
+[2026-02-13 15:18:15] [INFO] Verifying new permission setting...
+[2026-02-13 15:18:15] [INFO] Verified: Permission is now CREATEDB (can create databases)
+[2026-02-13 15:18:15] [INFO] Permission workaround completed successfully
+[2026-02-13 15:18:18] [INFO] User pressed Enter after seeing result - returning to menu
+[2026-02-13 15:18:18] [INFO] Checking current PostgreSQL permissions...
+[2026-02-13 15:18:19] [INFO] Current permission: CAN CREATE DATABASE (CREATEDB)
+[2026-02-13 15:18:19] [INFO] Permission check complete, showing main menu
+[2026-02-13 15:18:43] [INFO] Program exited successfully
+[2026-02-13 15:18:43] [INFO] === Application Closed ===
+[2026-02-13 15:19:11] [INFO] === Application Started ===
+[2026-02-13 15:19:11] [INFO] Executable: D:\Koding\lock-ipos\lock-ipos.exe
+[2026-02-13 15:19:11] [INFO] Log file: D:\Koding\lock-ipos\log.txt
+[2026-02-13 15:19:11] [INFO] Model initialized, starting TUI
+[2026-02-13 15:19:11] [INFO] Searching for PostgreSQL binary in default paths...
+[2026-02-13 15:19:11] [INFO] PostgreSQL binary found at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\bin
+[2026-02-13 15:19:11] [INFO] PostgreSQL binary found, transitioning to main menu
+[2026-02-13 15:19:11] [INFO] Checking current PostgreSQL permissions...
+[2026-02-13 15:19:11] [INFO] Current permission: CAN CREATE DATABASE (CREATEDB)
+[2026-02-13 15:19:11] [INFO] Permission check complete, showing main menu
+[2026-02-13 15:20:00] [INFO] User confirmed option 1 - showing confirmation
+[2026-02-13 15:20:02] [INFO] User confirmed action - executing permission change
+[2026-02-13 15:20:02] [INFO] Updating permission to: NOCREATEDB
+[2026-02-13 15:20:02] [INFO] === Starting Permission Workaround Workflow ===
+[2026-02-13 15:20:02] [INFO] Searching for pg_hba.conf...
+[2026-02-13 15:20:02] [DEBUG] Bin dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5
+[2026-02-13 15:20:02] [DEBUG] Parent dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0
+[2026-02-13 15:20:02] [DEBUG] Data dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data
+[2026-02-13 15:20:02] [DEBUG] Checking path 1: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:20:02] [DEBUG] Path 1 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:02] [DEBUG] Checking path 2: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:20:02] [DEBUG] Path 2 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:02] [DEBUG] Checking path 3: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:20:02] [DEBUG] Path 3 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:03] [DEBUG] Checking path 4: C:\Program Files (x86)\Inspirasibiz\data\pg_hba.conf
+[2026-02-13 15:20:03] [DEBUG] Path 4 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:03] [DEBUG] Checking path 5: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pg_hba.conf
+[2026-02-13 15:20:03] [DEBUG] Path 5 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pg_hba.conf: The system cannot find the file specified.
+[2026-02-13 15:20:03] [DEBUG] Checking path 6: C:\Program Files (x86)\Inspirasibiz\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:20:03] [DEBUG] Path 6 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:03] [DEBUG] Checking path 7: D:\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:20:03] [DEBUG] Path 7 not accessible: GetFileAttributesEx D:\Server System 1.0\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:03] [DEBUG] Checking path 8: D:\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:20:03] [DEBUG] Path 8 not accessible: GetFileAttributesEx D:\Server System 1.0\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:03] [INFO] Path-based search failed, trying direct search in common locations...
+[2026-02-13 15:20:03] [INFO] Performing direct search for pg_hba.conf in common paths...
+[2026-02-13 15:20:03] [DEBUG] Checking: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:20:03] [INFO] Found pg_hba.conf at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:20:03] [INFO] Creating backup of pg_hba.conf to: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213152003
+[2026-02-13 15:20:03] [INFO] Backup created successfully at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213152003
+[2026-02-13 15:20:04] [INFO] Modifying pg_hba.conf to use 'trust' authentication...
+[2026-02-13 15:20:04] [DEBUG] Changed line: host	all	all	0.0.0.0	0.0.0.0	md5 -> host	all	all	0.0.0.0	0.0.0.0	trust
+[2026-02-13 15:20:04] [DEBUG] Changed line: host	all	all	::	::	md5 -> host	all	all	::	::	trust
+[2026-02-13 15:20:04] [INFO] Modified pg_hba.conf: changed 2 lines from md5 to trust
+[2026-02-13 15:20:04] [INFO] Restarting PostgreSQL service to apply trust authentication...
+[2026-02-13 15:20:04] [INFO] Stopping PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:20:05] [INFO] PostgreSQL service stopped successfully
+[2026-02-13 15:20:05] [INFO] Starting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:20:06] [INFO] PostgreSQL service started successfully
+[2026-02-13 15:20:07] [INFO] Executing ALTER USER sysi5adm as mainpower...
+[2026-02-13 15:20:07] [INFO] Executing as mainpower: ALTER USER sysi5adm NOCREATEDB;
+[2026-02-13 15:20:07] [INFO] ALTER USER command executed successfully
+[2026-02-13 15:20:07] [INFO] Verifying permission change...
+[2026-02-13 15:20:07] [INFO] Verification successful: Permission is now set to false
+[2026-02-13 15:20:07] [INFO] === Workaround Workflow Completed Successfully ===
+[2026-02-13 15:20:07] [INFO] Cleanup (restore + restart) will execute via defer
+[2026-02-13 15:20:07] [INFO] === Starting Cleanup ===
+[2026-02-13 15:20:07] [INFO] Restoring pg_hba.conf from backup: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213152003
+[2026-02-13 15:20:07] [INFO] pg_hba.conf restored successfully
+[2026-02-13 15:20:07] [INFO] Restarting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:20:07] [INFO] Stopping PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:20:08] [INFO] PostgreSQL service stopped successfully
+[2026-02-13 15:20:10] [INFO] Starting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:20:12] [INFO] PostgreSQL service started successfully
+[2026-02-13 15:20:12] [INFO] PostgreSQL service restarted successfully
+[2026-02-13 15:20:12] [INFO] === Cleanup Completed Successfully ===
+[2026-02-13 15:20:12] [INFO] Permission update command executed successfully
+[2026-02-13 15:20:12] [INFO] Verifying new permission setting...
+[2026-02-13 15:20:12] [INFO] Verified: Permission is now NOCREATEDB (cannot create databases)
+[2026-02-13 15:20:12] [INFO] Permission workaround completed successfully
+[2026-02-13 15:20:17] [INFO] User pressed Enter after seeing result - returning to menu
+[2026-02-13 15:20:17] [INFO] Checking current PostgreSQL permissions...
+[2026-02-13 15:20:17] [INFO] Current permission: CANNOT CREATE DATABASE (NOCREATEDB)
+[2026-02-13 15:20:17] [INFO] Permission check complete, showing main menu
+[2026-02-13 15:20:56] [INFO] User confirmed option 2 - showing confirmation
+[2026-02-13 15:20:58] [INFO] User confirmed action - executing permission change
+[2026-02-13 15:20:58] [INFO] Updating permission to: CREATEDB
+[2026-02-13 15:20:58] [INFO] === Starting Permission Workaround Workflow ===
+[2026-02-13 15:20:58] [INFO] Searching for pg_hba.conf...
+[2026-02-13 15:20:58] [DEBUG] Bin dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5
+[2026-02-13 15:20:59] [DEBUG] Parent dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0
+[2026-02-13 15:20:59] [DEBUG] Data dir: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data
+[2026-02-13 15:20:59] [DEBUG] Checking path 1: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:20:59] [DEBUG] Path 1 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:59] [DEBUG] Checking path 2: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:20:59] [DEBUG] Path 2 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:59] [DEBUG] Checking path 3: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf
+[2026-02-13 15:20:59] [DEBUG] Path 3 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:59] [DEBUG] Checking path 4: C:\Program Files (x86)\Inspirasibiz\data\pg_hba.conf
+[2026-02-13 15:20:59] [DEBUG] Path 4 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:59] [DEBUG] Checking path 5: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pg_hba.conf
+[2026-02-13 15:20:59] [DEBUG] Path 5 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pg_hba.conf: The system cannot find the file specified.
+[2026-02-13 15:20:59] [DEBUG] Checking path 6: C:\Program Files (x86)\Inspirasibiz\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:20:59] [DEBUG] Path 6 not accessible: GetFileAttributesEx C:\Program Files (x86)\Inspirasibiz\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:20:59] [DEBUG] Checking path 7: D:\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:20:59] [DEBUG] Path 7 not accessible: GetFileAttributesEx D:\Server System 1.0\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:21:00] [DEBUG] Checking path 8: D:\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:21:00] [DEBUG] Path 8 not accessible: GetFileAttributesEx D:\Server System 1.0\pgsql9.5\data\pg_hba.conf: The system cannot find the path specified.
+[2026-02-13 15:21:00] [INFO] Path-based search failed, trying direct search in common locations...
+[2026-02-13 15:21:00] [INFO] Performing direct search for pg_hba.conf in common paths...
+[2026-02-13 15:21:00] [DEBUG] Checking: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:21:00] [INFO] Found pg_hba.conf at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf
+[2026-02-13 15:21:00] [INFO] Creating backup of pg_hba.conf to: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213152100
+[2026-02-13 15:21:00] [INFO] Backup created successfully at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213152100
+[2026-02-13 15:21:00] [INFO] Modifying pg_hba.conf to use 'trust' authentication...
+[2026-02-13 15:21:00] [DEBUG] Changed line: host	all	all	0.0.0.0	0.0.0.0	md5 -> host	all	all	0.0.0.0	0.0.0.0	trust
+[2026-02-13 15:21:00] [DEBUG] Changed line: host	all	all	::	::	md5 -> host	all	all	::	::	trust
+[2026-02-13 15:21:00] [INFO] Modified pg_hba.conf: changed 2 lines from md5 to trust
+[2026-02-13 15:21:00] [INFO] Restarting PostgreSQL service to apply trust authentication...
+[2026-02-13 15:21:00] [INFO] Stopping PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:21:01] [INFO] PostgreSQL service stopped successfully
+[2026-02-13 15:21:01] [INFO] Starting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:21:03] [INFO] PostgreSQL service started successfully
+[2026-02-13 15:21:03] [INFO] Executing ALTER USER sysi5adm as mainpower...
+[2026-02-13 15:21:03] [INFO] Executing as mainpower: ALTER USER sysi5adm CREATEDB;
+[2026-02-13 15:21:03] [INFO] ALTER USER command executed successfully
+[2026-02-13 15:21:03] [INFO] Verifying permission change...
+[2026-02-13 15:21:03] [INFO] Verification successful: Permission is now set to true
+[2026-02-13 15:21:03] [INFO] === Workaround Workflow Completed Successfully ===
+[2026-02-13 15:21:03] [INFO] Cleanup (restore + restart) will execute via defer
+[2026-02-13 15:21:03] [INFO] === Starting Cleanup ===
+[2026-02-13 15:21:04] [INFO] Restoring pg_hba.conf from backup: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf.backup.20260213152100
+[2026-02-13 15:21:04] [INFO] pg_hba.conf restored successfully
+[2026-02-13 15:21:04] [INFO] Restarting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:21:04] [INFO] Stopping PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:21:04] [INFO] PostgreSQL service stopped successfully
+[2026-02-13 15:21:06] [INFO] Starting PostgreSQL service: iPgSql.9.5
+[2026-02-13 15:21:08] [INFO] PostgreSQL service started successfully
+[2026-02-13 15:21:08] [INFO] PostgreSQL service restarted successfully
+[2026-02-13 15:21:08] [INFO] === Cleanup Completed Successfully ===
+[2026-02-13 15:21:08] [INFO] Permission update command executed successfully
+[2026-02-13 15:21:08] [INFO] Verifying new permission setting...
+[2026-02-13 15:21:09] [INFO] Verified: Permission is now CREATEDB (can create databases)
+[2026-02-13 15:21:09] [INFO] Permission workaround completed successfully
+[2026-02-13 15:48:10] [INFO] Program exited successfully
+[2026-02-13 15:48:10] [INFO] === Application Closed ===
+[2026-02-13 15:48:37] [INFO] Program exited successfully
+[2026-02-13 15:48:37] [INFO] === Application Closed ===

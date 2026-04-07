@@ -18,6 +18,7 @@ from .services.bundle_service import (
     LINUX_SERVICE_NAME,
     WINDOWS_BINARY_NAME,
     WINDOWS_GUI_BINARY_NAME,
+    WINDOWS_UNIFIED_NAME,
     WINDOWS_NSSM_NAME,
     WINDOWS_SERVICE_NAME,
     generate_linux_bundle,
@@ -172,12 +173,12 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml + script setup)",
+            "delivery": "Paket ZIP (setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml)",
             "binary_source": (
                 "Bundled dari aset lokal dashboard: "
-                f"{WINDOWS_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
+                f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
             ),
-            "setup_hint": "setup-client.cmd (auto UAC/Admin)",
+            "setup_hint": "Jalankan setup.exe sebagai Administrator (install service juga membuat shortcut GUI admin)",
             "remote_endpoint": endpoint,
         },
     ]
@@ -309,11 +310,10 @@ def download_windows(
                 "Bundle Windows belum siap. "
                 f"{exc}. "
                 "Pastikan aset berikut tersedia pada server resources: "
+                "assets/windows/setup.exe, "
                 "assets/windows/ipos5-rathole.exe, "
                 "assets/windows/ipos5-rathole-gui.exe, "
-                "assets/windows/nssm.exe, "
-                "assets/windows/install-gui-autostart.ps1.tpl, "
-                "assets/windows/uninstall-gui-autostart.ps1.tpl."
+                "assets/windows/nssm.exe."
             ),
         ) from exc
 
