@@ -178,7 +178,7 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
                 "Bundled dari aset lokal dashboard: "
                 f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
             ),
-            "setup_hint": "Jalankan setup.exe sebagai Administrator (install service juga membuat shortcut GUI admin)",
+            "setup_hint": "Jalankan setup.exe sebagai Administrator (install service membuat shortcut desktop GUI admin; GUI dibuka manual, tidak autostart)",
             "remote_endpoint": endpoint,
         },
     ]

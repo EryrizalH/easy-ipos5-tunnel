@@ -313,6 +313,7 @@ func setupGUIShortcut(bundleDir, guiPath string) error {
 		return fmt.Errorf("gagal menulis launcher GUI: %w", err)
 	}
 
+	createdShortcuts := make([]string, 0, 2)
 	for _, desktopDir := range desktopShortcutDirs() {
 		if strings.TrimSpace(desktopDir) == "" {
 			continue
@@ -324,6 +325,11 @@ func setupGUIShortcut(bundleDir, guiPath string) error {
 		if err := createShortcut(shortcutPath, spec.PowerShellPath, spec.PowerShellArgs, spec.GUIExecutablePath); err != nil {
 			return err
 		}
+		createdShortcuts = append(createdShortcuts, shortcutPath)
+	}
+
+	if err := verifyGUIArtifacts(spec, createdShortcuts); err != nil {
+		return err
 	}
 
 	return nil
@@ -350,6 +356,21 @@ func cleanupGUIShortcut(bundleDir string) error {
 func buildLauncherContent(guiPath string) string {
 	escaped := strings.ReplaceAll(guiPath, "'", "''")
 	return "$ErrorActionPreference = 'Stop'\nStart-Process -FilePath '" + escaped + "' -Verb RunAs\n"
+}
+
+func verifyGUIArtifacts(spec GUIShortcutSpec, createdShortcuts []string) error {
+	if !fileExists(spec.LauncherPath) {
+		return fmt.Errorf("launcher GUI tidak ditemukan setelah dibuat: %s", spec.LauncherPath)
+	}
+	if len(createdShortcuts) == 0 {
+		return errors.New("shortcut desktop GUI tidak berhasil dibuat (desktop user/public tidak tersedia atau gagal ditulis)")
+	}
+	for _, shortcutPath := range createdShortcuts {
+		if !fileExists(shortcutPath) {
+			return fmt.Errorf("shortcut desktop GUI tidak ditemukan setelah dibuat: %s", shortcutPath)
+		}
+	}
+	return nil
 }
 
 func desktopShortcutDirs() []string {

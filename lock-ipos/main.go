@@ -162,7 +162,7 @@ func (m *model) installServiceCmd() tea.Cmd {
 		if err := winservice.InstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Service IP Public berhasil diinstall, GUI shortcut admin sudah dibuat di desktop."}
+		return serviceActionCompletedMsg{success: true, message: "Service IP Public berhasil diinstall. GUI dibuka lewat shortcut desktop 'ipos5-rathole' dan akan meminta UAC (Run as Administrator)."}
 	}
 }
 

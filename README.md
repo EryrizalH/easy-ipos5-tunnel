@@ -161,6 +161,11 @@ Health check endpoint:
 - menjalankan/stop aplikasi GUI client
 - aksi lock/unlock pembuatan database baru
 
+Catatan paket terbaru:
+- Entry point resmi installer Windows adalah `setup.exe` (menu interaktif).
+- Script template lama seperti `setup-client.cmd`/`install-service.cmd` bukan alur utama bundle dashboard saat ini.
+- Saat install sukses, shortcut desktop `ipos5-rathole` dibuat untuk membuka GUI jendela utama dengan UAC (Run as Administrator).
+
 ### Uninstall
 
 - Jalankan `setup.exe` sebagai Administrator lalu pilih menu uninstall/cleanup service.

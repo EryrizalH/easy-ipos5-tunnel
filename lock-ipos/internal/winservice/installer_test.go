@@ -95,6 +95,51 @@ func TestBuildGUIShortcutSpec(t *testing.T) {
 	if !strings.Contains(strings.ToLower(spec.PowerShellArgs), "executionpolicy bypass") {
 		t.Fatalf("powershell args mismatch: %s", spec.PowerShellArgs)
 	}
+	if strings.Contains(strings.ToLower(spec.PowerShellArgs), "--hidden") {
+		t.Fatalf("powershell args should not force hidden mode: %s", spec.PowerShellArgs)
+	}
+}
+
+func TestBuildLauncherContent_NoHiddenModeAndUsesRunAs(t *testing.T) {
+	content := buildLauncherContent(`D:\bundle\ipos5-rathole-gui.exe`)
+	lower := strings.ToLower(content)
+	if strings.Contains(lower, "--hidden") {
+		t.Fatalf("launcher should not force hidden mode: %s", content)
+	}
+	if !strings.Contains(lower, "-verb runas") {
+		t.Fatalf("launcher must use RunAs: %s", content)
+	}
+	if !strings.Contains(content, "ipos5-rathole-gui.exe") {
+		t.Fatalf("launcher must include GUI path: %s", content)
+	}
+}
+
+func TestVerifyGUIArtifacts_Success(t *testing.T) {
+	tmp := t.TempDir()
+	launcher := filepath.Join(tmp, launcherFileName)
+	shortcut := filepath.Join(tmp, shortcutFileName)
+	mustWrite(t, launcher)
+	mustWrite(t, shortcut)
+
+	spec := GUIShortcutSpec{LauncherPath: launcher, ShortcutName: shortcutFileName}
+	if err := verifyGUIArtifacts(spec, []string{shortcut}); err != nil {
+		t.Fatalf("verifyGUIArtifacts() unexpected error: %v", err)
+	}
+}
+
+func TestVerifyGUIArtifacts_FailsWithoutShortcut(t *testing.T) {
+	tmp := t.TempDir()
+	launcher := filepath.Join(tmp, launcherFileName)
+	mustWrite(t, launcher)
+	spec := GUIShortcutSpec{LauncherPath: launcher, ShortcutName: shortcutFileName}
+
+	err := verifyGUIArtifacts(spec, nil)
+	if err == nil {
+		t.Fatal("expected error when shortcut list is empty")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "shortcut") {
+		t.Fatalf("expected shortcut-related error, got: %v", err)
+	}
 }
 
 func TestDesktopShortcutDirs(t *testing.T) {
