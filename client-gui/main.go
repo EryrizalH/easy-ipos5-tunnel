@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"flag"
-	"log"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -17,9 +16,15 @@ func main() {
 	startHidden := flag.Bool("hidden", false, "start window hidden")
 	flag.Parse()
 
-	app, err := NewApp(*startHidden)
+	if err := run(*startHidden); err != nil {
+		handleFatalStartupError(err)
+	}
+}
+
+func run(startHidden bool) error {
+	app, err := NewApp(startHidden)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	err = wails.Run(&options.App{
@@ -35,7 +40,7 @@ func main() {
 		OnBeforeClose:     app.beforeClose,
 		OnShutdown:        app.shutdown,
 		BackgroundColour:  &options.RGBA{R: 16, G: 22, B: 34, A: 1},
-		StartHidden:       *startHidden,
+		StartHidden:       startHidden,
 		HideWindowOnClose: true,
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "com.easy-rathole.client-gui",
@@ -47,7 +52,5 @@ func main() {
 			app,
 		},
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	return err
 }
