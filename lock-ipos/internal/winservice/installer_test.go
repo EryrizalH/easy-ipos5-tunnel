@@ -196,6 +196,42 @@ func TestLoadPgBouncerDatabaseEntries_EmptyJSONFails(t *testing.T) {
 	}
 }
 
+func TestParsePostgresDatabaseEntriesOutput(t *testing.T) {
+	out := " i5_asdas \r\n\r\ni5_hjghjg\n i5_asdas \n"
+	entries := parsePostgresDatabaseEntriesOutput(out)
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 normalized entries, got %#v", entries)
+	}
+	if entries[0].Name != "i5_asdas" || entries[0].BackendDBName != "i5_asdas" {
+		t.Fatalf("unexpected first entry: %#v", entries[0])
+	}
+	if entries[1].Name != "i5_hjghjg" || entries[1].BackendDBName != "i5_hjghjg" {
+		t.Fatalf("unexpected second entry: %#v", entries[1])
+	}
+}
+
+func TestBuildPgBouncerDatabasesJSON(t *testing.T) {
+	raw, err := buildPgBouncerDatabasesJSON([]pgBouncerDatabaseEntry{{Name: " i5_asdas "}, {Name: "i5_hjghjg", BackendDBName: " i5_hjghjg "}, {Name: "i5_asdas"}})
+	if err != nil {
+		t.Fatalf("buildPgBouncerDatabasesJSON() unexpected error = %v", err)
+	}
+
+	var cfg pgBouncerDatabasesFile
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if len(cfg.Databases) != 2 {
+		t.Fatalf("expected 2 normalized database entries, got %#v", cfg.Databases)
+	}
+	if cfg.Databases[0].Name != "i5_asdas" || cfg.Databases[0].BackendDBName != "i5_asdas" {
+		t.Fatalf("unexpected first entry: %#v", cfg.Databases[0])
+	}
+	if cfg.Databases[1].Name != "i5_hjghjg" || cfg.Databases[1].BackendDBName != "i5_hjghjg" {
+		t.Fatalf("unexpected second entry: %#v", cfg.Databases[1])
+	}
+}
+
 func TestBuildPgBouncerUserlist(t *testing.T) {
 	got := buildPgBouncerUserlist()
 	if !strings.Contains(got, "\"sysi5adm\"") {

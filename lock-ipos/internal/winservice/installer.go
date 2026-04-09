@@ -312,7 +312,7 @@ func installOrUpdatePgBouncer(cfg Config, paths BundlePaths, logRoot string) err
 		return err
 	}
 
-	if err := writePgBouncerRuntimeFiles(paths.PgBouncerIniPath, paths.PgBouncerDBsPath, paths.PgBouncerUserPath); err != nil {
+	if err := writePgBouncerRuntimeFiles(paths.PgBouncerIniPath, paths.PgBouncerDBsPath, paths.PgBouncerUserPath, cfg.PGBinPath); err != nil {
 		return fmt.Errorf("gagal menyiapkan runtime file PgBouncer: %w", err)
 	}
 	if err := removeExistingService(pgBouncerService); err != nil {
@@ -379,18 +379,90 @@ func runPgBouncerQuery(pgBinPath, query string) error {
 	return nil
 }
 
-func writePgBouncerRuntimeFiles(iniPath, databaseConfigPath, userlistPath string) error {
-	databaseEntries, err := loadPgBouncerDatabaseEntries(databaseConfigPath)
+func writePgBouncerRuntimeFiles(iniPath, databaseConfigPath, userlistPath, pgBinPath string) error {
+	databaseEntries, detectErr := detectPostgresDatabaseEntries(pgBinPath)
+	if len(databaseEntries) == 0 {
+		var err error
+		databaseEntries, err = loadPgBouncerDatabaseEntries(databaseConfigPath)
+		if err != nil {
+			if detectErr != nil {
+				return fmt.Errorf("deteksi database PostgreSQL gagal (%v) dan fallback konfigurasi juga gagal: %w", detectErr, err)
+			}
+			return err
+		}
+	}
+
+	jsonPayload, err := buildPgBouncerDatabasesJSON(databaseEntries)
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile(iniPath, []byte(buildPgBouncerIni(databaseEntries)), 0o644); err != nil {
 		return err
 	}
+	if err := os.WriteFile(databaseConfigPath, jsonPayload, 0o644); err != nil {
+		return err
+	}
 	if err := os.WriteFile(userlistPath, []byte(buildPgBouncerUserlist()), 0o644); err != nil {
 		return err
 	}
 	return nil
+}
+
+func detectPostgresDatabaseEntries(pgBinPath string) ([]pgBouncerDatabaseEntry, error) {
+	if strings.TrimSpace(pgBinPath) == "" {
+		return nil, errors.New("pg bin path kosong")
+	}
+
+	psqlPath := filepath.Join(pgBinPath, "psql.exe")
+	if !fileExists(psqlPath) {
+		return nil, fmt.Errorf("psql.exe tidak ditemukan di %s", pgBinPath)
+	}
+
+	cmd := exec.Command(
+		psqlPath,
+		"-h", db.Host,
+		"-p", db.Port,
+		"-U", db.User,
+		"-d", db.Database,
+		"-At",
+		"-c", "SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate ORDER BY datname;",
+	)
+	cmd.Env = append(os.Environ(), "PGPASSWORD="+db.Password)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("gagal deteksi database PostgreSQL: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+
+	entries := parsePostgresDatabaseEntriesOutput(string(out))
+	if len(entries) == 0 {
+		return nil, errors.New("deteksi database PostgreSQL menghasilkan daftar kosong")
+	}
+	return entries, nil
+}
+
+func parsePostgresDatabaseEntriesOutput(output string) []pgBouncerDatabaseEntry {
+	rawLines := strings.Split(strings.ReplaceAll(output, "\r", ""), "\n")
+	entries := make([]pgBouncerDatabaseEntry, 0, len(rawLines))
+	for _, line := range rawLines {
+		name := strings.TrimSpace(line)
+		if name == "" {
+			continue
+		}
+		entries = append(entries, pgBouncerDatabaseEntry{Name: name, BackendDBName: name})
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	return normalizePgBouncerDatabaseEntries(entries)
+}
+
+func buildPgBouncerDatabasesJSON(entries []pgBouncerDatabaseEntry) ([]byte, error) {
+	payload := pgBouncerDatabasesFile{Databases: normalizePgBouncerDatabaseEntries(entries)}
+	raw, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("gagal membangun JSON database PgBouncer: %w", err)
+	}
+	return append(raw, '\n'), nil
 }
 
 func loadPgBouncerDatabaseEntries(configPath string) ([]pgBouncerDatabaseEntry, error) {
