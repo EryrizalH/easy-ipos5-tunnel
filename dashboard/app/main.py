@@ -25,6 +25,7 @@ from .services.bundle_service import (
     generate_windows_bundle,
 )
 from .services.postgres_monitor_service import PostgresMonitorWorker
+from .services.tunnel_ports import exposed_ports_from_service_ports, normalize_service_ports
 from .services.token_service import update_global_token
 from .state import load_state
 
@@ -175,7 +176,7 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml)",
+            "delivery": "Paket ZIP (setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
             "binary_source": (
                 "Bundled dari aset lokal dashboard: "
                 f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
@@ -186,20 +187,23 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
     ]
 
 
-def build_client_tunnel_details(exposed_ports: list[Any]) -> list[dict[str, str]]:
+def build_client_tunnel_details(service_ports: list[dict[str, Any]]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    for item in exposed_ports:
+    for row in service_ports:
+        service_key = str(row.get("service_key", "")).strip()
+        protocol = str(row.get("protocol", "tcp")).strip().lower() or "tcp"
+        local_addr = str(row.get("client_local_addr", "")).strip()
         try:
-            port = int(item)
+            remote_port = int(row.get("remote_bind_port"))
         except (TypeError, ValueError):
             continue
 
         rows.append(
             {
-                "service": f"port_{port}",
-                "protocol": "tcp",
-                "remote_port": str(port),
-                "client_local_addr": f"127.0.0.1:{port}",
+                "service": service_key,
+                "protocol": protocol,
+                "remote_port": str(remote_port),
+                "client_local_addr": local_addr,
             }
         )
     return rows
@@ -234,11 +238,11 @@ def dashboard(
     current_token = get_setting(conn, "global_token", state.get("token", ""))
     rathole_service = str(state.get("rathole_service_name", "rathole"))
     dashboard_service = str(state.get("dashboard_service_name", "easy-rathole-dashboard"))
-    raw_exposed_ports = state.get("exposed_ports", [5444, 5480, 5485])
-    if isinstance(raw_exposed_ports, list):
-        exposed_ports = raw_exposed_ports
-    else:
-        exposed_ports = [raw_exposed_ports]
+    service_ports = normalize_service_ports(state.get("service_ports"))
+    db_port_mapping = next((row for row in service_ports if str(row.get("name")) == "db"), {})
+    db_remote_port = int(db_port_mapping.get("remote_bind_port", 5444))
+    db_backend_local_addr = str(db_port_mapping.get("client_local_addr", "127.0.0.1:6432"))
+    exposed_ports = exposed_ports_from_service_ports(service_ports)
     public_ip = str(state.get("public_ip", "<unknown>"))
     control_port = str(state.get("rathole_control_port", "<unknown>"))
 
@@ -265,8 +269,10 @@ def dashboard(
         "forward_port_status": forward_status,
         "forward_active_count": sum(1 for row in forward_status if row["status"] == "active"),
         "postgres_monitor": postgres_monitor,
+        "db_remote_port": db_remote_port,
+        "db_backend_local_addr": db_backend_local_addr,
         "supported_clients": build_supported_clients(public_ip, control_port),
-        "client_tunnel_details": build_client_tunnel_details(exposed_ports),
+        "client_tunnel_details": build_client_tunnel_details(service_ports),
         "updated_at": state.get("updated_at", "-"),
     }
     return templates.TemplateResponse("dashboard.html", context)
@@ -334,7 +340,13 @@ def download_windows(
                 "assets/windows/setup.exe, "
                 "assets/windows/ipos5-rathole.exe, "
                 "assets/windows/ipos5-rathole-gui.exe, "
-                "assets/windows/nssm.exe."
+                "assets/windows/nssm.exe, "
+                "assets/windows/pgbouncer.exe, "
+                "assets/windows/libevent-7.dll, "
+                "assets/windows/libssl-3-x64.dll, "
+                "assets/windows/libcrypto-3-x64.dll, "
+                "assets/windows/pgbouncer.ini.tpl, "
+                "assets/windows/userlist.sample.txt."
             ),
         ) from exc
 

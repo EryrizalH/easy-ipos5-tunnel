@@ -8,10 +8,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .tunnel_ports import normalize_service_ports
+
 WINDOWS_BINARY_NAME = "ipos5-rathole.exe"
 WINDOWS_GUI_BINARY_NAME = "ipos5-rathole-gui.exe"
 WINDOWS_UNIFIED_NAME = "setup.exe"
 WINDOWS_NSSM_NAME = "nssm.exe"
+WINDOWS_PGBOUNCER_BINARY_NAME = "pgbouncer.exe"
+WINDOWS_PGBOUNCER_LIBEVENT_NAME = "libevent-7.dll"
+WINDOWS_PGBOUNCER_LIBSSL_NAME = "libssl-3-x64.dll"
+WINDOWS_PGBOUNCER_LIBCRYPTO_NAME = "libcrypto-3-x64.dll"
+WINDOWS_PGBOUNCER_INI_NAME = "pgbouncer.ini"
+WINDOWS_PGBOUNCER_USERLIST_NAME = "userlist.sample.txt"
 LINUX_SERVICE_NAME = "easy-rathole-client"
 WINDOWS_SERVICE_NAME = "EasyRatholeClient"
 
@@ -55,12 +63,24 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
 
     server_addr = str(state.get("public_ip", "127.0.0.1"))
     control_port = str(state.get("rathole_control_port", "2333"))
+    service_ports = normalize_service_ports(state.get("service_ports"))
+    by_name = {str(row.get("name", "")).strip(): row for row in service_ports}
+    db = by_name.get("db", {})
+    pos_http = by_name.get("pos_http", {})
+    pos_worker = by_name.get("pos_worker", {})
+
     return render_template(
         template_path,
         {
             "SERVER_ADDR": server_addr,
             "RATHOLE_CONTROL_PORT": control_port,
             "GLOBAL_TOKEN": token,
+            "DB_SERVICE_KEY": str(db.get("service_key", "port_5444")),
+            "DB_CLIENT_LOCAL_ADDR": str(db.get("client_local_addr", "127.0.0.1:6432")),
+            "POS_HTTP_SERVICE_KEY": str(pos_http.get("service_key", "port_5480")),
+            "POS_HTTP_CLIENT_LOCAL_ADDR": str(pos_http.get("client_local_addr", "127.0.0.1:5480")),
+            "POS_WORKER_SERVICE_KEY": str(pos_worker.get("service_key", "port_5485")),
+            "POS_WORKER_CLIENT_LOCAL_ADDR": str(pos_worker.get("client_local_addr", "127.0.0.1:5485")),
         },
     )
 
@@ -70,10 +90,22 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     windows_gui_bin = resources_dir() / f"assets/windows/{WINDOWS_GUI_BINARY_NAME}"
     windows_unified_bin = resources_dir() / f"assets/windows/{WINDOWS_UNIFIED_NAME}"
     nssm_exe = resources_dir() / f"assets/windows/{WINDOWS_NSSM_NAME}"
+    pgbouncer_exe = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_BINARY_NAME}"
+    pgbouncer_libevent = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBEVENT_NAME}"
+    pgbouncer_libssl = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBSSL_NAME}"
+    pgbouncer_libcrypto = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBCRYPTO_NAME}"
+    pgbouncer_ini_tpl = resources_dir() / "assets/windows/pgbouncer.ini.tpl"
+    pgbouncer_userlist_sample = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_USERLIST_NAME}"
     require_file(windows_bin, WINDOWS_BINARY_NAME)
     require_file(windows_gui_bin, WINDOWS_GUI_BINARY_NAME)
     require_file(windows_unified_bin, WINDOWS_UNIFIED_NAME)
     require_file(nssm_exe, WINDOWS_NSSM_NAME)
+    require_file(pgbouncer_exe, WINDOWS_PGBOUNCER_BINARY_NAME)
+    require_file(pgbouncer_libevent, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
+    require_file(pgbouncer_libssl, WINDOWS_PGBOUNCER_LIBSSL_NAME)
+    require_file(pgbouncer_libcrypto, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
+    require_file(pgbouncer_ini_tpl, "pgbouncer.ini.tpl")
+    require_file(pgbouncer_userlist_sample, WINDOWS_PGBOUNCER_USERLIST_NAME)
 
     bundle_name = f"windows-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
@@ -84,6 +116,12 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         shutil.copy2(windows_gui_bin, temp_dir / WINDOWS_GUI_BINARY_NAME)
         shutil.copy2(windows_unified_bin, temp_dir / WINDOWS_UNIFIED_NAME)
         shutil.copy2(nssm_exe, temp_dir / WINDOWS_NSSM_NAME)
+        shutil.copy2(pgbouncer_exe, temp_dir / WINDOWS_PGBOUNCER_BINARY_NAME)
+        shutil.copy2(pgbouncer_libevent, temp_dir / WINDOWS_PGBOUNCER_LIBEVENT_NAME)
+        shutil.copy2(pgbouncer_libssl, temp_dir / WINDOWS_PGBOUNCER_LIBSSL_NAME)
+        shutil.copy2(pgbouncer_libcrypto, temp_dir / WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
+        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
+        shutil.copy2(pgbouncer_userlist_sample, temp_dir / WINDOWS_PGBOUNCER_USERLIST_NAME)
 
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
 
@@ -98,15 +136,20 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "   - Install Service IP Public",
                     "   - Uninstall Service IP Public",
                     "   - Kunci/Lepas Kunci pembuatan database baru",
-                    "4) Saat Install Service, aplikasi otomatis membuat shortcut desktop",
+                    "4) Saat install service, setup.exe akan auto-install PgBouncer (service PgBouncer).",
+                    "   Listen default 127.0.0.1:6432 -> PostgreSQL 127.0.0.1:5444",
+                    "   dengan pool_mode=transaction dan auth_type=md5.",
+                    "5) Saat Install Service, aplikasi otomatis membuat shortcut desktop",
                     "   'ipos5-rathole' untuk membuka GUI jendela utama dengan Run as Administrator (UAC prompt).",
-                    "5) GUI tidak autostart saat login Windows; buka manual via shortcut desktop.",
-                    "6) Saat Uninstall Service, shortcut desktop GUI ikut dihapus.",
-                    f"7) Service default yang dipakai: {WINDOWS_SERVICE_NAME}",
-                    "8) Entry point installer resmi paket ini adalah setup.exe.",
+                    "6) GUI tidak autostart saat login Windows; buka manual via shortcut desktop.",
+                    "7) Saat Uninstall Service, shortcut desktop GUI ikut dihapus.",
+                    f"8) Service default yang dipakai: {WINDOWS_SERVICE_NAME}",
+                    "9) Entry point installer resmi paket ini adalah setup.exe.",
                     "   Script template lama (setup-client.cmd/install-service.cmd) bukan jalur utama bundle dashboard.",
-                    "9) Paket ini wajib utuh:",
-                    "   setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml",
+                    "10) Jika auto-install PgBouncer gagal, install service akan dibatalkan (fail-fast).",
+                    "11) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
+                    "12) Paket ini wajib utuh:",
+                    "   setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + client.toml + pgbouncer.ini + userlist.sample.txt",
                 ]
             )
             + "\n",

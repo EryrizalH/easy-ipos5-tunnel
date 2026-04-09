@@ -1,34 +1,53 @@
 package winservice
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/lock-ipos/lock-ipos/internal/db"
 )
 
 const (
 	DefaultServiceName = "EasyRatholeClient"
+	pgBouncerService   = "PgBouncer"
 	guiBinaryName      = "ipos5-rathole-gui.exe"
+	pgBouncerBinary    = "pgbouncer.exe"
+	pgBouncerLibEvent  = "libevent-7.dll"
+	pgBouncerLibSSL    = "libssl-3-x64.dll"
+	pgBouncerLibCrypto = "libcrypto-3-x64.dll"
+	pgBouncerIniName   = "pgbouncer.ini"
+	pgBouncerUserlist  = "userlist.txt"
 	launcherFileName   = "launch-gui-admin.ps1"
 	shortcutFileName   = "ipos5-rathole.lnk"
+	pgBouncerHost      = "127.0.0.1"
+	pgBouncerPort      = 6432
+	postgresBackend    = "127.0.0.1:5444"
 )
 
 // Config controls service install/uninstall behavior.
 type Config struct {
 	ServiceName string
 	BundleDir   string
+	PGBinPath   string
 }
 
 // BundlePaths contains required sidecar files.
 type BundlePaths struct {
-	NSSMPath       string
-	RatholePath    string
-	GUIPath        string
-	ClientTomlPath string
+	NSSMPath          string
+	RatholePath       string
+	GUIPath           string
+	ClientTomlPath    string
+	PgBouncerPath     string
+	PgBouncerIniPath  string
+	PgBouncerUserPath string
 }
 
 // GUIShortcutSpec describes launcher and shortcut artifacts for GUI.
@@ -61,13 +80,19 @@ func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
 	nssm := filepath.Join(cleanDir, "nssm.exe")
 	clientToml := filepath.Join(cleanDir, "client.toml")
 	guiPath := filepath.Join(cleanDir, guiBinaryName)
+	pgBouncerPath := filepath.Join(cleanDir, pgBouncerBinary)
+	pgBouncerLibEventPath := filepath.Join(cleanDir, pgBouncerLibEvent)
+	pgBouncerLibSSLPath := filepath.Join(cleanDir, pgBouncerLibSSL)
+	pgBouncerLibCryptoPath := filepath.Join(cleanDir, pgBouncerLibCrypto)
+	pgBouncerIniPath := filepath.Join(cleanDir, pgBouncerIniName)
+	pgBouncerUserPath := filepath.Join(cleanDir, pgBouncerUserlist)
 
 	ratholeCandidates := []string{
 		filepath.Join(cleanDir, "ipos5-rathole.exe"),
 		filepath.Join(cleanDir, "rathole.exe"),
 	}
 
-	missing := make([]string, 0, 3)
+	missing := make([]string, 0, 6)
 	if !fileExists(nssm) {
 		missing = append(missing, "nssm.exe")
 	}
@@ -76,6 +101,18 @@ func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
 	}
 	if !fileExists(guiPath) {
 		missing = append(missing, guiBinaryName)
+	}
+	if !fileExists(pgBouncerPath) {
+		missing = append(missing, pgBouncerBinary)
+	}
+	if !fileExists(pgBouncerLibEventPath) {
+		missing = append(missing, pgBouncerLibEvent)
+	}
+	if !fileExists(pgBouncerLibSSLPath) {
+		missing = append(missing, pgBouncerLibSSL)
+	}
+	if !fileExists(pgBouncerLibCryptoPath) {
+		missing = append(missing, pgBouncerLibCrypto)
 	}
 
 	rathole := ""
@@ -94,10 +131,13 @@ func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
 	}
 
 	return BundlePaths{
-		NSSMPath:       nssm,
-		RatholePath:    rathole,
-		GUIPath:        guiPath,
-		ClientTomlPath: clientToml,
+		NSSMPath:          nssm,
+		RatholePath:       rathole,
+		GUIPath:           guiPath,
+		ClientTomlPath:    clientToml,
+		PgBouncerPath:     pgBouncerPath,
+		PgBouncerIniPath:  pgBouncerIniPath,
+		PgBouncerUserPath: pgBouncerUserPath,
 	}, nil
 }
 
@@ -116,6 +156,23 @@ func BuildInstallCommands(cfg Config, paths BundlePaths, logRoot string) [][]str
 		{"set", cfg.ServiceName, "AppRotateOnline", "1"},
 		{"set", cfg.ServiceName, "AppRotateSeconds", "86400"},
 		{"set", cfg.ServiceName, "AppRotateBytes", "1048576"},
+	}
+}
+
+// BuildPgBouncerInstallCommands exposes deterministic NSSM command sequence for PgBouncer.
+func BuildPgBouncerInstallCommands(paths BundlePaths, logRoot string) [][]string {
+	return [][]string{
+		{"install", pgBouncerService, paths.PgBouncerPath, paths.PgBouncerIniPath},
+		{"set", pgBouncerService, "AppDirectory", filepath.Dir(paths.PgBouncerPath)},
+		{"set", pgBouncerService, "Start", "SERVICE_AUTO_START"},
+		{"set", pgBouncerService, "DisplayName", "PgBouncer"},
+		{"set", pgBouncerService, "Description", "Connection pooler PostgreSQL untuk IPOS5TunnelPublik"},
+		{"set", pgBouncerService, "AppStdout", filepath.Join(logRoot, pgBouncerService+".stdout.log")},
+		{"set", pgBouncerService, "AppStderr", filepath.Join(logRoot, pgBouncerService+".stderr.log")},
+		{"set", pgBouncerService, "AppRotateFiles", "1"},
+		{"set", pgBouncerService, "AppRotateOnline", "1"},
+		{"set", pgBouncerService, "AppRotateSeconds", "86400"},
+		{"set", pgBouncerService, "AppRotateBytes", "1048576"},
 	}
 }
 
@@ -153,6 +210,13 @@ func InstallService(cfg Config) error {
 		return fmt.Errorf("gagal membuat folder log: %w", err)
 	}
 
+	if err := installOrUpdatePgBouncer(cfg, paths, logRoot); err != nil {
+		return err
+	}
+	if err := waitPgBouncerHealthy(cfg.PGBinPath, 20*time.Second); err != nil {
+		return fmt.Errorf("health check PgBouncer gagal: %w", err)
+	}
+
 	for _, args := range BuildInstallCommands(cfg, paths, logRoot) {
 		if _, err := run(paths.NSSMPath, args...); err != nil {
 			return fmt.Errorf("gagal nssm %s: %w", strings.Join(args, " "), err)
@@ -184,30 +248,187 @@ func UninstallService(cfg Config) error {
 	if err != nil {
 		return err
 	}
+	if exists {
+		_, _ = run("sc", "stop", cfg.ServiceName)
+		if _, err := run("sc", "delete", cfg.ServiceName); err != nil {
+			return fmt.Errorf("gagal delete service %s: %w", cfg.ServiceName, err)
+		}
+
+		deadline := time.Now().Add(10 * time.Second)
+		for time.Now().Before(deadline) {
+			exists, checkErr := serviceExists(cfg.ServiceName)
+			if checkErr != nil {
+				return checkErr
+			}
+			if !exists {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		if exists {
+			return fmt.Errorf("service %s belum terhapus setelah timeout", cfg.ServiceName)
+		}
+	}
+	if err := uninstallPgBouncer(); err != nil {
+		return err
+	}
+	_ = cleanupPgBouncerArtifacts(cfg.BundleDir)
+	_ = cleanupGUIShortcut(cfg.BundleDir)
+	return nil
+}
+
+func installOrUpdatePgBouncer(cfg Config, paths BundlePaths, logRoot string) error {
+	if strings.TrimSpace(cfg.PGBinPath) == "" {
+		return errors.New("pg bin path kosong, tidak bisa verifikasi PgBouncer via psql")
+	}
+
+	if err := writePgBouncerRuntimeFiles(paths.PgBouncerIniPath, paths.PgBouncerUserPath); err != nil {
+		return fmt.Errorf("gagal menyiapkan runtime file PgBouncer: %w", err)
+	}
+	if err := removeExistingService(pgBouncerService); err != nil {
+		return fmt.Errorf("gagal menyiapkan reinstall PgBouncer: %w", err)
+	}
+	for _, args := range BuildPgBouncerInstallCommands(paths, logRoot) {
+		if _, err := run(paths.NSSMPath, args...); err != nil {
+			return fmt.Errorf("gagal nssm %s: %w", strings.Join(args, " "), err)
+		}
+	}
+	if _, err := run("sc", "start", pgBouncerService); err != nil {
+		return fmt.Errorf("gagal start service %s: %w", pgBouncerService, err)
+	}
+	if err := waitServiceState(pgBouncerService, "RUNNING", 20*time.Second); err != nil {
+		return err
+	}
+	return nil
+}
+
+func waitPgBouncerHealthy(pgBinPath string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	address := fmt.Sprintf("%s:%d", pgBouncerHost, pgBouncerPort)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		conn, dialErr := net.DialTimeout("tcp", address, 500*time.Millisecond)
+		if dialErr == nil {
+			_ = conn.Close()
+			if err := runPgBouncerQuery(pgBinPath, "SHOW VERSION;"); err == nil {
+				return nil
+			} else {
+				lastErr = err
+			}
+		} else {
+			lastErr = dialErr
+		}
+		time.Sleep(1 * time.Second)
+	}
+	if lastErr != nil {
+		return lastErr
+	}
+	return errors.New("timeout menunggu PgBouncer healthy")
+}
+
+func runPgBouncerQuery(pgBinPath, query string) error {
+	psqlPath := filepath.Join(pgBinPath, "psql.exe")
+	cmd := exec.Command(
+		psqlPath,
+		"-h", pgBouncerHost,
+		"-p", fmt.Sprintf("%d", pgBouncerPort),
+		"-U", db.User,
+		"-d", "pgbouncer",
+		"-c", query,
+		"-t",
+	)
+	cmd.Env = append(os.Environ(), "PGPASSWORD="+db.Password)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("psql query ke PgBouncer gagal: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+func writePgBouncerRuntimeFiles(iniPath, userlistPath string) error {
+	if err := os.WriteFile(iniPath, []byte(buildPgBouncerIni()), 0o644); err != nil {
+		return err
+	}
+	if err := os.WriteFile(userlistPath, []byte(buildPgBouncerUserlist()), 0o600); err != nil {
+		return err
+	}
+	return nil
+}
+
+func buildPgBouncerIni() string {
+	return strings.Join(
+		[]string{
+			"[databases]",
+			"* = host=127.0.0.1 port=5444 dbname=postgres",
+			"",
+			"[pgbouncer]",
+			"listen_addr = 127.0.0.1",
+			"listen_port = 6432",
+			"auth_type = md5",
+			"auth_file = userlist.txt",
+			"pool_mode = transaction",
+			"max_client_conn = 300",
+			"default_pool_size = 30",
+			"reserve_pool_size = 10",
+			"reserve_pool_timeout = 3",
+			"server_reset_query = DISCARD ALL",
+			"server_check_delay = 30",
+			"server_idle_timeout = 600",
+			"ignore_startup_parameters = extra_float_digits",
+			"admin_users = " + db.User,
+			"stats_users = " + db.User,
+			"log_connections = 1",
+			"log_disconnections = 1",
+			"",
+		},
+		"\n",
+	)
+}
+
+func buildPgBouncerUserlist() string {
+	return fmt.Sprintf("\"%s\" \"%s\"\n", db.User, md5PasswordHash(db.User, db.Password))
+}
+
+func md5PasswordHash(user, password string) string {
+	sum := md5.Sum([]byte(password + user))
+	return "md5" + hex.EncodeToString(sum[:])
+}
+
+func uninstallPgBouncer() error {
+	exists, err := serviceExists(pgBouncerService)
+	if err != nil {
+		return err
+	}
 	if !exists {
-		_ = cleanupGUIShortcut(cfg.BundleDir)
 		return nil
 	}
-
-	_, _ = run("sc", "stop", cfg.ServiceName)
-	if _, err := run("sc", "delete", cfg.ServiceName); err != nil {
-		return fmt.Errorf("gagal delete service %s: %w", cfg.ServiceName, err)
+	_, _ = run("sc", "stop", pgBouncerService)
+	if _, err := run("sc", "delete", pgBouncerService); err != nil {
+		return fmt.Errorf("gagal delete service %s: %w", pgBouncerService, err)
 	}
-
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
-		exists, checkErr := serviceExists(cfg.ServiceName)
+		exists, checkErr := serviceExists(pgBouncerService)
 		if checkErr != nil {
 			return checkErr
 		}
 		if !exists {
-			_ = cleanupGUIShortcut(cfg.BundleDir)
 			return nil
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
+	return fmt.Errorf("service %s belum terhapus setelah timeout", pgBouncerService)
+}
 
-	return fmt.Errorf("service %s belum terhapus setelah timeout", cfg.ServiceName)
+func cleanupPgBouncerArtifacts(bundleDir string) error {
+	var firstErr error
+	for _, name := range []string{pgBouncerIniName, pgBouncerUserlist} {
+		target := filepath.Join(bundleDir, name)
+		if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 // IsRunningAsAdministrator checks if process has local admin privileges.

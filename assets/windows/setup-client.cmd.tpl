@@ -118,7 +118,8 @@ if not "%ERRORLEVEL%"=="0" (
 
 echo.
 echo Selesai.
-echo Jika aplikasi POS lokal Anda aktif di port 5444/5480/5485,
+echo Jika endpoint lokal sesuai client.toml sudah aktif (default: 6432/5480/5485),
+echo dan PGbouncer untuk PostgreSQL berjalan pada 127.0.0.1:6432,
 echo tunnel publik akan langsung bekerja.
 echo.
 pause

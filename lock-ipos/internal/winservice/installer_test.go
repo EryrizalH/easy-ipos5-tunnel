@@ -10,6 +10,10 @@ import (
 func TestResolveBundlePaths_Success(t *testing.T) {
 	tmp := t.TempDir()
 	mustWrite(t, filepath.Join(tmp, "nssm.exe"))
+	mustWrite(t, filepath.Join(tmp, "pgbouncer.exe"))
+	mustWrite(t, filepath.Join(tmp, "libevent-7.dll"))
+	mustWrite(t, filepath.Join(tmp, "libssl-3-x64.dll"))
+	mustWrite(t, filepath.Join(tmp, "libcrypto-3-x64.dll"))
 	mustWrite(t, filepath.Join(tmp, "client.toml"))
 	mustWrite(t, filepath.Join(tmp, "ipos5-rathole.exe"))
 	mustWrite(t, filepath.Join(tmp, guiBinaryName))
@@ -30,6 +34,9 @@ func TestResolveBundlePaths_Success(t *testing.T) {
 	}
 	if !strings.HasSuffix(strings.ToLower(paths.GUIPath), guiBinaryName) {
 		t.Fatalf("GUIPath unexpected: %s", paths.GUIPath)
+	}
+	if !strings.HasSuffix(strings.ToLower(paths.PgBouncerPath), "pgbouncer.exe") {
+		t.Fatalf("PgBouncerPath unexpected: %s", paths.PgBouncerPath)
 	}
 }
 
@@ -52,15 +59,24 @@ func TestResolveBundlePaths_MissingFiles(t *testing.T) {
 	if !strings.Contains(msg, guiBinaryName) {
 		t.Fatalf("error should mention GUI binary, got: %v", err)
 	}
+	if !strings.Contains(msg, "pgbouncer.exe") {
+		t.Fatalf("error should mention pgbouncer.exe, got: %v", err)
+	}
+	if !strings.Contains(msg, "libevent-7.dll") {
+		t.Fatalf("error should mention libevent-7.dll, got: %v", err)
+	}
 }
 
 func TestBuildInstallCommands(t *testing.T) {
 	cfg := Config{ServiceName: "EasyRatholeClient", BundleDir: `D:\bundle`}
 	paths := BundlePaths{
-		NSSMPath:       `D:\bundle\nssm.exe`,
-		RatholePath:    `D:\bundle\ipos5-rathole.exe`,
-		GUIPath:        `D:\bundle\ipos5-rathole-gui.exe`,
-		ClientTomlPath: `D:\bundle\client.toml`,
+		NSSMPath:          `D:\bundle\nssm.exe`,
+		RatholePath:       `D:\bundle\ipos5-rathole.exe`,
+		GUIPath:           `D:\bundle\ipos5-rathole-gui.exe`,
+		ClientTomlPath:    `D:\bundle\client.toml`,
+		PgBouncerPath:     `D:\bundle\pgbouncer.exe`,
+		PgBouncerIniPath:  `D:\bundle\pgbouncer.ini`,
+		PgBouncerUserPath: `D:\bundle\userlist.txt`,
 	}
 
 	cmds := BuildInstallCommands(cfg, paths, `C:\ProgramData\easy-rathole-client\logs`)
@@ -81,6 +97,32 @@ func TestBuildInstallCommands(t *testing.T) {
 	}
 	if !hasAutoStart {
 		t.Fatal("missing Start SERVICE_AUTO_START command")
+	}
+}
+
+func TestBuildPgBouncerInstallCommands(t *testing.T) {
+	paths := BundlePaths{
+		NSSMPath:         `D:\bundle\nssm.exe`,
+		PgBouncerPath:    `D:\bundle\pgbouncer.exe`,
+		PgBouncerIniPath: `D:\bundle\pgbouncer.ini`,
+	}
+
+	cmds := BuildPgBouncerInstallCommands(paths, `C:\ProgramData\easy-rathole-client\logs`)
+	if len(cmds) < 5 {
+		t.Fatalf("expected pgbouncer install commands, got %d", len(cmds))
+	}
+	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install PgBouncer") {
+		t.Fatalf("unexpected first command: %s", got)
+	}
+}
+
+func TestBuildPgBouncerUserlist(t *testing.T) {
+	got := buildPgBouncerUserlist()
+	if !strings.Contains(got, "\"sysi5adm\"") {
+		t.Fatalf("expected user in userlist, got %s", got)
+	}
+	if !strings.Contains(got, "md5") {
+		t.Fatalf("expected md5 hash prefix, got %s", got)
 	}
 }
 

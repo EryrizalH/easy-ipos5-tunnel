@@ -114,12 +114,12 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 	switch option {
 	case 1:
 		actionTitle = "Install Service IP Public"
-		actionDesc = "Anda akan menginstall service tunnel publik."
-		consequence = "Service akan dibuat/autostart dan langsung dijalankan."
+		actionDesc = "Anda akan menginstall service tunnel publik dengan auto-setup PgBouncer."
+		consequence = "Installer akan setup PgBouncer dulu, verifikasi healthy, lalu membuat service tunnel."
 		detailLines = []string{
 			"Service Name: " + serviceName,
 			"Bundle Dir : " + bundleDir,
-			"Wajib ada  : nssm.exe, ipos5-rathole.exe/rathole.exe, client.toml",
+			"Wajib ada  : nssm.exe, pgbouncer.exe, libevent-7.dll, libssl-3-x64.dll, libcrypto-3-x64.dll, ipos5-rathole.exe/rathole.exe, client.toml",
 		}
 	case 2:
 		actionTitle = "Uninstall Service IP Public"

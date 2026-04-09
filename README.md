@@ -5,7 +5,8 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
 ## Ringkasan fitur
 
 - Install server `rathole` + systemd service (`rathole`)
-- Port forward TCP tetap: **5444**, **5480**, **5485**
+- Port forward TCP server (VPS): **5444**, **5480**, **5485**
+- Mapping database default: **VPS 5444 -> Client 127.0.0.1:6432 (PGbouncer) -> PostgreSQL 127.0.0.1:5444**
 - Control port rathole dipilih otomatis (random, port kosong)
 - Dashboard FastAPI (HTTP + Basic Auth) untuk:
   - melihat status service dan status port forward
@@ -58,7 +59,7 @@ Urutan default:
 2. Install dependency runtime.
 3. Install rathole server + service `rathole`.
 4. Install dashboard + service `easy-rathole-dashboard`.
-5. Buka firewall untuk control port + port 5444/5480/5485 + port dashboard.
+5. Buka firewall untuk control port + remote bind ports tunnel (default 5444/5480/5485) + port dashboard.
 
 ### Opsi environment (opsional)
 
@@ -109,6 +110,7 @@ Setelah install selesai, installer menampilkan:
 ## 2) Lokasi file penting
 
 - State file: `/opt/easy-rathole/state/install-state.json`
+  - kunci penting baru: `service_ports` (contoh item DB: `remote_bind_port=5444`, `client_local_port=6432`)
 - Config rathole server: `/etc/easy-rathole/server.toml`
 - Credential dashboard: `/opt/easy-rathole/state/dashboard-credentials.txt`
 - DB dashboard (sqlite): `/opt/easy-rathole/state/easy-rathole.db`
@@ -127,8 +129,8 @@ Fitur utama:
 3. Monitoring status:
    - `rathole`
    - `easy-rathole-dashboard`
-   - status port 5444/5480/5485
-   - performa PostgreSQL client via tunnel `127.0.0.1:5444`:
+   - status port remote bind tunnel (default 5444/5480/5485)
+   - performa PostgreSQL client via tunnel `127.0.0.1:5444` (backend default PGbouncer `127.0.0.1:6432`):
      - `connect_ms`, `query_ms`, `tx_ms`
      - active/waiting connections
      - cache hit ratio
@@ -151,7 +153,7 @@ Environment variable monitor PostgreSQL (opsional):
 - `EASY_RATHOLE_PG_MONITOR_DSN` (disarankan, contoh: `host=127.0.0.1 port=5444 dbname=postgres user=monitor password=*** connect_timeout=3`)
 - Jika `DSN` tidak diisi, fallback:
   - `EASY_RATHOLE_PG_MONITOR_HOST` (default `127.0.0.1`)
-  - `EASY_RATHOLE_PG_MONITOR_PORT` (default `5444`)
+  - `EASY_RATHOLE_PG_MONITOR_PORT` (default mengikuti `service_ports.db.remote_bind_port`, biasanya `5444`)
   - `EASY_RATHOLE_PG_MONITOR_USER` (default `sysi5adm`)
   - `EASY_RATHOLE_PG_MONITOR_PASSWORD` (default `u&aV23cc.o82dtr1x89c`)
   - `EASY_RATHOLE_PG_MONITOR_DBNAME` (default `postgres`)
@@ -167,7 +169,13 @@ Environment variable monitor PostgreSQL (opsional):
 - `ipos5-rathole.exe`
 - `ipos5-rathole-gui.exe`
 - `nssm.exe`
+- `pgbouncer.exe`
+- `libevent-7.dll`
+- `libssl-3-x64.dll`
+- `libcrypto-3-x64.dll`
 - `client.toml`
+- `pgbouncer.ini`
+- `userlist.sample.txt`
 - `README.txt`
 
 ### Cara install (disarankan)
@@ -186,6 +194,11 @@ Catatan paket terbaru:
 - Entry point resmi installer Windows adalah `setup.exe` (menu interaktif).
 - Script template lama seperti `setup-client.cmd`/`install-service.cmd` bukan alur utama bundle dashboard saat ini.
 - Saat install sukses, shortcut desktop `ipos5-rathole` dibuat untuk membuka GUI jendela utama dengan UAC (Run as Administrator).
+- `setup.exe` akan auto-install service `PgBouncer` dulu (fail-fast jika gagal), lalu install `EasyRatholeClient`.
+- Runtime file `pgbouncer.ini` dan `userlist.txt` dibuat otomatis saat install service.
+- Build asset PGbouncer Windows dari source repository resmi:
+  - repo: `https://github.com/pgbouncer/pgbouncer`
+  - helper script: `scripts/build_pgbouncer_windows.ps1`
 
 ### Uninstall
 

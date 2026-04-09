@@ -13,7 +13,36 @@ configure_firewall_ports() {
   control_port="$(state_get "$state_file" "rathole_control_port" "0")"
   dashboard_port="$(state_get "$state_file" "dashboard_port" "8088")"
 
-  local ports=("$control_port" "5444" "5480" "5485")
+  local remote_ports_json
+  remote_ports_json="$(state_get "$state_file" "service_ports" "[]")"
+  local ports=("$control_port")
+  while IFS= read -r port; do
+    [[ -n "$port" ]] || continue
+    ports+=("$port")
+  done < <(
+    python3 - "$remote_ports_json" <<'PY'
+import json
+import sys
+
+try:
+    rows = json.loads(sys.argv[1])
+except Exception:
+    rows = []
+
+seen = set()
+for row in rows:
+    if not isinstance(row, dict):
+        continue
+    try:
+        port = int(row.get("remote_bind_port"))
+    except Exception:
+        continue
+    if port in seen:
+        continue
+    seen.add(port)
+    print(port)
+PY
+  )
 
   if command -v ufw >/dev/null 2>&1; then
     if ufw status 2>/dev/null | grep -q "Status: active"; then
@@ -96,6 +125,7 @@ main() {
   local credentials_file
   local hardening_applied
   local hardening_ssh_port
+  local forward_ports
 
   public_ip="$(state_get "${EASY_RATHOLE_STATE_FILE}" "public_ip" "<unknown>")"
   control_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "rathole_control_port" "<unknown>")"
@@ -104,6 +134,45 @@ main() {
   credentials_file="$(state_get "${EASY_RATHOLE_STATE_FILE}" "credentials_file" "${EASY_RATHOLE_ROOT}/state/dashboard-credentials.txt")"
   hardening_applied="$(state_get "${EASY_RATHOLE_STATE_FILE}" "hardening_applied" "false")"
   hardening_ssh_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "hardening_ssh_port" "22")"
+  forward_ports="$(
+    python3 - "${EASY_RATHOLE_STATE_FILE}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+if not path.exists():
+    print("5444, 5480, 5485")
+    raise SystemExit(0)
+
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    print("5444, 5480, 5485")
+    raise SystemExit(0)
+
+rows = data.get("service_ports")
+ports = []
+if isinstance(rows, list):
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        try:
+            port = int(row.get("remote_bind_port"))
+        except Exception:
+            continue
+        if port in seen:
+            continue
+        seen.add(port)
+        ports.append(str(port))
+
+if not ports:
+    ports = [str(p) for p in data.get("exposed_ports", [5444, 5480, 5485])]
+
+print(", ".join(ports))
+PY
+  )"
 
   cat <<EOF
 
@@ -115,7 +184,7 @@ Pengguna Dashboard: ${admin_username}
 Sumber Password   : ${credentials_file}
 
 Control Rathole   : ${control_port}
-Port Forward      : 5444, 5480, 5485
+Port Forward      : ${forward_ports}
 
 Services:
   - rathole

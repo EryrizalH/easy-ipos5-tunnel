@@ -1,17 +1,17 @@
 [server]
 bind_addr = "0.0.0.0:{{RATHOLE_CONTROL_PORT}}"
 
-[server.services.port_5444]
+[server.services.{{DB_SERVICE_KEY}}]
 type = "tcp"
 token = "{{GLOBAL_TOKEN}}"
-bind_addr = "0.0.0.0:5444"
+bind_addr = "0.0.0.0:{{DB_REMOTE_BIND_PORT}}"
 
-[server.services.port_5480]
+[server.services.{{POS_HTTP_SERVICE_KEY}}]
 type = "tcp"
 token = "{{GLOBAL_TOKEN}}"
-bind_addr = "0.0.0.0:5480"
+bind_addr = "0.0.0.0:{{POS_HTTP_REMOTE_BIND_PORT}}"
 
-[server.services.port_5485]
+[server.services.{{POS_WORKER_SERVICE_KEY}}]
 type = "tcp"
 token = "{{GLOBAL_TOKEN}}"
-bind_addr = "0.0.0.0:5485"
+bind_addr = "0.0.0.0:{{POS_WORKER_REMOTE_BIND_PORT}}"

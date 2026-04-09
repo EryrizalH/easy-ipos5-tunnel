@@ -29,6 +29,11 @@ main() {
   ensure_dir "$resources_dir/assets/linux" 755
   ensure_dir "$resources_dir/templates/rathole" 755
 
+  [[ -f "${PROJECT_ROOT}/assets/windows/pgbouncer.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/pgbouncer.exe"
+  [[ -f "${PROJECT_ROOT}/assets/windows/libevent-7.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libevent-7.dll"
+  [[ -f "${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll"
+  [[ -f "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll"
+
   rm -rf "${deploy_dir}/app"
   cp -R "${PROJECT_ROOT}/dashboard/app" "${deploy_dir}/app"
   cp "${PROJECT_ROOT}/dashboard/requirements.txt" "${deploy_dir}/requirements.txt"
@@ -42,8 +47,14 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe" "${resources_dir}/assets/windows/ipos5-rathole.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole-gui.exe" "${resources_dir}/assets/windows/ipos5-rathole-gui.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/nssm.exe" "${resources_dir}/assets/windows/nssm.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.exe" "${resources_dir}/assets/windows/pgbouncer.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/libevent-7.dll" "${resources_dir}/assets/windows/libevent-7.dll"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll" "${resources_dir}/assets/windows/libssl-3-x64.dll"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" "${resources_dir}/assets/windows/libcrypto-3-x64.dll"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/install-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/install-gui-autostart.ps1.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/uninstall-gui-autostart.ps1.tpl"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.ini.tpl" "${resources_dir}/assets/windows/pgbouncer.ini.tpl"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/userlist.sample.txt" "${resources_dir}/assets/windows/userlist.sample.txt"
   install -m 0644 "${PROJECT_ROOT}/assets/linux/install-client.sh.tpl" "${resources_dir}/assets/linux/install-client.sh.tpl"
   install -m 0644 "${PROJECT_ROOT}/templates/rathole/client.toml.tpl" "${resources_dir}/templates/rathole/client.toml.tpl"
 

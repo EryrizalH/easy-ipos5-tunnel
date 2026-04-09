@@ -158,21 +158,21 @@ func (m *model) updatePermission(allowCreateDB bool) tea.Cmd {
 
 func (m *model) installServiceCmd() tea.Cmd {
 	return func() tea.Msg {
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath}
 		if err := winservice.InstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Service IP Public berhasil diinstall. GUI dibuka lewat shortcut desktop 'ipos5-rathole' dan akan meminta UAC (Run as Administrator)."}
+		return serviceActionCompletedMsg{success: true, message: "Install berhasil: PgBouncer aktif (127.0.0.1:6432) lalu EasyRatholeClient terpasang. GUI dibuka lewat shortcut desktop 'ipos5-rathole' dan akan meminta UAC (Run as Administrator)."}
 	}
 }
 
 func (m *model) uninstallServiceCmd() tea.Cmd {
 	return func() tea.Msg {
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath}
 		if err := winservice.UninstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Service IP Public berhasil di-uninstall, GUI shortcut desktop sudah dibersihkan."}
+		return serviceActionCompletedMsg{success: true, message: "Service IP Public dan PgBouncer berhasil di-uninstall, GUI shortcut desktop sudah dibersihkan."}
 	}
 }
 
@@ -283,7 +283,7 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.currentState = stateProgress
 			switch m.pendingOption {
 			case optionInstallService:
-				m.progressMessage = "Menginstall service IP Public..."
+				m.progressMessage = "Menginstall service IP Public (prepare bundle -> install PgBouncer -> health check -> install EasyRatholeClient)..."
 				return m, m.installServiceCmd()
 			case optionUninstallService:
 				m.progressMessage = "Menguninstall service IP Public..."
@@ -431,7 +431,7 @@ func defaultBundleDir() string {
 
 func main() {
 	serviceName := flag.String("service-name", winservice.DefaultServiceName, "Windows service name")
-	bundleDir := flag.String("bundle-dir", defaultBundleDir(), "Directory containing sidecar files (nssm.exe, ipos5-rathole.exe/rathole.exe, client.toml)")
+	bundleDir := flag.String("bundle-dir", defaultBundleDir(), "Directory containing sidecar files (nssm.exe, pgbouncer.exe, libevent-7.dll, libssl-3-x64.dll, libcrypto-3-x64.dll, ipos5-rathole.exe/rathole.exe, client.toml)")
 	flag.Parse()
 
 	if err := logger.Init(); err != nil {

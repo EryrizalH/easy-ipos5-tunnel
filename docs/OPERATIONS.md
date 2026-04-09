@@ -59,6 +59,11 @@ sudo systemctl restart easy-rathole-dashboard
 sudo ss -ltnp | grep -E ':5444|:5480|:5485|:8088'
 ```
 
+Catatan alur database default:
+- Port VPS tetap `5444`.
+- Client Windows wajib menyalakan PGbouncer `127.0.0.1:6432` yang meneruskan ke PostgreSQL `127.0.0.1:5444`.
+- Pastikan file PGbouncer (`pgbouncer.ini` dan `userlist.txt`) tersimpan aman dan konsisten dengan kredensial PG lock.
+
 Untuk control port rathole, lihat dari state file:
 
 ```bash

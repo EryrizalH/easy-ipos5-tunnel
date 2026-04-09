@@ -75,9 +75,161 @@ main() {
   rm -rf "$temp_extract"
 
   local config_file="${config_dir}/server.toml"
+  local service_ports_raw
+  local service_ports_json
+  local db_service_key
+  local db_remote_bind_port
+  local pos_http_service_key
+  local pos_http_remote_bind_port
+  local pos_worker_service_key
+  local pos_worker_remote_bind_port
+
+  service_ports_raw="$(state_get "$state_file" "service_ports" "[]")"
+  service_ports_json="$(
+    python3 - "$service_ports_raw" <<'PY'
+import json
+import sys
+
+defaults = [
+    {
+        "name": "db",
+        "service_key": "port_5444",
+        "protocol": "tcp",
+        "remote_bind_port": 5444,
+        "client_local_addr": "127.0.0.1:6432",
+        "client_local_port": 6432,
+    },
+    {
+        "name": "pos_http",
+        "service_key": "port_5480",
+        "protocol": "tcp",
+        "remote_bind_port": 5480,
+        "client_local_addr": "127.0.0.1:5480",
+        "client_local_port": 5480,
+    },
+    {
+        "name": "pos_worker",
+        "service_key": "port_5485",
+        "protocol": "tcp",
+        "remote_bind_port": 5485,
+        "client_local_addr": "127.0.0.1:5485",
+        "client_local_port": 5485,
+    },
+]
+
+try:
+    rows = json.loads(sys.argv[1])
+except Exception:
+    rows = []
+
+by_name = {}
+for row in rows:
+    if isinstance(row, dict):
+        name = str(row.get("name", "")).strip()
+        if name:
+            by_name[name] = row
+
+merged = []
+for default in defaults:
+    row = default.copy()
+    provided = by_name.get(default["name"], {})
+    for key in ("service_key", "protocol", "client_local_addr"):
+        value = provided.get(key)
+        if isinstance(value, str) and value.strip():
+            row[key] = value.strip()
+    for key in ("remote_bind_port", "client_local_port"):
+        value = provided.get(key)
+        try:
+            if value is not None:
+                row[key] = int(value)
+        except Exception:
+            pass
+    merged.append(row)
+
+default_names = {row["name"] for row in defaults}
+for row in rows:
+    if not isinstance(row, dict):
+        continue
+    name = str(row.get("name", "")).strip()
+    if not name or name in default_names:
+        continue
+    service_key = str(row.get("service_key", "")).strip()
+    protocol = str(row.get("protocol", "tcp")).strip().lower() or "tcp"
+    client_local_addr = str(row.get("client_local_addr", "")).strip()
+    try:
+        remote_bind_port = int(row.get("remote_bind_port"))
+        client_local_port = int(row.get("client_local_port"))
+    except Exception:
+        continue
+    if not service_key or not client_local_addr:
+        continue
+    merged.append(
+        {
+            "name": name,
+            "service_key": service_key,
+            "protocol": protocol,
+            "remote_bind_port": remote_bind_port,
+            "client_local_addr": client_local_addr,
+            "client_local_port": client_local_port,
+        }
+    )
+
+print(json.dumps(merged, separators=(",", ":")))
+PY
+  )"
+
+  db_service_key="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(rows.get("db", {}).get("service_key", "port_5444"))
+PY
+)"
+  db_remote_bind_port="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(int(rows.get("db", {}).get("remote_bind_port", 5444)))
+PY
+)"
+  pos_http_service_key="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(rows.get("pos_http", {}).get("service_key", "port_5480"))
+PY
+)"
+  pos_http_remote_bind_port="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(int(rows.get("pos_http", {}).get("remote_bind_port", 5480)))
+PY
+)"
+  pos_worker_service_key="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(rows.get("pos_worker", {}).get("service_key", "port_5485"))
+PY
+)"
+  pos_worker_remote_bind_port="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(int(rows.get("pos_worker", {}).get("remote_bind_port", 5485)))
+PY
+)"
+
   render_template "${resources_dir}/templates/rathole/server.toml.tpl" "$config_file" \
     RATHOLE_CONTROL_PORT "$control_port" \
-    GLOBAL_TOKEN "$token"
+    GLOBAL_TOKEN "$token" \
+    DB_SERVICE_KEY "$db_service_key" \
+    DB_REMOTE_BIND_PORT "$db_remote_bind_port" \
+    POS_HTTP_SERVICE_KEY "$pos_http_service_key" \
+    POS_HTTP_REMOTE_BIND_PORT "$pos_http_remote_bind_port" \
+    POS_WORKER_SERVICE_KEY "$pos_worker_service_key" \
+    POS_WORKER_REMOTE_BIND_PORT "$pos_worker_remote_bind_port"
 
   chmod 0640 "$config_file"
 
@@ -114,7 +266,8 @@ EOF
     \"rathole_asset\": \"${asset_name}\", \
     \"rathole_config_path\": \"${config_file}\", \
     \"rathole_service_name\": \"${rathole_service}\", \
-    \"exposed_ports\": [5444, 5480, 5485], \
+    \"service_ports\": ${service_ports_json}, \
+    \"exposed_ports\": [${db_remote_bind_port}, ${pos_http_remote_bind_port}, ${pos_worker_remote_bind_port}], \
     \"updated_at\": \"${now}\"\
   }"
 

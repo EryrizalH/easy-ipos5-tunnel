@@ -311,7 +311,7 @@
       </div>
 
       <div class="card">
-        <div class="metric-label">PostgreSQL Client (via 5444)</div>
+        <div class="metric-label">PostgreSQL Client (VPS {{ db_remote_port }} -> {{ db_backend_local_addr }})</div>
         <p class="metric-value mono {% if postgres_monitor.status == 'Healthy' %}status-active{% elif postgres_monitor.status == 'Warning' %}status-warning{% else %}status-inactive{% endif %}">
           {{ postgres_monitor.status }}
         </p>
@@ -361,7 +361,7 @@
 
     <div class="details-grid">
       <details>
-        <summary>Detail Lanjutan: PostgreSQL Client (via Tunnel 5444)</summary>
+        <summary>Detail Lanjutan: PostgreSQL Client (VPS {{ db_remote_port }} -> {{ db_backend_local_addr }})</summary>
         <div class="table-wrap">
           <table>
             <thead>

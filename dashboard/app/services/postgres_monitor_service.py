@@ -4,8 +4,10 @@ import os
 import socket
 import threading
 import time
+from pathlib import Path
 from datetime import UTC, datetime
 from typing import Any
+import json
 
 from ..db import connect, ensure_postgres_monitor_table, upsert_postgres_monitor_snapshot
 
@@ -31,6 +33,33 @@ def classify_status(query_ms: float | None, err: str) -> str:
     return "Critical"
 
 
+def resolve_default_monitor_port() -> int:
+    state_path = Path(os.environ.get("EASY_RATHOLE_STATE_FILE", "/opt/easy-rathole/state/install-state.json"))
+    if not state_path.exists():
+        return 5444
+
+    try:
+        data = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception:
+        return 5444
+
+    rows = data.get("service_ports")
+    if not isinstance(rows, list):
+        return 5444
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("name", "")).strip() != "db":
+            continue
+        try:
+            return int(row.get("remote_bind_port", 5444))
+        except (TypeError, ValueError):
+            return 5444
+
+    return 5444
+
+
 def read_monitor_config() -> dict[str, Any]:
     enabled = os.environ.get("EASY_RATHOLE_PG_MONITOR_ENABLED", "1") == "1"
     interval_raw = os.environ.get("EASY_RATHOLE_PG_MONITOR_INTERVAL_SEC", "5").strip()
@@ -41,7 +70,8 @@ def read_monitor_config() -> dict[str, Any]:
 
     dsn = os.environ.get("EASY_RATHOLE_PG_MONITOR_DSN", "").strip()
     host = os.environ.get("EASY_RATHOLE_PG_MONITOR_HOST", "127.0.0.1").strip() or "127.0.0.1"
-    port = int(os.environ.get("EASY_RATHOLE_PG_MONITOR_PORT", "5444"))
+    default_port = str(resolve_default_monitor_port())
+    port = int(os.environ.get("EASY_RATHOLE_PG_MONITOR_PORT", default_port))
     user = os.environ.get("EASY_RATHOLE_PG_MONITOR_USER", "sysi5adm").strip()
     password = os.environ.get("EASY_RATHOLE_PG_MONITOR_PASSWORD", "u&aV23cc.o82dtr1x89c").strip()
     dbname = os.environ.get("EASY_RATHOLE_PG_MONITOR_DBNAME", "postgres").strip()
