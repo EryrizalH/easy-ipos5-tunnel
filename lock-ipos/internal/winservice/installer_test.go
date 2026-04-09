@@ -126,8 +126,11 @@ func TestBuildPgBouncerInstallCommands(t *testing.T) {
 
 func TestBuildPgBouncerIni_DefaultFallback(t *testing.T) {
 	got := buildPgBouncerIni(nil)
-	if !strings.Contains(got, "postgres = host=127.0.0.1 port=5444 dbname=postgres") {
+	if !strings.Contains(got, "postgres = host=127.0.0.1 port=5445 dbname=postgres") {
 		t.Fatalf("expected default postgres mapping, got %s", got)
+	}
+	if !strings.Contains(got, "listen_port = 5444") {
+		t.Fatalf("expected listen_port 5444, got %s", got)
 	}
 	if strings.Contains(got, "* = host=127.0.0.1") {
 		t.Fatalf("expected explicit database mapping instead of wildcard, got %s", got)
@@ -136,11 +139,44 @@ func TestBuildPgBouncerIni_DefaultFallback(t *testing.T) {
 
 func TestBuildPgBouncerIni_MultiDatabase(t *testing.T) {
 	got := buildPgBouncerIni([]pgBouncerDatabaseEntry{{Name: "iposdb"}, {Name: "masterdb", BackendDBName: "master_backend"}})
-	if !strings.Contains(got, "iposdb = host=127.0.0.1 port=5444 dbname=iposdb") {
+	if !strings.Contains(got, "iposdb = host=127.0.0.1 port=5445 dbname=iposdb") {
 		t.Fatalf("expected iposdb mapping, got %s", got)
 	}
-	if !strings.Contains(got, "masterdb = host=127.0.0.1 port=5444 dbname=master_backend") {
+	if !strings.Contains(got, "masterdb = host=127.0.0.1 port=5445 dbname=master_backend") {
 		t.Fatalf("expected aliased backend mapping, got %s", got)
+	}
+}
+
+func TestResolveBundlePaths_IPPublicModeAllowsMissingPgBouncer(t *testing.T) {
+	tmp := t.TempDir()
+	mustWrite(t, filepath.Join(tmp, "nssm.exe"))
+	mustWrite(t, filepath.Join(tmp, "client.toml"))
+	mustWrite(t, filepath.Join(tmp, "ipos5-rathole.exe"))
+	mustWrite(t, filepath.Join(tmp, guiBinaryName))
+
+	_, err := resolveBundlePaths(tmp, false)
+	if err != nil {
+		t.Fatalf("resolveBundlePaths(mode ip public) should allow missing PgBouncer assets, got %v", err)
+	}
+}
+
+func TestEnsureDBForwardAddress_UpdatesLegacy6432(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "client.toml")
+	if err := os.WriteFile(path, []byte("local_addr = \"127.0.0.1:6432\"\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	if err := ensureDBForwardAddress(path); err != nil {
+		t.Fatalf("ensureDBForwardAddress() error = %v", err)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if !strings.Contains(string(raw), "127.0.0.1:5444") {
+		t.Fatalf("expected DB local_addr rewritten to 5444, got %s", string(raw))
 	}
 }
 

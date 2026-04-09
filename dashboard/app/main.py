@@ -241,7 +241,7 @@ def dashboard(
     service_ports = normalize_service_ports(state.get("service_ports"))
     db_port_mapping = next((row for row in service_ports if str(row.get("name")) == "db"), {})
     db_remote_port = int(db_port_mapping.get("remote_bind_port", 5444))
-    db_backend_local_addr = str(db_port_mapping.get("client_local_addr", "127.0.0.1:6432"))
+    db_backend_local_addr = str(db_port_mapping.get("client_local_addr", "127.0.0.1:5444"))
     exposed_ports = exposed_ports_from_service_ports(service_ports)
     public_ip = str(state.get("public_ip", "<unknown>"))
     control_port = str(state.get("rathole_control_port", "<unknown>"))

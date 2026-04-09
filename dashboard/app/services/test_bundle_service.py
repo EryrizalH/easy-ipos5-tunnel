@@ -95,6 +95,7 @@ class BundleServiceTest(unittest.TestCase):
                 names = set(zf.namelist())
                 self.assertIn(bundle_service.WINDOWS_PGBOUNCER_DATABASES_NAME, names)
                 payload = json.loads(zf.read(bundle_service.WINDOWS_PGBOUNCER_DATABASES_NAME).decode("utf-8"))
+                client_toml = zf.read("client.toml").decode("utf-8")
 
             self.assertEqual(
                 payload,
@@ -105,6 +106,7 @@ class BundleServiceTest(unittest.TestCase):
                     ]
                 },
             )
+            self.assertIn("127.0.0.1:5444", client_toml)
 
 
 if __name__ == "__main__":

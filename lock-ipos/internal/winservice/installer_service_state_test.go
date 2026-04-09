@@ -116,7 +116,12 @@ func TestPreflightPgBouncerInstallWithChecks_BackendUnreachable(t *testing.T) {
 	paths := BundlePaths{PgBouncerPath: filepath.Join(bundleDir, pgBouncerBinary)}
 
 	err := preflightPgBouncerInstallWithChecks(cfg, paths,
-		func(_ string, _ time.Duration) error { return errors.New("dial tcp timeout") },
+		func(address string, _ time.Duration) error {
+			if !strings.Contains(address, ":5445") {
+				t.Fatalf("expected preflight backend address to use 5445, got %s", address)
+			}
+			return errors.New("dial tcp timeout")
+		},
 		func(_ string) error { return nil },
 		func(_ string) (bool, error) { return false, nil },
 	)
@@ -159,5 +164,77 @@ func TestPreflightPgBouncerInstallWithChecks_PortUnavailable(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(err.Error()), "port listen") {
 		t.Fatalf("unexpected error message: %v", err)
+	}
+}
+
+func TestChangePostgresPortIfNeededWithHooks_NoOpWhenAlreadyTarget(t *testing.T) {
+	runCalled := false
+	restartCalled := false
+	reachableCalled := false
+
+	err := changePostgresPortIfNeededWithHooks(
+		`D:\pgbin`,
+		postgresLegacyPort,
+		func(_ string) (int, error) { return postgresLegacyPort, nil },
+		func(_ string, _ int, _ string, _ string) error {
+			runCalled = true
+			return nil
+		},
+		func() error {
+			restartCalled = true
+			return nil
+		},
+		func(_ string, _ time.Duration) error {
+			reachableCalled = true
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("changePostgresPortIfNeededWithHooks() unexpected error = %v", err)
+	}
+	if runCalled || restartCalled || reachableCalled {
+		t.Fatalf("expected no-op when port already target; got run=%v restart=%v reachable=%v", runCalled, restartCalled, reachableCalled)
+	}
+}
+
+func TestChangePostgresPortIfNeededWithHooks_RollbackTo5444(t *testing.T) {
+	calledSQL := ""
+	restartCalled := false
+	reachableAddr := ""
+
+	err := changePostgresPortIfNeededWithHooks(
+		`D:\pgbin`,
+		postgresLegacyPort,
+		func(_ string) (int, error) { return postgresBackendPort, nil },
+		func(_ string, port int, databaseName, sql string) error {
+			if port != postgresBackendPort {
+				t.Fatalf("expected ALTER SYSTEM to run on current port %d, got %d", postgresBackendPort, port)
+			}
+			if databaseName != "postgres" {
+				t.Fatalf("expected database postgres, got %s", databaseName)
+			}
+			calledSQL = sql
+			return nil
+		},
+		func() error {
+			restartCalled = true
+			return nil
+		},
+		func(address string, _ time.Duration) error {
+			reachableAddr = address
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("changePostgresPortIfNeededWithHooks() unexpected error = %v", err)
+	}
+	if calledSQL != "ALTER SYSTEM SET port = 5444;" {
+		t.Fatalf("unexpected SQL: %s", calledSQL)
+	}
+	if !restartCalled {
+		t.Fatal("expected PostgreSQL restart to be called")
+	}
+	if reachableAddr != "127.0.0.1:5444" {
+		t.Fatalf("expected verify address 127.0.0.1:5444, got %s", reachableAddr)
 	}
 }

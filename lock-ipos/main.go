@@ -28,10 +28,11 @@ const (
 )
 
 const (
-	optionInstallService   = 1
-	optionUninstallService = 2
-	optionLockDB           = 3
-	optionUnlockDB         = 4
+	optionInstallIPPublic  = 1
+	optionInstallPgBouncer = 2
+	optionUninstallService = 3
+	optionLockDB           = 4
+	optionUnlockDB         = 5
 )
 
 // Messages
@@ -158,11 +159,21 @@ func (m *model) updatePermission(allowCreateDB bool) tea.Cmd {
 
 func (m *model) installServiceCmd() tea.Cmd {
 	return func() tea.Msg {
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModeIPPublicOnly}
 		if err := winservice.InstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Install berhasil: PgBouncer aktif (127.0.0.1:6432) lalu EasyRatholeClient terpasang. GUI dibuka lewat shortcut desktop 'ipos5-rathole' dan akan meminta UAC (Run as Administrator)."}
+		return serviceActionCompletedMsg{success: true, message: "Install IP publik berhasil: service EasyRatholeClient terpasang. Forward DB diarahkan ke 127.0.0.1:5444 dan GUI dibuka lewat shortcut desktop 'ipos5-rathole' (UAC Run as Administrator)."}
+	}
+}
+
+func (m *model) installPgBouncerCmd() tea.Cmd {
+	return func() tea.Msg {
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModePgBouncerOnly}
+		if err := winservice.InstallService(cfg); err != nil {
+			return serviceActionCompletedMsg{success: false, err: err}
+		}
+		return serviceActionCompletedMsg{success: true, message: "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445 dan PgBouncer listen di 127.0.0.1:5444. Service EasyRatholeClient tidak di-install ulang."}
 	}
 }
 
@@ -172,7 +183,7 @@ func (m *model) uninstallServiceCmd() tea.Cmd {
 		if err := winservice.UninstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Service IP Public dan PgBouncer berhasil di-uninstall, GUI shortcut desktop sudah dibersihkan."}
+		return serviceActionCompletedMsg{success: true, message: "Service IP Public dan PgBouncer berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444, dan GUI shortcut desktop sudah dibersihkan."}
 	}
 }
 
@@ -241,24 +252,28 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case stateMainMenu:
 		if keyString(msg) == "1" {
-			m.selectedOption = optionInstallService
+			m.selectedOption = optionInstallIPPublic
 			return m, nil
 		}
 		if keyString(msg) == "2" {
-			m.selectedOption = optionUninstallService
+			m.selectedOption = optionInstallPgBouncer
 			return m, nil
 		}
 		if keyString(msg) == "3" {
-			m.selectedOption = optionLockDB
+			m.selectedOption = optionUninstallService
 			return m, nil
 		}
 		if keyString(msg) == "4" {
+			m.selectedOption = optionLockDB
+			return m, nil
+		}
+		if keyString(msg) == "5" {
 			m.selectedOption = optionUnlockDB
 			return m, nil
 		}
 
 		if msg.Type == tea.KeyUp {
-			if m.selectedOption > optionInstallService {
+			if m.selectedOption > optionInstallIPPublic {
 				m.selectedOption--
 			}
 			return m, nil
@@ -282,11 +297,14 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if msg.Type == tea.KeyEnter {
 			m.currentState = stateProgress
 			switch m.pendingOption {
-			case optionInstallService:
-				m.progressMessage = "Menginstall service IP Public (prepare bundle -> install PgBouncer -> health check -> install EasyRatholeClient)..."
+			case optionInstallIPPublic:
+				m.progressMessage = "Menginstall service IP Public (prepare bundle -> sinkronisasi client.toml DB 127.0.0.1:5444 -> install EasyRatholeClient)..."
 				return m, m.installServiceCmd()
+			case optionInstallPgBouncer:
+				m.progressMessage = "Menginstall PgBouncer (migrasi PostgreSQL ke 5445 -> PgBouncer listen 5444 -> health check)..."
+				return m, m.installPgBouncerCmd()
 			case optionUninstallService:
-				m.progressMessage = "Menguninstall service IP Public..."
+				m.progressMessage = "Menguninstall service IP Public dan membersihkan PgBouncer..."
 				return m, m.uninstallServiceCmd()
 			case optionLockDB:
 				m.progressMessage = "Menjalankan lock pembuatan database..."
@@ -456,7 +474,7 @@ func main() {
 		pathInput:       tui.NewTextInput("Masukkan path PostgreSQL...", 50),
 		pathStatus:      "Mencari PostgreSQL...",
 		pathError:       false,
-		selectedOption:  optionInstallService,
+		selectedOption:  optionInstallIPPublic,
 		quitting:        false,
 		progressMessage: "Memproses...",
 	}

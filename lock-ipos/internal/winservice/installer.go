@@ -11,10 +11,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/lock-ipos/lock-ipos/internal/db"
+	"github.com/lock-ipos/lock-ipos/internal/pgadmin"
 )
 
 const (
@@ -32,8 +34,11 @@ const (
 	launcherFileName    = "launch-gui-admin.ps1"
 	shortcutFileName    = "ipos5-rathole.lnk"
 	pgBouncerHost       = "127.0.0.1"
-	pgBouncerPort       = 6432
-	postgresBackend     = "127.0.0.1:5444"
+	pgBouncerPort       = 5444
+	postgresLegacyPort  = 5444
+	postgresBackendPort = 5445
+	postgresBackend     = "127.0.0.1:5445"
+	dbClientForwardAddr = "127.0.0.1:5444"
 	pgBouncerStartWait  = 45 * time.Second
 	serviceStartWait    = 30 * time.Second
 	servicePollInterval = 1 * time.Second
@@ -41,12 +46,21 @@ const (
 )
 
 var scStatePattern = regexp.MustCompile(`STATE\s*:\s*\d+\s+([A-Z_]+)`)
+var clientDBAddrPattern = regexp.MustCompile(`127\.0\.0\.1:(6432|5444|5445)`)
+
+type InstallMode string
+
+const (
+	InstallModeIPPublicOnly  InstallMode = "ip_public_only"
+	InstallModePgBouncerOnly InstallMode = "pgbouncer_only"
+)
 
 // Config controls service install/uninstall behavior.
 type Config struct {
 	ServiceName string
 	BundleDir   string
 	PGBinPath   string
+	InstallMode InstallMode
 }
 
 // BundlePaths contains required sidecar files.
@@ -87,11 +101,18 @@ func (c Config) normalized() Config {
 	if strings.TrimSpace(out.BundleDir) == "" {
 		out.BundleDir = "."
 	}
+	if strings.TrimSpace(string(out.InstallMode)) == "" {
+		out.InstallMode = InstallModeIPPublicOnly
+	}
 	return out
 }
 
 // ResolveBundlePaths validates required sidecar files in bundle directory.
 func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
+	return resolveBundlePaths(bundleDir, true)
+}
+
+func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, error) {
 	cleanDir := strings.TrimSpace(bundleDir)
 	if cleanDir == "" {
 		return BundlePaths{}, errors.New("bundle dir tidak boleh kosong")
@@ -124,20 +145,22 @@ func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
 	if !fileExists(guiPath) {
 		missing = append(missing, guiBinaryName)
 	}
-	if !fileExists(pgBouncerPath) {
-		missing = append(missing, pgBouncerBinary)
-	}
-	if !fileExists(pgBouncerLibEventPath) {
-		missing = append(missing, pgBouncerLibEvent)
-	}
-	if !fileExists(pgBouncerLibSSLPath) {
-		missing = append(missing, pgBouncerLibSSL)
-	}
-	if !fileExists(pgBouncerLibCryptoPath) {
-		missing = append(missing, pgBouncerLibCrypto)
-	}
-	if !fileExists(pgBouncerLibWinPthPath) {
-		missing = append(missing, pgBouncerLibWinPth)
+	if requirePgBouncer {
+		if !fileExists(pgBouncerPath) {
+			missing = append(missing, pgBouncerBinary)
+		}
+		if !fileExists(pgBouncerLibEventPath) {
+			missing = append(missing, pgBouncerLibEvent)
+		}
+		if !fileExists(pgBouncerLibSSLPath) {
+			missing = append(missing, pgBouncerLibSSL)
+		}
+		if !fileExists(pgBouncerLibCryptoPath) {
+			missing = append(missing, pgBouncerLibCrypto)
+		}
+		if !fileExists(pgBouncerLibWinPthPath) {
+			missing = append(missing, pgBouncerLibWinPth)
+		}
 	}
 
 	rathole := ""
@@ -218,12 +241,9 @@ func InstallService(cfg Config) error {
 		return errors.New("install service membutuhkan hak Administrator")
 	}
 
-	paths, err := ResolveBundlePaths(cfg.BundleDir)
+	requirePgBouncerAssets := cfg.InstallMode == InstallModePgBouncerOnly
+	paths, err := resolveBundlePaths(cfg.BundleDir, requirePgBouncerAssets)
 	if err != nil {
-		return err
-	}
-
-	if err := removeExistingService(cfg.ServiceName); err != nil {
 		return err
 	}
 
@@ -236,12 +256,34 @@ func InstallService(cfg Config) error {
 		return fmt.Errorf("gagal membuat folder log: %w", err)
 	}
 
-	if err := installOrUpdatePgBouncer(cfg, paths, logRoot); err != nil {
+	if err := ensureDBForwardAddress(paths.ClientTomlPath); err != nil {
 		return err
 	}
-	pgBouncerStderrLog := filepath.Join(logRoot, pgBouncerService+".stderr.log")
-	if err := waitPgBouncerHealthy(cfg.PGBinPath, pgBouncerHealthWait); err != nil {
-		return fmt.Errorf("health check PgBouncer gagal: %w (cek log: %s)", err, pgBouncerStderrLog)
+
+	switch cfg.InstallMode {
+	case InstallModePgBouncerOnly:
+		if err := migratePostgresPort(cfg.PGBinPath); err != nil {
+			return err
+		}
+		if err := installOrUpdatePgBouncer(cfg, paths, logRoot); err != nil {
+			return err
+		}
+		pgBouncerStderrLog := filepath.Join(logRoot, pgBouncerService+".stderr.log")
+		if err := waitPgBouncerHealthy(cfg.PGBinPath, pgBouncerHealthWait); err != nil {
+			return fmt.Errorf("health check PgBouncer gagal: %w (cek log: %s)", err, pgBouncerStderrLog)
+		}
+		return nil
+	default:
+		if err := migrateLegacyPgBouncerIfPresent(cfg, logRoot); err != nil {
+			return err
+		}
+		return installOrUpdateTunnelService(cfg, paths, logRoot)
+	}
+}
+
+func installOrUpdateTunnelService(cfg Config, paths BundlePaths, logRoot string) error {
+	if err := removeExistingService(cfg.ServiceName); err != nil {
+		return err
 	}
 
 	for _, args := range BuildInstallCommands(cfg, paths, logRoot) {
@@ -262,6 +304,28 @@ func InstallService(cfg Config) error {
 	}
 
 	return nil
+}
+
+func migrateLegacyPgBouncerIfPresent(cfg Config, logRoot string) error {
+	exists, err := serviceExists(pgBouncerService)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+
+	paths, err := resolveBundlePaths(cfg.BundleDir, true)
+	if err != nil {
+		return nil
+	}
+	if err := migratePostgresPort(cfg.PGBinPath); err != nil {
+		return err
+	}
+	if err := installOrUpdatePgBouncer(cfg, paths, logRoot); err != nil {
+		return err
+	}
+	return waitPgBouncerHealthy(cfg.PGBinPath, pgBouncerHealthWait)
 }
 
 // UninstallService stops and deletes Windows service.
@@ -297,6 +361,9 @@ func UninstallService(cfg Config) error {
 		}
 	}
 	if err := uninstallPgBouncer(); err != nil {
+		return err
+	}
+	if err := rollbackPostgresPort(cfg.PGBinPath); err != nil {
 		return err
 	}
 	_ = cleanupPgBouncerArtifacts(cfg.BundleDir)
@@ -418,10 +485,15 @@ func detectPostgresDatabaseEntries(pgBinPath string) ([]pgBouncerDatabaseEntry, 
 		return nil, fmt.Errorf("psql.exe tidak ditemukan di %s", pgBinPath)
 	}
 
+	postgresPort, err := detectReachablePostgresPort(pgBinPath)
+	if err != nil {
+		return nil, err
+	}
+
 	cmd := exec.Command(
 		psqlPath,
 		"-h", db.Host,
-		"-p", db.Port,
+		"-p", strconv.Itoa(postgresPort),
 		"-U", db.User,
 		"-d", db.Database,
 		"-At",
@@ -534,13 +606,13 @@ func buildPgBouncerIni(entries []pgBouncerDatabaseEntry) string {
 	entries = normalizePgBouncerDatabaseEntries(entries)
 	lines := []string{"[databases]"}
 	for _, entry := range entries {
-		lines = append(lines, fmt.Sprintf("%s = host=%s port=5444 dbname=%s", entry.Name, pgBouncerHost, entry.BackendDBName))
+		lines = append(lines, fmt.Sprintf("%s = host=%s port=%d dbname=%s", entry.Name, pgBouncerHost, postgresBackendPort, entry.BackendDBName))
 	}
 	lines = append(lines,
 		"",
 		"[pgbouncer]",
 		"listen_addr = 127.0.0.1",
-		"listen_port = 6432",
+		fmt.Sprintf("listen_port = %d", pgBouncerPort),
 		"auth_type = md5",
 		"auth_file = userlist.txt",
 		"pool_mode = transaction",
@@ -605,6 +677,115 @@ func cleanupPgBouncerArtifacts(bundleDir string) error {
 		}
 	}
 	return firstErr
+}
+
+func ensureDBForwardAddress(clientTomlPath string) error {
+	raw, err := os.ReadFile(clientTomlPath)
+	if err != nil {
+		return fmt.Errorf("gagal membaca client.toml: %w", err)
+	}
+	content := string(raw)
+	rewritten := clientDBAddrPattern.ReplaceAllString(content, dbClientForwardAddr)
+	if rewritten == content {
+		return nil
+	}
+	if err := os.WriteFile(clientTomlPath, []byte(rewritten), 0o644); err != nil {
+		return fmt.Errorf("gagal sinkronisasi local_addr DB pada client.toml: %w", err)
+	}
+	return nil
+}
+
+func migratePostgresPort(pgBinPath string) error {
+	if err := changePostgresPortIfNeeded(pgBinPath, postgresBackendPort); err != nil {
+		return fmt.Errorf("gagal ubah port PostgreSQL ke %d: %w", postgresBackendPort, err)
+	}
+	return nil
+}
+
+func rollbackPostgresPort(pgBinPath string) error {
+	if err := changePostgresPortIfNeeded(pgBinPath, postgresLegacyPort); err != nil {
+		return fmt.Errorf("gagal rollback port PostgreSQL ke %d: %w", postgresLegacyPort, err)
+	}
+	return nil
+}
+
+func changePostgresPortIfNeeded(pgBinPath string, targetPort int) error {
+	return changePostgresPortIfNeededWithHooks(
+		pgBinPath,
+		targetPort,
+		detectReachablePostgresPort,
+		runPostgresCommand,
+		func() error { return pgadmin.RestartPostgreSQLService(pgadmin.PostgreSQLServiceName) },
+		ensureTCPReachable,
+	)
+}
+
+func changePostgresPortIfNeededWithHooks(
+	pgBinPath string,
+	targetPort int,
+	detectFn func(string) (int, error),
+	runFn func(string, int, string, string) error,
+	restartFn func() error,
+	reachableFn func(string, time.Duration) error,
+) error {
+	if strings.TrimSpace(pgBinPath) == "" {
+		return errors.New("pg bin path kosong, tidak bisa ubah port PostgreSQL")
+	}
+
+	activePort, err := detectFn(pgBinPath)
+	if err != nil {
+		return err
+	}
+	if activePort == targetPort {
+		return nil
+	}
+	if activePort != postgresLegacyPort && activePort != postgresBackendPort {
+		return fmt.Errorf("port PostgreSQL aktif tidak dikenali untuk perubahan port: %d", activePort)
+	}
+
+	if err := runFn(pgBinPath, activePort, "postgres", fmt.Sprintf("ALTER SYSTEM SET port = %d;", targetPort)); err != nil {
+		return err
+	}
+	if err := restartFn(); err != nil {
+		return fmt.Errorf("gagal restart service PostgreSQL setelah ubah port: %w", err)
+	}
+	verifyAddr := fmt.Sprintf("%s:%d", pgBouncerHost, targetPort)
+	if err := reachableFn(verifyAddr, 5*time.Second); err != nil {
+		return fmt.Errorf("PostgreSQL belum reachable di %s setelah ubah port: %w", verifyAddr, err)
+	}
+	return nil
+}
+
+func detectReachablePostgresPort(pgBinPath string) (int, error) {
+	ports := []int{postgresBackendPort, postgresLegacyPort}
+	for _, p := range ports {
+		if err := runPostgresCommand(pgBinPath, p, "postgres", "SELECT 1;"); err == nil {
+			return p, nil
+		}
+	}
+	return 0, fmt.Errorf("gagal deteksi port PostgreSQL aktif (dicoba: %d, %d)", postgresBackendPort, postgresLegacyPort)
+}
+
+func runPostgresCommand(pgBinPath string, port int, databaseName, sql string) error {
+	psqlPath := filepath.Join(pgBinPath, "psql.exe")
+	if !fileExists(psqlPath) {
+		return fmt.Errorf("psql.exe tidak ditemukan di %s", pgBinPath)
+	}
+	cmd := exec.Command(
+		psqlPath,
+		"-h", db.Host,
+		"-p", strconv.Itoa(port),
+		"-U", db.User,
+		"-d", databaseName,
+		"-c", sql,
+		"-t",
+	)
+	cmd.Env = append(os.Environ(), "PGPASSWORD="+db.Password)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("psql command gagal: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 // IsRunningAsAdministrator checks if process has local admin privileges.

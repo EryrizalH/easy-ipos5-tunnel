@@ -6,7 +6,7 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
 
 - Install server `rathole` + systemd service (`rathole`)
 - Port forward TCP server (VPS): **5444**, **5480**, **5485**
-- Mapping database default: **VPS 5444 -> Client 127.0.0.1:6432 (PGbouncer) -> PostgreSQL 127.0.0.1:5444**
+- Mapping database default: **VPS 5444 -> Client 127.0.0.1:5444 (PGbouncer) -> PostgreSQL 127.0.0.1:5445**
 - Control port rathole dipilih otomatis (random, port kosong)
 - Dashboard FastAPI (HTTP + Basic Auth) untuk:
   - melihat status service dan status port forward
@@ -110,7 +110,7 @@ Setelah install selesai, installer menampilkan:
 ## 2) Lokasi file penting
 
 - State file: `/opt/easy-rathole/state/install-state.json`
-  - kunci penting baru: `service_ports` (contoh item DB: `remote_bind_port=5444`, `client_local_port=6432`)
+  - kunci penting baru: `service_ports` (contoh item DB: `remote_bind_port=5444`, `client_local_port=5444`)
 - Config rathole server: `/etc/easy-rathole/server.toml`
 - Credential dashboard: `/opt/easy-rathole/state/dashboard-credentials.txt`
 - DB dashboard (sqlite): `/opt/easy-rathole/state/easy-rathole.db`
@@ -130,7 +130,7 @@ Fitur utama:
    - `rathole`
    - `easy-rathole-dashboard`
    - status port remote bind tunnel (default 5444/5480/5485)
-   - performa PostgreSQL client via tunnel `127.0.0.1:5444` (backend default PGbouncer `127.0.0.1:6432`):
+  - performa PostgreSQL client via tunnel `127.0.0.1:5444` (backend default PGbouncer `127.0.0.1:5445`):
      - `connect_ms`, `query_ms`, `tx_ms`
      - active/waiting connections
      - cache hit ratio

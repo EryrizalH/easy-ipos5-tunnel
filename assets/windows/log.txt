@@ -1,0 +1,8 @@
+[2026-04-09 18:30:18] [INFO] === Application Started ===
+[2026-04-09 18:30:18] [INFO] Executable: D:\Koding\easy-Rathole\assets\windows\setup.exe
+[2026-04-09 18:30:18] [INFO] Log file: D:\Koding\easy-Rathole\assets\windows\log.txt
+[2026-04-09 18:30:18] [INFO] Searching for PostgreSQL binary in default paths...
+[2026-04-09 18:30:18] [INFO] PostgreSQL binary found at: C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\bin
+[2026-04-09 18:30:18] [INFO] Checking current PostgreSQL permissions...
+[2026-04-09 18:30:23] [INFO] Current permission: CAN CREATE DATABASE (CREATEDB)
+[2026-04-09 18:30:34] [INFO] === Application Closed ===

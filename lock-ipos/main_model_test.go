@@ -12,12 +12,12 @@ func TestMainMenu_SelectAndConfirmOption4(t *testing.T) {
 	m := &model{
 		currentState:   stateMainMenu,
 		styles:         tui.DefaultStyles(),
-		selectedOption: optionInstallService,
+		selectedOption: optionInstallIPPublic,
 	}
 
-	_, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'4'}})
+	_, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'5'}})
 	if m.selectedOption != optionUnlockDB {
-		t.Fatalf("expected selectedOption=4, got %d", m.selectedOption)
+		t.Fatalf("expected selectedOption=5, got %d", m.selectedOption)
 	}
 
 	_, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyEnter})
@@ -25,7 +25,7 @@ func TestMainMenu_SelectAndConfirmOption4(t *testing.T) {
 		t.Fatalf("expected stateConfirm, got %v", m.currentState)
 	}
 	if m.pendingOption != optionUnlockDB {
-		t.Fatalf("expected pendingOption=4, got %d", m.pendingOption)
+		t.Fatalf("expected pendingOption=5, got %d", m.pendingOption)
 	}
 }
 
@@ -50,11 +50,11 @@ func TestMainMenu_ArrowNavigationLimits(t *testing.T) {
 	m := &model{
 		currentState:   stateMainMenu,
 		styles:         tui.DefaultStyles(),
-		selectedOption: optionInstallService,
+		selectedOption: optionInstallIPPublic,
 	}
 
 	_, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyUp})
-	if m.selectedOption != optionInstallService {
+	if m.selectedOption != optionInstallIPPublic {
 		t.Fatalf("expected stay at first option, got %d", m.selectedOption)
 	}
 

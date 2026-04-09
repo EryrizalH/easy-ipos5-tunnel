@@ -10,7 +10,7 @@ class TunnelPortsTest(unittest.TestCase):
         rows = normalize_service_ports(None)
         by_name = {row["name"]: row for row in rows}
         self.assertEqual(by_name["db"]["remote_bind_port"], 5444)
-        self.assertEqual(by_name["db"]["client_local_port"], 6432)
+        self.assertEqual(by_name["db"]["client_local_port"], 5444)
 
     def test_normalize_keeps_custom_extra_service(self) -> None:
         rows = normalize_service_ports(
