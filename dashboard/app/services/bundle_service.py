@@ -95,7 +95,8 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     pgbouncer_libevent = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBEVENT_NAME}"
     pgbouncer_libssl = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBSSL_NAME}"
     pgbouncer_libcrypto = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBCRYPTO_NAME}"
-    pgbouncer_libwinpth = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBWINPTH_NAME}"    pgbouncer_libwinpth = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBWINPTH_NAME}"    pgbouncer_ini_tpl = resources_dir() / "assets/windows/pgbouncer.ini.tpl"
+    pgbouncer_libwinpth = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBWINPTH_NAME}"
+    pgbouncer_ini_tpl = resources_dir() / "assets/windows/pgbouncer.ini.tpl"
     pgbouncer_userlist_sample = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_USERLIST_NAME}"
     require_file(windows_bin, WINDOWS_BINARY_NAME)
     require_file(windows_gui_bin, WINDOWS_GUI_BINARY_NAME)
@@ -122,7 +123,8 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         shutil.copy2(pgbouncer_libevent, temp_dir / WINDOWS_PGBOUNCER_LIBEVENT_NAME)
         shutil.copy2(pgbouncer_libssl, temp_dir / WINDOWS_PGBOUNCER_LIBSSL_NAME)
         shutil.copy2(pgbouncer_libcrypto, temp_dir / WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
+        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
+        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
         shutil.copy2(pgbouncer_userlist_sample, temp_dir / WINDOWS_PGBOUNCER_USERLIST_NAME)
 
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
