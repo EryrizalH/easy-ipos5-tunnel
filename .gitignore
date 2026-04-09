@@ -7,3 +7,4 @@ venv/
 state/
 bundles/
 cache/
+tmp/
