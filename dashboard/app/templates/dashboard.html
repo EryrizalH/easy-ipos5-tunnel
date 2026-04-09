@@ -134,6 +134,7 @@
 
     .status-active { color: var(--success); font-weight: 700; }
     .status-inactive { color: var(--error); font-weight: 700; }
+    .status-warning { color: var(--warning); font-weight: 700; }
 
     .flash {
       border-left: 5px solid;
@@ -308,6 +309,16 @@
         <p class="metric-value"><span class="mono">{{ forward_active_count }}</span> / <span class="mono">{{ forward_port_status|length }}</span></p>
         <p class="small muted">Ringkasan status port forward TCP.</p>
       </div>
+
+      <div class="card">
+        <div class="metric-label">PostgreSQL Client (via 5444)</div>
+        <p class="metric-value mono {% if postgres_monitor.status == 'Healthy' %}status-active{% elif postgres_monitor.status == 'Warning' %}status-warning{% else %}status-inactive{% endif %}">
+          {{ postgres_monitor.status }}
+        </p>
+        <p class="small muted">connect: <span class="mono">{{ postgres_monitor.connect_ms if postgres_monitor.connect_ms is not none else '-' }} ms</span></p>
+        <p class="small muted">query: <span class="mono">{{ postgres_monitor.query_ms if postgres_monitor.query_ms is not none else '-' }} ms</span></p>
+        <p class="small muted">tx: <span class="mono">{{ postgres_monitor.tx_ms if postgres_monitor.tx_ms is not none else '-' }} ms</span></p>
+      </div>
     </div>
 
     <div class="layout-grid">
@@ -349,6 +360,43 @@
     </div>
 
     <div class="details-grid">
+      <details>
+        <summary>Detail Lanjutan: PostgreSQL Client (via Tunnel 5444)</summary>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Connect (ms)</th>
+                <th>Query (ms)</th>
+                <th>Tx (ms)</th>
+                <th>Active Conn</th>
+                <th>Waiting Conn</th>
+                <th>Cache Hit (%)</th>
+                <th>Last Checked</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">{{ postgres_monitor.status }}</td>
+                <td class="mono">{{ postgres_monitor.connect_ms if postgres_monitor.connect_ms is not none else '-' }}</td>
+                <td class="mono">{{ postgres_monitor.query_ms if postgres_monitor.query_ms is not none else '-' }}</td>
+                <td class="mono">{{ postgres_monitor.tx_ms if postgres_monitor.tx_ms is not none else '-' }}</td>
+                <td class="mono">{{ postgres_monitor.active_connections if postgres_monitor.active_connections is not none else '-' }}</td>
+                <td class="mono">{{ postgres_monitor.waiting_connections if postgres_monitor.waiting_connections is not none else '-' }}</td>
+                <td class="mono">{{ postgres_monitor.cache_hit_ratio if postgres_monitor.cache_hit_ratio is not none else '-' }}</td>
+                <td class="mono">{{ postgres_monitor.checked_at }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {% if postgres_monitor.last_error %}
+          <div class="notice">
+            Last error: <span class="mono break">{{ postgres_monitor.last_error }}</span>
+          </div>
+        {% endif %}
+      </details>
+
       <details>
         <summary>Detail Lanjutan: Status Port Forward</summary>
         <p class="muted small">Ringkasan: <strong>{{ forward_active_count }}</strong> dari <strong>{{ forward_port_status|length }}</strong> port dalam kondisi aktif.</p>

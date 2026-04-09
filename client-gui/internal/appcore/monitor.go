@@ -1,12 +1,15 @@
 package appcore
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,6 +20,15 @@ var lookupIP = net.LookupIP
 
 type Monitor struct {
 	serviceName string
+}
+
+type postgresSnapshot struct {
+	Status    string  `json:"status"`
+	ConnectMs float64 `json:"connect_ms"`
+	QueryMs   float64 `json:"query_ms"`
+	TxMs      float64 `json:"tx_ms"`
+	CheckedAt string  `json:"checked_at"`
+	LastError string  `json:"last_error"`
 }
 
 func NewMonitor(serviceName string) *Monitor {
@@ -66,6 +78,20 @@ func (m *Monitor) Snapshot(configPath string) StatusSnapshot {
 
 	result.DashboardReachable = checkDashboardHealth(host, 8088)
 	result.ControlPortReachable = checkTCPReachability(host, port)
+	pgSnap, pgErr := fetchPostgresSnapshot(host, 8088)
+	if pgErr != nil {
+		appendErr(&result.LastError, pgErr)
+	} else {
+		result.PostgresStatus = pgSnap.Status
+		result.PostgresConnectMs = formatMs(pgSnap.ConnectMs)
+		result.PostgresQueryMs = formatMs(pgSnap.QueryMs)
+		result.PostgresTxMs = formatMs(pgSnap.TxMs)
+		result.PostgresLastChecked = pgSnap.CheckedAt
+		result.PostgresLastError = strings.TrimSpace(pgSnap.LastError)
+		if result.PostgresLastError != "" {
+			appendErr(&result.LastError, errors.New("postgres monitor: "+result.PostgresLastError))
+		}
+	}
 	authFailed, authErr := detectRecentAuthFailure(m.serviceName)
 	if authErr != nil {
 		appendErr(&result.LastError, authErr)
@@ -76,6 +102,13 @@ func (m *Monitor) Snapshot(configPath string) StatusSnapshot {
 	result.ConnectionState = evaluateConnection(serviceState, result.DashboardReachable, result.ControlPortReachable, authFailed)
 
 	return result
+}
+
+func formatMs(v float64) string {
+	if v <= 0 {
+		return "-"
+	}
+	return strconv.FormatFloat(v, 'f', 2, 64)
 }
 
 func parseRemoteAddr(configPath string) (string, error) {
@@ -135,6 +168,30 @@ func checkDashboardHealth(host string, port int) bool {
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode >= 200 && resp.StatusCode < 300
+}
+
+func fetchPostgresSnapshot(host string, port int) (postgresSnapshot, error) {
+	client := http.Client{
+		Timeout: 2 * time.Second,
+	}
+	url := fmt.Sprintf("http://%s:%d/api/monitor/postgres/latest", host, port)
+	resp, err := client.Get(url)
+	if err != nil {
+		return postgresSnapshot{}, fmt.Errorf("gagal mengambil monitor postgres: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return postgresSnapshot{}, fmt.Errorf("monitor postgres HTTP status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return postgresSnapshot{}, fmt.Errorf("gagal membaca respons monitor postgres: %w", err)
+	}
+	var payload postgresSnapshot
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return postgresSnapshot{}, fmt.Errorf("gagal parse respons monitor postgres: %w", err)
+	}
+	return payload, nil
 }
 
 func checkTCPReachability(host, port string) bool {

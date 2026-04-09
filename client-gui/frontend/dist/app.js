@@ -7,6 +7,9 @@ const stateEls = {
   serverHost: document.getElementById("serverHost"),
   dashboardStatus: document.getElementById("dashboardStatus"),
   controlStatus: document.getElementById("controlStatus"),
+  postgresStatus: document.getElementById("postgresStatus"),
+  postgresLatency: document.getElementById("postgresLatency"),
+  postgresChecked: document.getElementById("postgresChecked"),
   message: document.getElementById("message"),
   configPath: document.getElementById("configPath"),
 };
@@ -42,8 +45,13 @@ function renderStatus(snapshot) {
   stateEls.serverHost.textContent = `Host: ${snapshot.serverHost || "-"}`;
   stateEls.dashboardStatus.textContent = `Dashboard: ${snapshot.dashboardReachable ? "Up" : "Down"}`;
   stateEls.controlStatus.textContent = `Control Port: ${snapshot.controlPortReachable ? "Up" : "Down"} (${snapshot.serverControlPort || "-"})`;
+  stateEls.postgresStatus.textContent = `Status: ${snapshot.postgresStatus || "-"}`;
+  stateEls.postgresLatency.textContent = `Connect: ${snapshot.postgresConnectMs || "-"} ms | Query: ${snapshot.postgresQueryMs || "-"} ms | Tx: ${snapshot.postgresTxMs || "-"} ms`;
+  stateEls.postgresChecked.textContent = `Checked: ${snapshot.postgresLastChecked || "-"}`;
 
-  if (snapshot.lastError) {
+  if (snapshot.postgresLastError) {
+    setMessage(snapshot.postgresLastError, "warn");
+  } else if (snapshot.lastError) {
     setMessage(snapshot.lastError, "warn");
   }
 }
@@ -111,4 +119,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-

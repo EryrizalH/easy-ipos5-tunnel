@@ -1,7 +1,10 @@
 package appcore
 
 import (
+	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,4 +80,47 @@ func TestEvaluateConnection(t *testing.T) {
 	if got := evaluateConnection("running", true, true, true); got != "Auth Failed" {
 		t.Fatalf("expected Auth Failed, got %s", got)
 	}
+}
+
+func TestFormatMs(t *testing.T) {
+	if got := formatMs(12.3456); got != "12.35" {
+		t.Fatalf("unexpected formatted ms: %s", got)
+	}
+	if got := formatMs(-1); got != "-" {
+		t.Fatalf("expected dash for invalid ms, got %s", got)
+	}
+}
+
+func TestFetchPostgresSnapshot(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"status":"Healthy","connect_ms":1.2,"query_ms":3.4,"tx_ms":4.5,"checked_at":"2026-04-09T00:00:00Z","last_error":""}`)
+	}))
+	t.Cleanup(ts.Close)
+
+	host, port, err := net.SplitHostPort(ts.Listener.Addr().String())
+	if err != nil {
+		t.Fatalf("split host/port: %v", err)
+	}
+
+	snap, err := fetchPostgresSnapshot(host, mustAtoi(t, port))
+	if err != nil {
+		t.Fatalf("fetchPostgresSnapshot error: %v", err)
+	}
+	if snap.Status != "Healthy" {
+		t.Fatalf("unexpected status: %s", snap.Status)
+	}
+	if snap.QueryMs != 3.4 {
+		t.Fatalf("unexpected query ms: %v", snap.QueryMs)
+	}
+}
+
+func mustAtoi(t *testing.T, value string) int {
+	t.Helper()
+	var out int
+	_, err := fmt.Sscanf(value, "%d", &out)
+	if err != nil {
+		t.Fatalf("atoi: %v", err)
+	}
+	return out
 }

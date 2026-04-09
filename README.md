@@ -128,6 +128,10 @@ Fitur utama:
    - `rathole`
    - `easy-rathole-dashboard`
    - status port 5444/5480/5485
+   - performa PostgreSQL client via tunnel `127.0.0.1:5444`:
+     - `connect_ms`, `query_ms`, `tx_ms`
+     - active/waiting connections
+     - cache hit ratio
 4. Download bundle client:
    - `GET /download/windows`
    - `GET /download/linux`
@@ -135,6 +139,23 @@ Fitur utama:
 Health check endpoint:
 
 - `GET /health` → `{"status":"ok"}`
+
+Endpoint monitor PostgreSQL untuk GUI:
+
+- `GET /api/monitor/postgres/latest`
+
+Environment variable monitor PostgreSQL (opsional):
+
+- `EASY_RATHOLE_PG_MONITOR_ENABLED` (default `1`)
+- `EASY_RATHOLE_PG_MONITOR_INTERVAL_SEC` (default `5`)
+- `EASY_RATHOLE_PG_MONITOR_DSN` (disarankan, contoh: `host=127.0.0.1 port=5444 dbname=postgres user=monitor password=*** connect_timeout=3`)
+- Jika `DSN` tidak diisi, fallback:
+  - `EASY_RATHOLE_PG_MONITOR_HOST` (default `127.0.0.1`)
+  - `EASY_RATHOLE_PG_MONITOR_PORT` (default `5444`)
+  - `EASY_RATHOLE_PG_MONITOR_USER` (default `sysi5adm`)
+  - `EASY_RATHOLE_PG_MONITOR_PASSWORD` (default `u&aV23cc.o82dtr1x89c`)
+  - `EASY_RATHOLE_PG_MONITOR_DBNAME` (default `postgres`)
+  - `EASY_RATHOLE_PG_MONITOR_TIMEOUT_SEC` (default `3`)
 
 ---
 

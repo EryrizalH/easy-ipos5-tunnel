@@ -13,7 +13,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
 from .auth import verify_password
-from .db import connect, get_setting, get_user
+from .db import connect, ensure_postgres_monitor_table, get_postgres_monitor_latest, get_setting, get_user
 from .services.bundle_service import (
     LINUX_SERVICE_NAME,
     WINDOWS_BINARY_NAME,
@@ -24,12 +24,14 @@ from .services.bundle_service import (
     generate_linux_bundle,
     generate_windows_bundle,
 )
+from .services.postgres_monitor_service import PostgresMonitorWorker
 from .services.token_service import update_global_token
 from .state import load_state
 
 app = FastAPI(title="IPOS5TunnelPublik Dashboard", version="0.2.0")
 security = HTTPBasic()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+postgres_monitor_worker = PostgresMonitorWorker()
 
 
 def classify_flash_message(message: str) -> str:
@@ -208,6 +210,18 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.on_event("startup")
+def startup() -> None:
+    with connect() as conn:
+        ensure_postgres_monitor_table(conn)
+    postgres_monitor_worker.start()
+
+
+@app.on_event("shutdown")
+def shutdown() -> None:
+    postgres_monitor_worker.stop()
+
+
 @app.get("/")
 def dashboard(
     request: Request,
@@ -232,6 +246,7 @@ def dashboard(
     flash_type = classify_flash_message(flash_message)
     token_exists = bool(current_token)
     forward_status = build_forward_port_status(exposed_ports)
+    postgres_monitor = get_postgres_monitor_latest(conn)
 
     context = {
         "request": request,
@@ -249,11 +264,17 @@ def dashboard(
         "exposed_ports": exposed_ports,
         "forward_port_status": forward_status,
         "forward_active_count": sum(1 for row in forward_status if row["status"] == "active"),
+        "postgres_monitor": postgres_monitor,
         "supported_clients": build_supported_clients(public_ip, control_port),
         "client_tunnel_details": build_client_tunnel_details(exposed_ports),
         "updated_at": state.get("updated_at", "-"),
     }
     return templates.TemplateResponse("dashboard.html", context)
+
+
+@app.get("/api/monitor/postgres/latest")
+def monitor_postgres_latest(conn: sqlite3.Connection = Depends(get_db)) -> dict[str, object]:
+    return get_postgres_monitor_latest(conn)
 
 
 def mask_token(token: str) -> str:
