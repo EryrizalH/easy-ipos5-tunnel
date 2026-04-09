@@ -30,8 +30,11 @@ def build_server_config(control_port: int, token: str, service_ports: list[dict[
         if not service_key:
             continue
         protocol = str(row.get("protocol", "tcp")).strip().lower() or "tcp"
+        raw_port = row.get("remote_bind_port")
+        if raw_port is None:
+            continue
         try:
-            remote_port = int(row.get("remote_bind_port"))
+            remote_port = int(raw_port)
         except (TypeError, ValueError):
             continue
 

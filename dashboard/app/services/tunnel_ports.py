@@ -78,9 +78,13 @@ def normalize_service_ports(raw: Any) -> list[dict[str, Any]]:
         service_key = str(row.get("service_key", "")).strip()
         protocol = str(row.get("protocol", "tcp")).strip().lower() or "tcp"
         client_local_addr = str(row.get("client_local_addr", "")).strip()
+        raw_remote = row.get("remote_bind_port")
+        raw_local = row.get("client_local_port")
+        if raw_remote is None or raw_local is None:
+            continue
         try:
-            remote_bind_port = int(row.get("remote_bind_port"))
-            client_local_port = int(row.get("client_local_port"))
+            remote_bind_port = int(raw_remote)
+            client_local_port = int(raw_local)
         except (TypeError, ValueError):
             continue
         if not service_key or not client_local_addr:
@@ -103,8 +107,11 @@ def normalize_service_ports(raw: Any) -> list[dict[str, Any]]:
 def exposed_ports_from_service_ports(service_ports: list[dict[str, Any]]) -> list[int]:
     exposed_ports: list[int] = []
     for row in service_ports:
+        raw_port = row.get("remote_bind_port")
+        if raw_port is None:
+            continue
         try:
-            port = int(row.get("remote_bind_port"))
+            port = int(raw_port)
         except (TypeError, ValueError):
             continue
         if port not in exposed_ports:
