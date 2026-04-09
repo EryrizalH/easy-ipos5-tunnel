@@ -714,7 +714,7 @@ func changePostgresPortIfNeeded(pgBinPath string, targetPort int) error {
 		pgBinPath,
 		targetPort,
 		detectReachablePostgresPort,
-		runPostgresCommand,
+		runPostgresCommandWithFallback,
 		func() error { return pgadmin.RestartPostgreSQLService(pgadmin.PostgreSQLServiceName) },
 		ensureTCPReachable,
 	)
@@ -786,6 +786,33 @@ func runPostgresCommand(pgBinPath string, port int, databaseName, sql string) er
 		return fmt.Errorf("psql command gagal: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
+}
+
+func runPostgresCommandWithFallback(pgBinPath string, port int, databaseName, sql string) error {
+	return runPostgresCommandWithFallbackHooks(pgBinPath, port, databaseName, sql, runPostgresCommand, pgadmin.ExecuteSQLViaWorkaround)
+}
+
+func runPostgresCommandWithFallbackHooks(
+	pgBinPath string,
+	port int,
+	databaseName, sql string,
+	primaryFn func(string, int, string, string) error,
+	fallbackFn func(string, string, string) error,
+) error {
+	err := primaryFn(pgBinPath, port, databaseName, sql)
+	if err == nil {
+		return nil
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	if strings.Contains(errMsg, "must be superuser to execute alter system") {
+		if fallbackErr := fallbackFn(pgBinPath, databaseName, sql); fallbackErr != nil {
+			return fmt.Errorf("gagal jalankan workaround ALTER SYSTEM setelah error superuser: %w", fallbackErr)
+		}
+		return nil
+	}
+
+	return err
 }
 
 // IsRunningAsAdministrator checks if process has local admin privileges.

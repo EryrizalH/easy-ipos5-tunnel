@@ -238,3 +238,59 @@ func TestChangePostgresPortIfNeededWithHooks_RollbackTo5444(t *testing.T) {
 		t.Fatalf("expected verify address 127.0.0.1:5444, got %s", reachableAddr)
 	}
 }
+
+func TestRunPostgresCommandWithFallbackHooks_UsesWorkaroundForAlterSystemSuperuserError(t *testing.T) {
+	primaryCalled := false
+	fallbackCalled := false
+
+	err := runPostgresCommandWithFallbackHooks(
+		`D:\pgbin`,
+		postgresLegacyPort,
+		"postgres",
+		"ALTER SYSTEM SET port = 5445;",
+		func(_ string, _ int, _ string, _ string) error {
+			primaryCalled = true
+			return errors.New("psql command gagal: exit status 1: ERROR: must be superuser to execute ALTER SYSTEM command")
+		},
+		func(_ string, databaseName, sql string) error {
+			fallbackCalled = true
+			if databaseName != "postgres" {
+				t.Fatalf("expected database postgres, got %s", databaseName)
+			}
+			if sql != "ALTER SYSTEM SET port = 5445;" {
+				t.Fatalf("unexpected SQL passed to fallback: %s", sql)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("runPostgresCommandWithFallbackHooks() unexpected error = %v", err)
+	}
+	if !primaryCalled {
+		t.Fatal("expected primary command to be attempted first")
+	}
+	if !fallbackCalled {
+		t.Fatal("expected fallback workaround to be called")
+	}
+}
+
+func TestRunPostgresCommandWithFallbackHooks_ReturnsOriginalErrorWhenNotSuperuserFailure(t *testing.T) {
+	expectedErr := errors.New("psql command gagal: connection refused")
+
+	err := runPostgresCommandWithFallbackHooks(
+		`D:\pgbin`,
+		postgresLegacyPort,
+		"postgres",
+		"SELECT 1;",
+		func(_ string, _ int, _ string, _ string) error {
+			return expectedErr
+		},
+		func(_ string, _ string, _ string) error {
+			t.Fatal("fallback should not be called for non-superuser errors")
+			return nil
+		},
+	)
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("expected original error, got %v", err)
+	}
+}

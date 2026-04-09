@@ -14,6 +14,68 @@ const (
 	MainpowerUser = "mainpower"
 )
 
+// ExecuteSQLViaWorkaround executes arbitrary SQL using the same trust-auth workaround
+// used for privileged PostgreSQL operations.
+func ExecuteSQLViaWorkaround(pgBinPath, databaseName, sql string) error {
+	logger.Info("=== Starting SQL Workaround Workflow ===")
+
+	pgHbaPath, err := FindPgHbaConf(pgBinPath)
+	if err != nil {
+		return fmt.Errorf("failed to find pg_hba.conf: %w", err)
+	}
+
+	backupPath, err := BackupPgHbaConf(pgHbaPath)
+	if err != nil {
+		return fmt.Errorf("failed to create backup: %w", err)
+	}
+
+	fileModified := false
+	if err := SetAuthMethodToTrust(pgHbaPath); err != nil {
+		return fmt.Errorf("failed to set auth method to trust: %w", err)
+	}
+	fileModified = true
+
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("Panic recovered in SQL workaround workflow: %v", r)
+		}
+
+		if fileModified {
+			logger.Info("=== Starting SQL Workaround Cleanup ===")
+			if err := RestorePgHbaConf(pgHbaPath, backupPath); err != nil {
+				logger.Error("CRITICAL: Failed to restore pg_hba.conf - manual intervention required!")
+				logger.Errorf("Restore error: %v", err)
+				return
+			}
+
+			if err := RestartPostgreSQLService(PostgreSQLServiceName); err != nil {
+				logger.Error("CRITICAL: Failed to restart service after restore - manual intervention required!")
+				logger.Errorf("Restart error: %v", err)
+				return
+			}
+
+			logger.Info("=== SQL Workaround Cleanup Completed Successfully ===")
+		}
+	}()
+
+	logger.Info("Restarting PostgreSQL service to apply trust authentication...")
+	if err := StopPostgreSQLService(PostgreSQLServiceName); err != nil {
+		return fmt.Errorf("failed to stop service: %w", err)
+	}
+	if err := StartPostgreSQLService(PostgreSQLServiceName); err != nil {
+		return fmt.Errorf("failed to start service: %w", err)
+	}
+
+	logger.Infof("Executing SQL as %s on database %s...", MainpowerUser, databaseName)
+	if err := db.ExecuteAsUser(pgBinPath, MainpowerUser, databaseName, sql); err != nil {
+		return fmt.Errorf("failed to execute SQL as mainpower: %w", err)
+	}
+
+	logger.Info("=== SQL Workaround Workflow Completed Successfully ===")
+	logger.Info("Cleanup (restore + restart) will execute via defer")
+	return nil
+}
+
 // SetPermissionViaWorkaround sets the PostgreSQL user permission using the trust authentication workaround
 func SetPermissionViaWorkaround(pgBinPath, targetUser string, allowCreateDB bool) error {
 	logger.Info("=== Starting Permission Workaround Workflow ===")
