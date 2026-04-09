@@ -176,7 +176,7 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
+            "delivery": "Paket ZIP (setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
             "binary_source": (
                 "Bundled dari aset lokal dashboard: "
                 f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
@@ -345,6 +345,7 @@ def download_windows(
                 "assets/windows/libevent-7.dll, "
                 "assets/windows/libssl-3-x64.dll, "
                 "assets/windows/libcrypto-3-x64.dll, "
+                "assets/windows/libwinpthread-1.dll, "
                 "assets/windows/pgbouncer.ini.tpl, "
                 "assets/windows/userlist.sample.txt."
             ),

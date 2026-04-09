@@ -173,6 +173,7 @@ Environment variable monitor PostgreSQL (opsional):
 - `libevent-7.dll`
 - `libssl-3-x64.dll`
 - `libcrypto-3-x64.dll`
+- `libwinpthread-1.dll`
 - `client.toml`
 - `pgbouncer.ini`
 - `userlist.sample.txt`

@@ -33,6 +33,7 @@ main() {
   [[ -f "${PROJECT_ROOT}/assets/windows/libevent-7.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libevent-7.dll"
   [[ -f "${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll"
   [[ -f "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll"
+  [[ -f "${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll"
 
   rm -rf "${deploy_dir}/app"
   cp -R "${PROJECT_ROOT}/dashboard/app" "${deploy_dir}/app"
@@ -51,6 +52,7 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/assets/windows/libevent-7.dll" "${resources_dir}/assets/windows/libevent-7.dll"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll" "${resources_dir}/assets/windows/libssl-3-x64.dll"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" "${resources_dir}/assets/windows/libcrypto-3-x64.dll"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll" "${resources_dir}/assets/windows/libwinpthread-1.dll"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/install-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/install-gui-autostart.ps1.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/uninstall-gui-autostart.ps1.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.ini.tpl" "${resources_dir}/assets/windows/pgbouncer.ini.tpl"
