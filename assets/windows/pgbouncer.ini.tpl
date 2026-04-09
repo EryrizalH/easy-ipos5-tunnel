@@ -1,9 +1,11 @@
 ; PGbouncer sample config for IPOS5TunnelPublik (PostgreSQL 9.5 compatible)
 ; Keep PostgreSQL local listener on 127.0.0.1:5444
 ; PGbouncer listens on 127.0.0.1:6432
+; Runtime installer will regenerate this file and can use pgbouncer-databases.json
+; to create explicit mappings for more than one database.
 
 [databases]
-* = host=127.0.0.1 port=5444 dbname=postgres
+postgres = host=127.0.0.1 port=5444 dbname=postgres
 
 [pgbouncer]
 listen_addr = 127.0.0.1

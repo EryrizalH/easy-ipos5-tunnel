@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
@@ -20,6 +21,7 @@ WINDOWS_PGBOUNCER_LIBSSL_NAME = "libssl-3-x64.dll"
 WINDOWS_PGBOUNCER_LIBCRYPTO_NAME = "libcrypto-3-x64.dll"
 WINDOWS_PGBOUNCER_LIBWINPTH_NAME = "libwinpthread-1.dll"
 WINDOWS_PGBOUNCER_INI_NAME = "pgbouncer.ini"
+WINDOWS_PGBOUNCER_DATABASES_NAME = "pgbouncer-databases.json"
 WINDOWS_PGBOUNCER_USERLIST_NAME = "userlist.sample.txt"
 LINUX_SERVICE_NAME = "easy-rathole-client"
 WINDOWS_SERVICE_NAME = "EasyRatholeClient"
@@ -86,6 +88,42 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
     )
 
 
+def normalize_pgbouncer_databases(raw: Any) -> list[dict[str, str]]:
+    default_entry = [{"name": "postgres", "backend_dbname": "postgres"}]
+    if raw is None:
+        return default_entry
+    if not isinstance(raw, list):
+        return default_entry
+
+    normalized: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for item in raw:
+        if isinstance(item, str):
+            name = item.strip()
+            backend_dbname = name
+        elif isinstance(item, dict):
+            name = str(item.get("name", "")).strip()
+            backend_dbname = str(item.get("backend_dbname", "")).strip() or name
+        else:
+            continue
+
+        if not name:
+            continue
+
+        dedupe_key = name.lower()
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        normalized.append({"name": name, "backend_dbname": backend_dbname})
+
+    return normalized or default_entry
+
+
+def render_pgbouncer_databases_json(state: dict[str, Any]) -> str:
+    payload = {"databases": normalize_pgbouncer_databases(state.get("pgbouncer_databases"))}
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+
 def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     windows_bin = resources_dir() / f"assets/windows/{WINDOWS_BINARY_NAME}"
     windows_gui_bin = resources_dir() / f"assets/windows/{WINDOWS_GUI_BINARY_NAME}"
@@ -128,6 +166,9 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         shutil.copy2(pgbouncer_userlist_sample, temp_dir / WINDOWS_PGBOUNCER_USERLIST_NAME)
 
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
+        (temp_dir / WINDOWS_PGBOUNCER_DATABASES_NAME).write_text(
+            render_pgbouncer_databases_json(state), encoding="utf-8"
+        )
 
         (temp_dir / "README.txt").write_text(
             "\n".join(
@@ -152,8 +193,9 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "   Script template lama (setup-client.cmd/install-service.cmd) bukan jalur utama bundle dashboard.",
                     "10) Jika auto-install PgBouncer gagal, install service akan dibatalkan (fail-fast).",
                     "11) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
+                    "    Daftar database PgBouncer dibaca dari pgbouncer-databases.json bila tersedia.",
                     "12) Paket ini wajib utuh:",
-                    "   setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt",
+                    "   setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + pgbouncer-databases.json + userlist.sample.txt",
                 ]
             )
             + "\n",

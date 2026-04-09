@@ -3,6 +3,7 @@ package winservice
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -26,6 +27,7 @@ const (
 	pgBouncerLibCrypto  = "libcrypto-3-x64.dll"
 	pgBouncerLibWinPth  = "libwinpthread-1.dll"
 	pgBouncerIniName    = "pgbouncer.ini"
+	pgBouncerDBsName    = "pgbouncer-databases.json"
 	pgBouncerUserlist   = "userlist.txt"
 	launcherFileName    = "launch-gui-admin.ps1"
 	shortcutFileName    = "ipos5-rathole.lnk"
@@ -55,7 +57,17 @@ type BundlePaths struct {
 	ClientTomlPath    string
 	PgBouncerPath     string
 	PgBouncerIniPath  string
+	PgBouncerDBsPath  string
 	PgBouncerUserPath string
+}
+
+type pgBouncerDatabaseEntry struct {
+	Name          string `json:"name"`
+	BackendDBName string `json:"backend_dbname,omitempty"`
+}
+
+type pgBouncerDatabasesFile struct {
+	Databases []pgBouncerDatabaseEntry `json:"databases"`
 }
 
 // GUIShortcutSpec describes launcher and shortcut artifacts for GUI.
@@ -94,6 +106,7 @@ func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
 	pgBouncerLibCryptoPath := filepath.Join(cleanDir, pgBouncerLibCrypto)
 	pgBouncerLibWinPthPath := filepath.Join(cleanDir, pgBouncerLibWinPth)
 	pgBouncerIniPath := filepath.Join(cleanDir, pgBouncerIniName)
+	pgBouncerDBsPath := filepath.Join(cleanDir, pgBouncerDBsName)
 	pgBouncerUserPath := filepath.Join(cleanDir, pgBouncerUserlist)
 
 	ratholeCandidates := []string{
@@ -149,6 +162,7 @@ func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
 		ClientTomlPath:    clientToml,
 		PgBouncerPath:     pgBouncerPath,
 		PgBouncerIniPath:  pgBouncerIniPath,
+		PgBouncerDBsPath:  pgBouncerDBsPath,
 		PgBouncerUserPath: pgBouncerUserPath,
 	}, nil
 }
@@ -298,7 +312,7 @@ func installOrUpdatePgBouncer(cfg Config, paths BundlePaths, logRoot string) err
 		return err
 	}
 
-	if err := writePgBouncerRuntimeFiles(paths.PgBouncerIniPath, paths.PgBouncerUserPath); err != nil {
+	if err := writePgBouncerRuntimeFiles(paths.PgBouncerIniPath, paths.PgBouncerDBsPath, paths.PgBouncerUserPath); err != nil {
 		return fmt.Errorf("gagal menyiapkan runtime file PgBouncer: %w", err)
 	}
 	if err := removeExistingService(pgBouncerService); err != nil {
@@ -365,8 +379,12 @@ func runPgBouncerQuery(pgBinPath, query string) error {
 	return nil
 }
 
-func writePgBouncerRuntimeFiles(iniPath, userlistPath string) error {
-	if err := os.WriteFile(iniPath, []byte(buildPgBouncerIni()), 0o644); err != nil {
+func writePgBouncerRuntimeFiles(iniPath, databaseConfigPath, userlistPath string) error {
+	databaseEntries, err := loadPgBouncerDatabaseEntries(databaseConfigPath)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(iniPath, []byte(buildPgBouncerIni(databaseEntries)), 0o644); err != nil {
 		return err
 	}
 	if err := os.WriteFile(userlistPath, []byte(buildPgBouncerUserlist()), 0o644); err != nil {
@@ -375,34 +393,100 @@ func writePgBouncerRuntimeFiles(iniPath, userlistPath string) error {
 	return nil
 }
 
-func buildPgBouncerIni() string {
-	return strings.Join(
-		[]string{
-			"[databases]",
-			"* = host=127.0.0.1 port=5444 dbname=postgres",
-			"",
-			"[pgbouncer]",
-			"listen_addr = 127.0.0.1",
-			"listen_port = 6432",
-			"auth_type = md5",
-			"auth_file = userlist.txt",
-			"pool_mode = transaction",
-			"max_client_conn = 300",
-			"default_pool_size = 30",
-			"reserve_pool_size = 10",
-			"reserve_pool_timeout = 3",
-			"server_reset_query = DISCARD ALL",
-			"server_check_delay = 30",
-			"server_idle_timeout = 600",
-			"ignore_startup_parameters = extra_float_digits",
-			"admin_users = " + db.User,
-			"stats_users = " + db.User,
-			"log_connections = 1",
-			"log_disconnections = 1",
-			"",
-		},
-		"\n",
+func loadPgBouncerDatabaseEntries(configPath string) ([]pgBouncerDatabaseEntry, error) {
+	if strings.TrimSpace(configPath) == "" || !fileExists(configPath) {
+		return defaultPgBouncerDatabaseEntries(), nil
+	}
+
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("gagal membaca konfigurasi database PgBouncer %s: %w", configPath, err)
+	}
+
+	var cfg pgBouncerDatabasesFile
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil, fmt.Errorf("konfigurasi database PgBouncer tidak valid di %s: %w", configPath, err)
+	}
+	if len(cfg.Databases) == 0 {
+		return nil, fmt.Errorf("konfigurasi database PgBouncer kosong di %s", configPath)
+	}
+
+	entries := normalizePgBouncerDatabaseEntries(cfg.Databases)
+	if len(entries) == 0 || (len(entries) == 1 && entries[0].Name == db.Database && entries[0].BackendDBName == db.Database && !containsExplicitDefaultDatabase(cfg.Databases)) {
+		return nil, fmt.Errorf("konfigurasi database PgBouncer tidak memiliki entri yang valid di %s", configPath)
+	}
+	return entries, nil
+}
+
+func defaultPgBouncerDatabaseEntries() []pgBouncerDatabaseEntry {
+	return []pgBouncerDatabaseEntry{{Name: db.Database, BackendDBName: db.Database}}
+}
+
+func normalizePgBouncerDatabaseEntries(entries []pgBouncerDatabaseEntry) []pgBouncerDatabaseEntry {
+	normalized := make([]pgBouncerDatabaseEntry, 0, len(entries))
+	seen := map[string]struct{}{}
+	for _, entry := range entries {
+		name := strings.TrimSpace(entry.Name)
+		if name == "" {
+			continue
+		}
+		backendDBName := strings.TrimSpace(entry.BackendDBName)
+		if backendDBName == "" {
+			backendDBName = name
+		}
+		key := strings.ToLower(name)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, pgBouncerDatabaseEntry{Name: name, BackendDBName: backendDBName})
+	}
+	if len(normalized) == 0 {
+		return defaultPgBouncerDatabaseEntries()
+	}
+	return normalized
+}
+
+func containsExplicitDefaultDatabase(entries []pgBouncerDatabaseEntry) bool {
+	for _, entry := range entries {
+		name := strings.TrimSpace(entry.Name)
+		backendDBName := strings.TrimSpace(entry.BackendDBName)
+		if name == db.Database && (backendDBName == "" || backendDBName == db.Database) {
+			return true
+		}
+	}
+	return false
+}
+
+func buildPgBouncerIni(entries []pgBouncerDatabaseEntry) string {
+	entries = normalizePgBouncerDatabaseEntries(entries)
+	lines := []string{"[databases]"}
+	for _, entry := range entries {
+		lines = append(lines, fmt.Sprintf("%s = host=%s port=5444 dbname=%s", entry.Name, pgBouncerHost, entry.BackendDBName))
+	}
+	lines = append(lines,
+		"",
+		"[pgbouncer]",
+		"listen_addr = 127.0.0.1",
+		"listen_port = 6432",
+		"auth_type = md5",
+		"auth_file = userlist.txt",
+		"pool_mode = transaction",
+		"max_client_conn = 300",
+		"default_pool_size = 30",
+		"reserve_pool_size = 10",
+		"reserve_pool_timeout = 3",
+		"server_reset_query = DISCARD ALL",
+		"server_check_delay = 30",
+		"server_idle_timeout = 600",
+		"ignore_startup_parameters = extra_float_digits",
+		"admin_users = "+db.User,
+		"stats_users = "+db.User,
+		"log_connections = 1",
+		"log_disconnections = 1",
+		"",
 	)
+	return strings.Join(lines, "\n")
 }
 
 func buildPgBouncerUserlist() string {

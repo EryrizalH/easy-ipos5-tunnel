@@ -1,6 +1,7 @@
 package winservice
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,6 +39,9 @@ func TestResolveBundlePaths_Success(t *testing.T) {
 	}
 	if !strings.HasSuffix(strings.ToLower(paths.PgBouncerPath), "pgbouncer.exe") {
 		t.Fatalf("PgBouncerPath unexpected: %s", paths.PgBouncerPath)
+	}
+	if !strings.HasSuffix(strings.ToLower(paths.PgBouncerDBsPath), strings.ToLower(pgBouncerDBsName)) {
+		t.Fatalf("PgBouncerDBsPath unexpected: %s", paths.PgBouncerDBsPath)
 	}
 }
 
@@ -117,6 +121,78 @@ func TestBuildPgBouncerInstallCommands(t *testing.T) {
 	}
 	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install PgBouncer") {
 		t.Fatalf("unexpected first command: %s", got)
+	}
+}
+
+func TestBuildPgBouncerIni_DefaultFallback(t *testing.T) {
+	got := buildPgBouncerIni(nil)
+	if !strings.Contains(got, "postgres = host=127.0.0.1 port=5444 dbname=postgres") {
+		t.Fatalf("expected default postgres mapping, got %s", got)
+	}
+	if strings.Contains(got, "* = host=127.0.0.1") {
+		t.Fatalf("expected explicit database mapping instead of wildcard, got %s", got)
+	}
+}
+
+func TestBuildPgBouncerIni_MultiDatabase(t *testing.T) {
+	got := buildPgBouncerIni([]pgBouncerDatabaseEntry{{Name: "iposdb"}, {Name: "masterdb", BackendDBName: "master_backend"}})
+	if !strings.Contains(got, "iposdb = host=127.0.0.1 port=5444 dbname=iposdb") {
+		t.Fatalf("expected iposdb mapping, got %s", got)
+	}
+	if !strings.Contains(got, "masterdb = host=127.0.0.1 port=5444 dbname=master_backend") {
+		t.Fatalf("expected aliased backend mapping, got %s", got)
+	}
+}
+
+func TestLoadPgBouncerDatabaseEntries_DefaultWhenMissing(t *testing.T) {
+	entries, err := loadPgBouncerDatabaseEntries(filepath.Join(t.TempDir(), pgBouncerDBsName))
+	if err != nil {
+		t.Fatalf("loadPgBouncerDatabaseEntries() unexpected error = %v", err)
+	}
+	if len(entries) != 1 || entries[0].Name != "postgres" || entries[0].BackendDBName != "postgres" {
+		t.Fatalf("unexpected default entries: %#v", entries)
+	}
+}
+
+func TestLoadPgBouncerDatabaseEntries_FromJSON(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, pgBouncerDBsName)
+	payload, err := json.Marshal(pgBouncerDatabasesFile{Databases: []pgBouncerDatabaseEntry{{Name: "iposdb"}, {Name: " masterdb ", BackendDBName: " backenddb "}, {Name: "iposdb"}, {Name: ""}}})
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	if err := os.WriteFile(path, payload, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	entries, err := loadPgBouncerDatabaseEntries(path)
+	if err != nil {
+		t.Fatalf("loadPgBouncerDatabaseEntries() unexpected error = %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 normalized entries, got %#v", entries)
+	}
+	if entries[0].Name != "iposdb" || entries[0].BackendDBName != "iposdb" {
+		t.Fatalf("unexpected first entry: %#v", entries[0])
+	}
+	if entries[1].Name != "masterdb" || entries[1].BackendDBName != "backenddb" {
+		t.Fatalf("unexpected second entry: %#v", entries[1])
+	}
+}
+
+func TestLoadPgBouncerDatabaseEntries_EmptyJSONFails(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, pgBouncerDBsName)
+	if err := os.WriteFile(path, []byte(`{"databases":[]}`), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	_, err := loadPgBouncerDatabaseEntries(path)
+	if err == nil {
+		t.Fatal("expected error for empty database config")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "kosong") {
+		t.Fatalf("expected empty-config error, got %v", err)
 	}
 }
 
