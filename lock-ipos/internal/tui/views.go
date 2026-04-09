@@ -7,6 +7,21 @@ import (
 	"github.com/lock-ipos/lock-ipos/internal/db"
 )
 
+type ProgressStepView struct {
+	Label  string
+	Status string
+	Detail string
+}
+
+type ProgressViewModel struct {
+	Title   string
+	Spinner string
+	Elapsed string
+	Summary string
+	Steps   []ProgressStepView
+	Logs    []string
+}
+
 // RenderPathDetect renders the path detection screen
 func RenderPathDetect(styles *Styles, pgBinPath string, testingPath string, input *TextInput, status string, isError bool) string {
 	var b strings.Builder
@@ -175,17 +190,67 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 }
 
 // RenderProgress renders the progress/execution screen
-func RenderProgress(styles *Styles, actionLabel string) string {
+func RenderProgress(styles *Styles, vm ProgressViewModel) string {
 	var b strings.Builder
 	var content strings.Builder
-	content.WriteString(styles.Subtitle.Render("Memproses..."))
-	content.WriteString("\n\n")
-	if strings.TrimSpace(actionLabel) == "" {
-		actionLabel = "Menjalankan aksi..."
+	if strings.TrimSpace(vm.Title) == "" {
+		vm.Title = "Memproses..."
 	}
-	content.WriteString(styles.NormalText.Render(actionLabel))
+	content.WriteString(styles.Subtitle.Render(vm.Title))
+	content.WriteString("\n\n")
+	spinner := vm.Spinner
+	if strings.TrimSpace(spinner) == "" {
+		spinner = "•"
+	}
+	content.WriteString(styles.ProgressRunning.Render(fmt.Sprintf("%s Proses berjalan", spinner)))
 	content.WriteString("\n")
-	content.WriteString(styles.MutedText.Render("Mohon tunggu..."))
+	if strings.TrimSpace(vm.Elapsed) != "" {
+		content.WriteString(styles.MutedText.Render("Durasi: " + vm.Elapsed))
+		content.WriteString("\n")
+	}
+	if strings.TrimSpace(vm.Summary) != "" {
+		content.WriteString(styles.MutedText.Render(vm.Summary))
+		content.WriteString("\n")
+	}
+
+	content.WriteString("\n")
+	content.WriteString(styles.NormalText.Render("Tahapan:"))
+	content.WriteString("\n")
+	for _, step := range vm.Steps {
+		icon := "•"
+		style := styles.ProgressPending
+		switch strings.ToLower(strings.TrimSpace(step.Status)) {
+		case "running":
+			icon = "▶"
+			style = styles.ProgressRunning
+		case "success":
+			icon = "✓"
+			style = styles.ProgressSuccess
+		case "failed":
+			icon = "✗"
+			style = styles.ProgressFailed
+		default:
+			icon = "•"
+		}
+
+		line := fmt.Sprintf("%s %s", icon, step.Label)
+		if strings.TrimSpace(step.Detail) != "" {
+			line += " — " + step.Detail
+		}
+		content.WriteString(style.Render(line))
+		content.WriteString("\n")
+	}
+
+	content.WriteString("\n")
+	content.WriteString(styles.NormalText.Render("Log terbaru:"))
+	content.WriteString("\n")
+	if len(vm.Logs) == 0 {
+		content.WriteString(styles.LogBox.Render(styles.MutedText.Render("Belum ada log progress...")))
+	} else {
+		content.WriteString(styles.LogBox.Render(styles.LogText.Render(strings.Join(vm.Logs, "\n"))))
+	}
+	content.WriteString("\n\n")
+	content.WriteString(styles.HelpText.Render("[Q] Keluar"))
 
 	b.WriteString(styles.Box.Render(content.String()))
 	return b.String()

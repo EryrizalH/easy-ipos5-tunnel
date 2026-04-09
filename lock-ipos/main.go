@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/lock-ipos/lock-ipos/internal/logger"
 	"github.com/lock-ipos/lock-ipos/internal/pgadmin"
 	"github.com/lock-ipos/lock-ipos/internal/pgpath"
+	"github.com/lock-ipos/lock-ipos/internal/progress"
 	tui "github.com/lock-ipos/lock-ipos/internal/tui"
 	"github.com/lock-ipos/lock-ipos/internal/winservice"
 )
@@ -37,6 +39,8 @@ const (
 
 // Messages
 type (
+	spinnerTickMsg struct{}
+
 	pgPathFoundMsg struct {
 		path string
 		err  error
@@ -60,6 +64,98 @@ type (
 	}
 )
 
+const progressLogLimit = 12
+
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+type progressStep struct {
+	ID     string
+	Label  string
+	Status progress.StepStatus
+	Detail string
+}
+
+type progressStateData struct {
+	Title        string
+	Steps        []progressStep
+	stepIndex    map[string]int
+	Logs         *progress.LineBuffer
+	Summary      string
+	StartedAt    time.Time
+	SpinnerFrame int
+}
+
+func newProgressStateData(title string, steps []progress.StepDefinition) *progressStateData {
+	data := &progressStateData{
+		Title:     title,
+		Steps:     make([]progressStep, 0, len(steps)),
+		stepIndex: make(map[string]int, len(steps)),
+		Logs:      progress.NewLineBuffer(progressLogLimit),
+		StartedAt: time.Now(),
+	}
+	for _, step := range steps {
+		data.stepIndex[step.ID] = len(data.Steps)
+		data.Steps = append(data.Steps, progressStep{ID: step.ID, Label: step.Label, Status: progress.StepPending})
+	}
+	return data
+}
+
+func (p *progressStateData) ensureStep(id, label string) int {
+	if p == nil {
+		return -1
+	}
+	if idx, ok := p.stepIndex[id]; ok {
+		if label != "" && p.Steps[idx].Label == "" {
+			p.Steps[idx].Label = label
+		}
+		return idx
+	}
+	idx := len(p.Steps)
+	p.stepIndex[id] = idx
+	p.Steps = append(p.Steps, progressStep{ID: id, Label: label, Status: progress.StepPending})
+	return idx
+}
+
+func (p *progressStateData) startStep(msg progress.StepStartedMsg) {
+	idx := p.ensureStep(msg.ID, msg.Label)
+	if idx < 0 {
+		return
+	}
+	p.Steps[idx].Status = progress.StepRunning
+	if msg.Detail != "" {
+		p.Steps[idx].Detail = msg.Detail
+	}
+}
+
+func (p *progressStateData) finishStep(msg progress.StepFinishedMsg) {
+	idx := p.ensureStep(msg.ID, msg.Label)
+	if idx < 0 {
+		return
+	}
+	if msg.Success {
+		p.Steps[idx].Status = progress.StepSuccess
+	} else {
+		p.Steps[idx].Status = progress.StepFailed
+	}
+	if msg.Detail != "" {
+		p.Steps[idx].Detail = msg.Detail
+	}
+}
+
+func (p *progressStateData) elapsed() string {
+	if p == nil {
+		return "0s"
+	}
+	return time.Since(p.StartedAt).Round(time.Second).String()
+}
+
+func (p *progressStateData) spinner() string {
+	if p == nil || len(spinnerFrames) == 0 {
+		return ""
+	}
+	return spinnerFrames[p.SpinnerFrame%len(spinnerFrames)]
+}
+
 // Model is the main application model
 type model struct {
 	currentState state
@@ -81,10 +177,11 @@ type model struct {
 	pendingOption  int
 
 	// Result
-	successResult   bool
-	resultError     string
-	resultMessage   string
-	progressMessage string
+	successResult bool
+	resultError   string
+	resultMessage string
+	progressData  *progressStateData
+	progressCh    chan any
 
 	// Quit flag
 	quitting bool
@@ -196,10 +293,36 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handlePathFound(msg)
 	case permissionCheckedMsg:
 		return m.handlePermissionChecked(msg)
+	case progress.StepStartedMsg:
+		if m.progressData != nil {
+			m.progressData.startStep(msg)
+		}
+		return m, waitForProgress(m.progressCh)
+	case progress.StepFinishedMsg:
+		if m.progressData != nil {
+			m.progressData.finishStep(msg)
+		}
+		return m, waitForProgress(m.progressCh)
+	case progress.LogLineMsg:
+		if m.progressData != nil {
+			m.progressData.Logs.Append(msg.Line)
+		}
+		return m, waitForProgress(m.progressCh)
+	case progress.SummaryUpdatedMsg:
+		if m.progressData != nil {
+			m.progressData.Summary = msg.Summary
+		}
+		return m, waitForProgress(m.progressCh)
 	case workaroundCompletedMsg:
 		return m.handleWorkaroundCompleted(msg)
 	case serviceActionCompletedMsg:
 		return m.handleServiceCompleted(msg)
+	case spinnerTickMsg:
+		if m.currentState == stateProgress && m.progressData != nil {
+			m.progressData.SpinnerFrame = (m.progressData.SpinnerFrame + 1) % len(spinnerFrames)
+			return m, spinnerTick()
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		return m, nil
 	}
@@ -295,27 +418,7 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case stateConfirm:
 		if msg.Type == tea.KeyEnter {
-			m.currentState = stateProgress
-			switch m.pendingOption {
-			case optionInstallIPPublic:
-				m.progressMessage = "Menginstall service IP Public (prepare bundle -> sinkronisasi client.toml DB 127.0.0.1:5444 -> install EasyRatholeClient)..."
-				return m, m.installServiceCmd()
-			case optionInstallPgBouncer:
-				m.progressMessage = "Menginstall PgBouncer (migrasi PostgreSQL ke 5445 -> PgBouncer listen 5444 -> health check)..."
-				return m, m.installPgBouncerCmd()
-			case optionUninstallService:
-				m.progressMessage = "Menguninstall service IP Public dan membersihkan PgBouncer..."
-				return m, m.uninstallServiceCmd()
-			case optionLockDB:
-				m.progressMessage = "Menjalankan lock pembuatan database..."
-				return m, m.updatePermission(false)
-			case optionUnlockDB:
-				m.progressMessage = "Melepas lock pembuatan database..."
-				return m, m.updatePermission(true)
-			default:
-				m.currentState = stateMainMenu
-				return m, nil
-			}
+			return m, m.beginProgressFlow(m.pendingOption)
 		}
 
 		if msg.Type == tea.KeyEsc {
@@ -326,11 +429,16 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
+	case stateProgress:
+		return m, nil
+
 	case stateResult:
 		if msg.Type == tea.KeyEnter {
 			m.currentState = stateMainMenu
 			m.resultError = ""
 			m.resultMessage = ""
+			m.progressData = nil
+			m.progressCh = nil
 			if m.pendingOption == optionLockDB || m.pendingOption == optionUnlockDB {
 				return m, m.checkCurrentPermission()
 			}
@@ -374,6 +482,7 @@ func (m *model) handlePermissionChecked(msg permissionCheckedMsg) (tea.Model, te
 
 func (m *model) handleWorkaroundCompleted(msg workaroundCompletedMsg) (tea.Model, tea.Cmd) {
 	m.currentState = stateResult
+	m.progressCh = nil
 	if msg.success {
 		m.successResult = true
 		m.currentPerm = msg.canCreateDB
@@ -394,6 +503,7 @@ func (m *model) handleWorkaroundCompleted(msg workaroundCompletedMsg) (tea.Model
 
 func (m *model) handleServiceCompleted(msg serviceActionCompletedMsg) (tea.Model, tea.Cmd) {
 	m.currentState = stateResult
+	m.progressCh = nil
 	m.successResult = msg.success
 	if msg.success {
 		m.resultMessage = msg.message
@@ -403,6 +513,157 @@ func (m *model) handleServiceCompleted(msg serviceActionCompletedMsg) (tea.Model
 	m.resultMessage = ""
 	m.resultError = msg.err.Error()
 	return m, nil
+}
+
+func (m *model) beginProgressFlow(option int) tea.Cmd {
+	title, steps := progressPlan(option)
+	m.currentState = stateProgress
+	m.progressData = newProgressStateData(title, steps)
+	m.progressCh = make(chan any, 256)
+	go m.runProgressWorkflow(option, m.progressCh)
+	return tea.Batch(waitForProgress(m.progressCh), spinnerTick())
+}
+
+func (m *model) runProgressWorkflow(option int, ch chan any) {
+	defer close(ch)
+	reporter := progress.NewChannelReporter(ch)
+
+	sendServiceResult := func(success bool, message string, err error) {
+		ch <- serviceActionCompletedMsg{success: success, message: message, err: err}
+	}
+	sendPermissionResult := func(success bool, canCreateDB bool, err error) {
+		ch <- workaroundCompletedMsg{success: success, canCreateDB: canCreateDB, err: err}
+	}
+
+	switch option {
+	case optionInstallIPPublic:
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModeIPPublicOnly}
+		if err := winservice.InstallServiceWithProgress(cfg, reporter); err != nil {
+			sendServiceResult(false, "", err)
+			return
+		}
+		summary := "Install IP publik berhasil: service EasyRatholeClient terpasang. Forward DB diarahkan ke 127.0.0.1:5444 dan GUI dibuka lewat shortcut desktop 'ipos5-rathole' (UAC Run as Administrator)."
+		reporter.Summary(summary)
+		sendServiceResult(true, summary, nil)
+	case optionInstallPgBouncer:
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModePgBouncerOnly}
+		if err := winservice.InstallServiceWithProgress(cfg, reporter); err != nil {
+			sendServiceResult(false, "", err)
+			return
+		}
+		summary := "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445 dan PgBouncer listen di 127.0.0.1:5444. Service EasyRatholeClient tidak di-install ulang."
+		reporter.Summary(summary)
+		sendServiceResult(true, summary, nil)
+	case optionUninstallService:
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath}
+		if err := winservice.UninstallServiceWithProgress(cfg, reporter); err != nil {
+			sendServiceResult(false, "", err)
+			return
+		}
+		summary := "Service IP Public dan PgBouncer berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444, dan GUI shortcut desktop sudah dibersihkan."
+		reporter.Summary(summary)
+		sendServiceResult(true, summary, nil)
+	case optionLockDB, optionUnlockDB:
+		allowCreateDB := option == optionUnlockDB
+		if err := pgadmin.SetPermissionViaWorkaroundWithProgress(m.pgBinPath, db.User, allowCreateDB, reporter); err != nil {
+			sendPermissionResult(false, false, err)
+			return
+		}
+		canCreateDB, err := db.GetCurrentPermission(m.pgBinPath)
+		if err != nil {
+			sendPermissionResult(false, false, err)
+			return
+		}
+		if allowCreateDB {
+			reporter.Summary("Kunci pembuatan database berhasil dilepas.")
+		} else {
+			reporter.Summary("Kunci pembuatan database berhasil diaktifkan.")
+		}
+		sendPermissionResult(true, canCreateDB, nil)
+	default:
+		sendServiceResult(false, "", fmt.Errorf("opsi aksi tidak dikenali: %d", option))
+	}
+}
+
+func progressPlan(option int) (string, []progress.StepDefinition) {
+	switch option {
+	case optionInstallIPPublic:
+		return "Install IP Public", []progress.StepDefinition{
+			{ID: "validate-admin", Label: "Validasi hak Administrator"},
+			{ID: "resolve-bundle", Label: "Validasi bundle installer"},
+			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
+			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
+			{ID: "legacy-pgbouncer", Label: "Migrasi PgBouncer lama bila ada"},
+			{ID: "remove-tunnel-service", Label: "Menyiapkan reinstall service tunnel"},
+			{ID: "install-tunnel-service", Label: "Install/update EasyRatholeClient"},
+			{ID: "wait-tunnel-running", Label: "Menunggu service RUNNING"},
+			{ID: "setup-gui-shortcut", Label: "Menyiapkan shortcut GUI"},
+		}
+	case optionInstallPgBouncer:
+		return "Install PgBouncer", []progress.StepDefinition{
+			{ID: "validate-admin", Label: "Validasi hak Administrator"},
+			{ID: "resolve-bundle", Label: "Validasi bundle PgBouncer"},
+			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
+			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
+			{ID: "migrate-postgres-port", Label: "Migrasi port PostgreSQL ke 5445"},
+			{ID: "preflight-pgbouncer", Label: "Preflight dependency PgBouncer"},
+			{ID: "prepare-pgbouncer-runtime", Label: "Menyiapkan file runtime PgBouncer"},
+			{ID: "install-pgbouncer-service", Label: "Install/update service PgBouncer"},
+			{ID: "wait-pgbouncer-running", Label: "Menunggu service PgBouncer RUNNING"},
+			{ID: "health-check-pgbouncer", Label: "Health check PgBouncer"},
+		}
+	case optionUninstallService:
+		return "Uninstall Service", []progress.StepDefinition{
+			{ID: "validate-admin", Label: "Validasi hak Administrator"},
+			{ID: "remove-tunnel-service", Label: "Menghapus EasyRatholeClient"},
+			{ID: "remove-pgbouncer-service", Label: "Menghapus service PgBouncer"},
+			{ID: "rollback-postgres-port", Label: "Mengembalikan port PostgreSQL ke 5444"},
+			{ID: "cleanup-artifacts", Label: "Membersihkan artefak runtime dan shortcut"},
+		}
+	case optionLockDB:
+		return "Kunci Pembuatan Database", []progress.StepDefinition{
+			{ID: "find-pghba", Label: "Mencari pg_hba.conf"},
+			{ID: "backup-pghba", Label: "Membuat backup pg_hba.conf"},
+			{ID: "set-trust", Label: "Mengubah auth menjadi trust"},
+			{ID: "restart-trust", Label: "Restart PostgreSQL untuk mode trust"},
+			{ID: "alter-user", Label: "Menjalankan ALTER USER NOCREATEDB"},
+			{ID: "verify-permission", Label: "Verifikasi permission database"},
+			{ID: "restore-pghba", Label: "Mengembalikan pg_hba.conf"},
+			{ID: "restart-cleanup", Label: "Restart PostgreSQL untuk cleanup"},
+		}
+	case optionUnlockDB:
+		return "Lepas Kunci Database", []progress.StepDefinition{
+			{ID: "find-pghba", Label: "Mencari pg_hba.conf"},
+			{ID: "backup-pghba", Label: "Membuat backup pg_hba.conf"},
+			{ID: "set-trust", Label: "Mengubah auth menjadi trust"},
+			{ID: "restart-trust", Label: "Restart PostgreSQL untuk mode trust"},
+			{ID: "alter-user", Label: "Menjalankan ALTER USER CREATEDB"},
+			{ID: "verify-permission", Label: "Verifikasi permission database"},
+			{ID: "restore-pghba", Label: "Mengembalikan pg_hba.conf"},
+			{ID: "restart-cleanup", Label: "Restart PostgreSQL untuk cleanup"},
+		}
+	default:
+		return "Memproses", nil
+	}
+}
+
+func waitForProgress(ch <-chan any) tea.Cmd {
+	if ch == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		msg, ok := <-ch
+		if !ok {
+			return nil
+		}
+		return msg
+	}
+}
+
+func spinnerTick() tea.Cmd {
+	return tea.Tick(150*time.Millisecond, func(time.Time) tea.Msg {
+		return spinnerTickMsg{}
+	})
 }
 
 // View renders the UI
@@ -419,7 +680,23 @@ func (m *model) View() string {
 	case stateConfirm:
 		return tui.RenderConfirm(m.styles, m.pendingOption, m.currentPerm, m.serviceName, m.bundleDir)
 	case stateProgress:
-		return tui.RenderProgress(m.styles, m.progressMessage)
+		if m.progressData == nil {
+			return tui.RenderProgress(m.styles, tui.ProgressViewModel{Title: "Memproses..."})
+		}
+		return tui.RenderProgress(m.styles, tui.ProgressViewModel{
+			Title:   m.progressData.Title,
+			Spinner: m.progressData.spinner(),
+			Elapsed: m.progressData.elapsed(),
+			Summary: m.progressData.Summary,
+			Steps: func() []tui.ProgressStepView {
+				steps := make([]tui.ProgressStepView, 0, len(m.progressData.Steps))
+				for _, step := range m.progressData.Steps {
+					steps = append(steps, tui.ProgressStepView{Label: step.Label, Status: string(step.Status), Detail: step.Detail})
+				}
+				return steps
+			}(),
+			Logs: m.progressData.Logs.Lines(),
+		})
 	case stateResult:
 		return tui.RenderResult(m.styles, m.successResult, m.currentPerm, m.pendingOption, m.resultMessage, m.resultError)
 	default:
@@ -467,16 +744,15 @@ func main() {
 	styles := tui.DefaultStyles()
 
 	m := &model{
-		currentState:    statePathDetect,
-		styles:          styles,
-		serviceName:     *serviceName,
-		bundleDir:       *bundleDir,
-		pathInput:       tui.NewTextInput("Masukkan path PostgreSQL...", 50),
-		pathStatus:      "Mencari PostgreSQL...",
-		pathError:       false,
-		selectedOption:  optionInstallIPPublic,
-		quitting:        false,
-		progressMessage: "Memproses...",
+		currentState:   statePathDetect,
+		styles:         styles,
+		serviceName:    *serviceName,
+		bundleDir:      *bundleDir,
+		pathInput:      tui.NewTextInput("Masukkan path PostgreSQL...", 50),
+		pathStatus:     "Mencari PostgreSQL...",
+		pathError:      false,
+		selectedOption: optionInstallIPPublic,
+		quitting:       false,
 	}
 
 	p := tea.NewProgram(

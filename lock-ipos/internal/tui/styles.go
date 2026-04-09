@@ -7,23 +7,23 @@ import (
 // Styles holds all the lipgloss styles for the TUI
 type Styles struct {
 	// Base styles
-	Title          lipgloss.Style
-	Subtitle       lipgloss.Style
-	NormalText     lipgloss.Style
-	MutedText      lipgloss.Style
-	ErrorText      lipgloss.Style
-	SuccessText    lipgloss.Style
-	WarningText    lipgloss.Style
+	Title       lipgloss.Style
+	Subtitle    lipgloss.Style
+	NormalText  lipgloss.Style
+	MutedText   lipgloss.Style
+	ErrorText   lipgloss.Style
+	SuccessText lipgloss.Style
+	WarningText lipgloss.Style
 
 	// Box styles
-	Box            lipgloss.Style
-	BoxTitle       lipgloss.Style
-	BoxInner       lipgloss.Style
+	Box      lipgloss.Style
+	BoxTitle lipgloss.Style
+	BoxInner lipgloss.Style
 
 	// Status styles
-	StatusAllow    lipgloss.Style
-	StatusLock     lipgloss.Style
-	StatusLabel    lipgloss.Style
+	StatusAllow lipgloss.Style
+	StatusLock  lipgloss.Style
+	StatusLabel lipgloss.Style
 
 	// Menu styles
 	MenuItem       lipgloss.Style
@@ -31,22 +31,28 @@ type Styles struct {
 	MenuItemNumber lipgloss.Style
 
 	// Button styles
-	Button         lipgloss.Style
-	ButtonActive   lipgloss.Style
+	Button       lipgloss.Style
+	ButtonActive lipgloss.Style
 
 	// Input styles
-	InputLabel     lipgloss.Style
-	InputBox       lipgloss.Style
-	InputActive    lipgloss.Style
+	InputLabel  lipgloss.Style
+	InputBox    lipgloss.Style
+	InputActive lipgloss.Style
 
 	// Code/SQL styles
-	CodeBox        lipgloss.Style
-	CodeText       lipgloss.Style
+	CodeBox  lipgloss.Style
+	CodeText lipgloss.Style
 
 	// Misc
-	Separator      lipgloss.Style
-	HelpText       lipgloss.Style
-	ProgressBar    lipgloss.Style
+	Separator       lipgloss.Style
+	HelpText        lipgloss.Style
+	ProgressBar     lipgloss.Style
+	ProgressPending lipgloss.Style
+	ProgressRunning lipgloss.Style
+	ProgressSuccess lipgloss.Style
+	ProgressFailed  lipgloss.Style
+	LogBox          lipgloss.Style
+	LogText         lipgloss.Style
 }
 
 // DefaultStyles returns the default styles for the application
@@ -54,12 +60,12 @@ func DefaultStyles() *Styles {
 	s := &Styles{}
 
 	// Color definitions
-	colorTitle := lipgloss.Color("#8695F7")       // Light purple
-	colorAllow := lipgloss.Color("#04DB5F")       // Green
-	colorLock := lipgloss.Color("#FF5C5C")        // Red
-	colorWarning := lipgloss.Color("#FFB86C")     // Orange
-	colorMuted := lipgloss.Color("#6272A4")       // Grayish blue
-	colorBorder := lipgloss.Color("#44475A")      // Dark gray
+	colorTitle := lipgloss.Color("#8695F7")   // Light purple
+	colorAllow := lipgloss.Color("#04DB5F")   // Green
+	colorLock := lipgloss.Color("#FF5C5C")    // Red
+	colorWarning := lipgloss.Color("#FFB86C") // Orange
+	colorMuted := lipgloss.Color("#6272A4")   // Grayish blue
+	colorBorder := lipgloss.Color("#44475A")  // Dark gray
 
 	// Base styles
 	s.Title = lipgloss.NewStyle().
@@ -186,6 +192,29 @@ func DefaultStyles() *Styles {
 		Foreground(colorAllow).
 		Background(colorMuted).
 		Width(30)
+
+	s.ProgressPending = lipgloss.NewStyle().
+		Foreground(colorMuted)
+
+	s.ProgressRunning = lipgloss.NewStyle().
+		Foreground(colorTitle).
+		Bold(true)
+
+	s.ProgressSuccess = lipgloss.NewStyle().
+		Foreground(colorAllow).
+		Bold(true)
+
+	s.ProgressFailed = lipgloss.NewStyle().
+		Foreground(colorLock).
+		Bold(true)
+
+	s.LogBox = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(colorBorder).
+		Padding(0, 1)
+
+	s.LogText = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#F8F8F2"))
 
 	return s
 }
