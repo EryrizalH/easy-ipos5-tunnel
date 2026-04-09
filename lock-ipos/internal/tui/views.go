@@ -199,11 +199,13 @@ func RenderResult(styles *Styles, success bool, canCreateDB bool, action int, re
 		content.WriteString("\n\n")
 		content.WriteString(styles.NormalText.Render("Terjadi kesalahan saat menjalankan aksi."))
 		if strings.TrimSpace(errorMsg) != "" {
-			if len(errorMsg) > 120 {
-				errorMsg = errorMsg[:117] + "..."
+			if len(errorMsg) > 420 {
+				errorMsg = errorMsg[:417] + "..."
 			}
 			content.WriteString("\n\n")
 			content.WriteString(styles.MutedText.Render("Error: " + errorMsg))
+			content.WriteString("\n")
+			content.WriteString(styles.HelpText.Render("Tip: cek log.txt (folder setup.exe) dan log service di C:\\ProgramData\\easy-rathole-client\\logs"))
 		}
 	}
 

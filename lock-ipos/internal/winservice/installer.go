@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,21 +17,27 @@ import (
 )
 
 const (
-	DefaultServiceName = "EasyRatholeClient"
-	pgBouncerService   = "PgBouncer"
-	guiBinaryName      = "ipos5-rathole-gui.exe"
-	pgBouncerBinary    = "pgbouncer.exe"
-	pgBouncerLibEvent  = "libevent-7.dll"
-	pgBouncerLibSSL    = "libssl-3-x64.dll"
-	pgBouncerLibCrypto = "libcrypto-3-x64.dll"
-	pgBouncerIniName   = "pgbouncer.ini"
-	pgBouncerUserlist  = "userlist.txt"
-	launcherFileName   = "launch-gui-admin.ps1"
-	shortcutFileName   = "ipos5-rathole.lnk"
-	pgBouncerHost      = "127.0.0.1"
-	pgBouncerPort      = 6432
-	postgresBackend    = "127.0.0.1:5444"
+	DefaultServiceName  = "EasyRatholeClient"
+	pgBouncerService    = "PgBouncer"
+	guiBinaryName       = "ipos5-rathole-gui.exe"
+	pgBouncerBinary     = "pgbouncer.exe"
+	pgBouncerLibEvent   = "libevent-7.dll"
+	pgBouncerLibSSL     = "libssl-3-x64.dll"
+	pgBouncerLibCrypto  = "libcrypto-3-x64.dll"
+	pgBouncerIniName    = "pgbouncer.ini"
+	pgBouncerUserlist   = "userlist.txt"
+	launcherFileName    = "launch-gui-admin.ps1"
+	shortcutFileName    = "ipos5-rathole.lnk"
+	pgBouncerHost       = "127.0.0.1"
+	pgBouncerPort       = 6432
+	postgresBackend     = "127.0.0.1:5444"
+	pgBouncerStartWait  = 45 * time.Second
+	serviceStartWait    = 30 * time.Second
+	servicePollInterval = 1 * time.Second
+	pgBouncerHealthWait = 30 * time.Second
 )
+
+var scStatePattern = regexp.MustCompile(`STATE\s*:\s*\d+\s+([A-Z_]+)`)
 
 // Config controls service install/uninstall behavior.
 type Config struct {
@@ -213,8 +220,9 @@ func InstallService(cfg Config) error {
 	if err := installOrUpdatePgBouncer(cfg, paths, logRoot); err != nil {
 		return err
 	}
-	if err := waitPgBouncerHealthy(cfg.PGBinPath, 20*time.Second); err != nil {
-		return fmt.Errorf("health check PgBouncer gagal: %w", err)
+	pgBouncerStderrLog := filepath.Join(logRoot, pgBouncerService+".stderr.log")
+	if err := waitPgBouncerHealthy(cfg.PGBinPath, pgBouncerHealthWait); err != nil {
+		return fmt.Errorf("health check PgBouncer gagal: %w (cek log: %s)", err, pgBouncerStderrLog)
 	}
 
 	for _, args := range BuildInstallCommands(cfg, paths, logRoot) {
@@ -227,8 +235,8 @@ func InstallService(cfg Config) error {
 		return fmt.Errorf("gagal start service %s: %w", cfg.ServiceName, err)
 	}
 
-	if err := waitServiceState(cfg.ServiceName, "RUNNING", 20*time.Second); err != nil {
-		return err
+	if err := waitServiceState(cfg.ServiceName, "RUNNING", serviceStartWait); err != nil {
+		return fmt.Errorf("service %s gagal mencapai RUNNING: %w", cfg.ServiceName, err)
 	}
 	if err := setupGUIShortcut(cfg.BundleDir, paths.GUIPath); err != nil {
 		return err
@@ -281,6 +289,9 @@ func installOrUpdatePgBouncer(cfg Config, paths BundlePaths, logRoot string) err
 	if strings.TrimSpace(cfg.PGBinPath) == "" {
 		return errors.New("pg bin path kosong, tidak bisa verifikasi PgBouncer via psql")
 	}
+	if err := preflightPgBouncerInstall(cfg, paths); err != nil {
+		return err
+	}
 
 	if err := writePgBouncerRuntimeFiles(paths.PgBouncerIniPath, paths.PgBouncerUserPath); err != nil {
 		return fmt.Errorf("gagal menyiapkan runtime file PgBouncer: %w", err)
@@ -293,11 +304,12 @@ func installOrUpdatePgBouncer(cfg Config, paths BundlePaths, logRoot string) err
 			return fmt.Errorf("gagal nssm %s: %w", strings.Join(args, " "), err)
 		}
 	}
+	pgBouncerStderrLog := filepath.Join(logRoot, pgBouncerService+".stderr.log")
 	if _, err := run("sc", "start", pgBouncerService); err != nil {
-		return fmt.Errorf("gagal start service %s: %w", pgBouncerService, err)
+		return fmt.Errorf("gagal start service %s: %w (cek log: %s)", pgBouncerService, err, pgBouncerStderrLog)
 	}
-	if err := waitServiceState(pgBouncerService, "RUNNING", 20*time.Second); err != nil {
-		return err
+	if err := waitServiceState(pgBouncerService, "RUNNING", pgBouncerStartWait); err != nil {
+		return fmt.Errorf("service %s tidak mencapai RUNNING: %w (cek log: %s)", pgBouncerService, err, pgBouncerStderrLog)
 	}
 	return nil
 }
@@ -321,13 +333,16 @@ func waitPgBouncerHealthy(pgBinPath string, timeout time.Duration) error {
 		time.Sleep(1 * time.Second)
 	}
 	if lastErr != nil {
-		return lastErr
+		return fmt.Errorf("timeout menunggu PgBouncer healthy: %w", lastErr)
 	}
 	return errors.New("timeout menunggu PgBouncer healthy")
 }
 
 func runPgBouncerQuery(pgBinPath, query string) error {
 	psqlPath := filepath.Join(pgBinPath, "psql.exe")
+	if !fileExists(psqlPath) {
+		return fmt.Errorf("psql.exe tidak ditemukan di %s", pgBinPath)
+	}
 	cmd := exec.Command(
 		psqlPath,
 		"-h", pgBouncerHost,
@@ -349,7 +364,7 @@ func writePgBouncerRuntimeFiles(iniPath, userlistPath string) error {
 	if err := os.WriteFile(iniPath, []byte(buildPgBouncerIni()), 0o644); err != nil {
 		return err
 	}
-	if err := os.WriteFile(userlistPath, []byte(buildPgBouncerUserlist()), 0o600); err != nil {
+	if err := os.WriteFile(userlistPath, []byte(buildPgBouncerUserlist()), 0o644); err != nil {
 		return err
 	}
 	return nil
@@ -487,17 +502,143 @@ func serviceExists(serviceName string) (bool, error) {
 	return false, nil
 }
 
-func waitServiceState(serviceName, state string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		out, err := run("sc", "query", serviceName)
-		if err == nil && strings.Contains(strings.ToUpper(out), state) {
-			return nil
-		}
-		time.Sleep(1 * time.Second)
+func preflightPgBouncerInstall(cfg Config, paths BundlePaths) error {
+	return preflightPgBouncerInstallWithChecks(cfg, paths, ensureTCPReachable, ensureTCPPortAvailable, serviceExists)
+}
+
+func preflightPgBouncerInstallWithChecks(
+	cfg Config,
+	paths BundlePaths,
+	reachableFn func(string, time.Duration) error,
+	portAvailableFn func(string) error,
+	serviceExistsFn func(string) (bool, error),
+) error {
+	if !fileExists(paths.PgBouncerPath) {
+		return fmt.Errorf("preflight PgBouncer gagal: binary tidak ditemukan: %s", paths.PgBouncerPath)
 	}
 
-	return fmt.Errorf("timeout menunggu service %s ke status %s", serviceName, state)
+	for _, dllName := range []string{pgBouncerLibEvent, pgBouncerLibSSL, pgBouncerLibCrypto} {
+		dllPath := filepath.Join(filepath.Dir(paths.PgBouncerPath), dllName)
+		if !fileExists(dllPath) {
+			return fmt.Errorf("preflight PgBouncer gagal: dependency tidak ditemukan: %s", dllPath)
+		}
+	}
+
+	psqlPath := filepath.Join(cfg.PGBinPath, "psql.exe")
+	if !fileExists(psqlPath) {
+		return fmt.Errorf("preflight PgBouncer gagal: psql.exe tidak ditemukan di %s", cfg.PGBinPath)
+	}
+
+	if err := reachableFn(postgresBackend, 2*time.Second); err != nil {
+		return fmt.Errorf("preflight PgBouncer gagal: backend PostgreSQL %s tidak dapat dijangkau: %w", postgresBackend, err)
+	}
+
+	listenAddr := fmt.Sprintf("%s:%d", pgBouncerHost, pgBouncerPort)
+	if err := portAvailableFn(listenAddr); err != nil {
+		exists, svcErr := serviceExistsFn(pgBouncerService)
+		if svcErr != nil {
+			return fmt.Errorf("preflight PgBouncer gagal: cek status service %s gagal: %w", pgBouncerService, svcErr)
+		}
+		if !exists {
+			return fmt.Errorf("preflight PgBouncer gagal: port listen %s tidak tersedia: %w", listenAddr, err)
+		}
+	}
+
+	return nil
+}
+
+func ensureTCPReachable(address string, timeout time.Duration) error {
+	conn, err := net.DialTimeout("tcp", address, timeout)
+	if err != nil {
+		return err
+	}
+	_ = conn.Close()
+	return nil
+}
+
+func ensureTCPPortAvailable(address string) error {
+	ln, err := net.Listen("tcp", address)
+	if err != nil {
+		return err
+	}
+	_ = ln.Close()
+	return nil
+}
+
+func extractSCState(output string) (string, error) {
+	matches := scStatePattern.FindStringSubmatch(strings.ToUpper(output))
+	if len(matches) < 2 {
+		return "", fmt.Errorf("field STATE tidak ditemukan pada output sc query")
+	}
+	return strings.TrimSpace(matches[1]), nil
+}
+
+func queryWindowsServiceState(serviceName string) (string, string, error) {
+	out, err := run("sc", "query", serviceName)
+	if err != nil {
+		lower := strings.ToLower(out)
+		if strings.Contains(lower, "1060") || strings.Contains(lower, "does not exist") || strings.Contains(lower, "tidak ada") {
+			return "NOT_FOUND", out, nil
+		}
+	}
+
+	state, parseErr := extractSCState(out)
+	if parseErr != nil {
+		if err != nil {
+			return "", out, fmt.Errorf("gagal query service %s: %w", serviceName, err)
+		}
+		return "", out, fmt.Errorf("gagal parse state service %s: %w", serviceName, parseErr)
+	}
+
+	return state, out, nil
+}
+
+func waitServiceState(serviceName, state string, timeout time.Duration) error {
+	return waitServiceStateWithQuery(serviceName, state, timeout, servicePollInterval, queryWindowsServiceState, time.Sleep)
+}
+
+func waitServiceStateWithQuery(
+	serviceName, state string,
+	timeout, pollInterval time.Duration,
+	queryFn func(string) (string, string, error),
+	sleepFn func(time.Duration),
+) error {
+	deadline := time.Now().Add(timeout)
+	target := strings.ToUpper(strings.TrimSpace(state))
+	lastState := "UNKNOWN"
+	lastErr := ""
+	lastOutput := ""
+
+	for time.Now().Before(deadline) {
+		currentState, output, err := queryFn(serviceName)
+		if output != "" {
+			lastOutput = strings.TrimSpace(output)
+		}
+		if err != nil {
+			lastErr = err.Error()
+		} else {
+			lastState = strings.ToUpper(strings.TrimSpace(currentState))
+		}
+
+		if err == nil && lastState == target {
+			return nil
+		}
+		sleepFn(pollInterval)
+	}
+
+	errMsg := fmt.Sprintf("timeout menunggu service %s ke status %s (state terakhir: %s)", serviceName, target, lastState)
+	if strings.TrimSpace(lastErr) != "" {
+		errMsg += "; error terakhir: " + lastErr
+	}
+	if strings.TrimSpace(lastOutput) != "" {
+		output := strings.ReplaceAll(lastOutput, "\r", "")
+		if len(output) > 500 {
+			output = output[:500] + "..."
+		}
+		errMsg += "; sc query terakhir: " + output
+	}
+
+	return errors.New(errMsg)
 }
 
 func run(name string, args ...string) (string, error) {
