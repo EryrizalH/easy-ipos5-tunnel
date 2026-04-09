@@ -36,7 +36,8 @@ $files = @(
     @{ Src = (Join-Path $sourceDir "pgbouncer.exe"); Dst = (Join-Path $assetsDir "pgbouncer.exe") },
     @{ Src = "C:\msys64\mingw64\bin\libevent-7.dll"; Dst = (Join-Path $assetsDir "libevent-7.dll") },
     @{ Src = "C:\msys64\mingw64\bin\libssl-3-x64.dll"; Dst = (Join-Path $assetsDir "libssl-3-x64.dll") },
-    @{ Src = "C:\msys64\mingw64\bin\libcrypto-3-x64.dll"; Dst = (Join-Path $assetsDir "libcrypto-3-x64.dll") }
+    @{ Src = "C:\msys64\mingw64\bin\libcrypto-3-x64.dll"; Dst = (Join-Path $assetsDir "libcrypto-3-x64.dll") },
+    @{ Src = "C:\msys64\mingw64\bin\libwinpthread-1.dll"; Dst = (Join-Path $assetsDir "libwinpthread-1.dll") }
 )
 
 foreach ($file in $files) {

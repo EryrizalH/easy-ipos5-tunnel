@@ -18,6 +18,7 @@ WINDOWS_PGBOUNCER_BINARY_NAME = "pgbouncer.exe"
 WINDOWS_PGBOUNCER_LIBEVENT_NAME = "libevent-7.dll"
 WINDOWS_PGBOUNCER_LIBSSL_NAME = "libssl-3-x64.dll"
 WINDOWS_PGBOUNCER_LIBCRYPTO_NAME = "libcrypto-3-x64.dll"
+WINDOWS_PGBOUNCER_LIBWINPTH_NAME = "libwinpthread-1.dll"
 WINDOWS_PGBOUNCER_INI_NAME = "pgbouncer.ini"
 WINDOWS_PGBOUNCER_USERLIST_NAME = "userlist.sample.txt"
 LINUX_SERVICE_NAME = "easy-rathole-client"
@@ -94,7 +95,7 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     pgbouncer_libevent = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBEVENT_NAME}"
     pgbouncer_libssl = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBSSL_NAME}"
     pgbouncer_libcrypto = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBCRYPTO_NAME}"
-    pgbouncer_ini_tpl = resources_dir() / "assets/windows/pgbouncer.ini.tpl"
+    pgbouncer_libwinpth = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBWINPTH_NAME}"    pgbouncer_libwinpth = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBWINPTH_NAME}"    pgbouncer_ini_tpl = resources_dir() / "assets/windows/pgbouncer.ini.tpl"
     pgbouncer_userlist_sample = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_USERLIST_NAME}"
     require_file(windows_bin, WINDOWS_BINARY_NAME)
     require_file(windows_gui_bin, WINDOWS_GUI_BINARY_NAME)
@@ -104,6 +105,7 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     require_file(pgbouncer_libevent, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
     require_file(pgbouncer_libssl, WINDOWS_PGBOUNCER_LIBSSL_NAME)
     require_file(pgbouncer_libcrypto, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
+    require_file(pgbouncer_libwinpth, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
     require_file(pgbouncer_ini_tpl, "pgbouncer.ini.tpl")
     require_file(pgbouncer_userlist_sample, WINDOWS_PGBOUNCER_USERLIST_NAME)
 
@@ -120,7 +122,7 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         shutil.copy2(pgbouncer_libevent, temp_dir / WINDOWS_PGBOUNCER_LIBEVENT_NAME)
         shutil.copy2(pgbouncer_libssl, temp_dir / WINDOWS_PGBOUNCER_LIBSSL_NAME)
         shutil.copy2(pgbouncer_libcrypto, temp_dir / WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
+        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
         shutil.copy2(pgbouncer_userlist_sample, temp_dir / WINDOWS_PGBOUNCER_USERLIST_NAME)
 
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
@@ -149,7 +151,7 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "10) Jika auto-install PgBouncer gagal, install service akan dibatalkan (fail-fast).",
                     "11) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
                     "12) Paket ini wajib utuh:",
-                    "   setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + client.toml + pgbouncer.ini + userlist.sample.txt",
+                    "   setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt",
                 ]
             )
             + "\n",

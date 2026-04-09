@@ -14,6 +14,7 @@ func TestResolveBundlePaths_Success(t *testing.T) {
 	mustWrite(t, filepath.Join(tmp, "libevent-7.dll"))
 	mustWrite(t, filepath.Join(tmp, "libssl-3-x64.dll"))
 	mustWrite(t, filepath.Join(tmp, "libcrypto-3-x64.dll"))
+	mustWrite(t, filepath.Join(tmp, "libwinpthread-1.dll"))
 	mustWrite(t, filepath.Join(tmp, "client.toml"))
 	mustWrite(t, filepath.Join(tmp, "ipos5-rathole.exe"))
 	mustWrite(t, filepath.Join(tmp, guiBinaryName))
@@ -64,6 +65,9 @@ func TestResolveBundlePaths_MissingFiles(t *testing.T) {
 	}
 	if !strings.Contains(msg, "libevent-7.dll") {
 		t.Fatalf("error should mention libevent-7.dll, got: %v", err)
+	}
+	if !strings.Contains(msg, "libwinpthread-1.dll") {
+		t.Fatalf("error should mention libwinpthread-1.dll, got: %v", err)
 	}
 }
 

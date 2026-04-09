@@ -24,6 +24,7 @@ const (
 	pgBouncerLibEvent   = "libevent-7.dll"
 	pgBouncerLibSSL     = "libssl-3-x64.dll"
 	pgBouncerLibCrypto  = "libcrypto-3-x64.dll"
+	pgBouncerLibWinPth  = "libwinpthread-1.dll"
 	pgBouncerIniName    = "pgbouncer.ini"
 	pgBouncerUserlist   = "userlist.txt"
 	launcherFileName    = "launch-gui-admin.ps1"
@@ -91,6 +92,7 @@ func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
 	pgBouncerLibEventPath := filepath.Join(cleanDir, pgBouncerLibEvent)
 	pgBouncerLibSSLPath := filepath.Join(cleanDir, pgBouncerLibSSL)
 	pgBouncerLibCryptoPath := filepath.Join(cleanDir, pgBouncerLibCrypto)
+	pgBouncerLibWinPthPath := filepath.Join(cleanDir, pgBouncerLibWinPth)
 	pgBouncerIniPath := filepath.Join(cleanDir, pgBouncerIniName)
 	pgBouncerUserPath := filepath.Join(cleanDir, pgBouncerUserlist)
 
@@ -120,6 +122,9 @@ func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
 	}
 	if !fileExists(pgBouncerLibCryptoPath) {
 		missing = append(missing, pgBouncerLibCrypto)
+	}
+	if !fileExists(pgBouncerLibWinPthPath) {
+		missing = append(missing, pgBouncerLibWinPth)
 	}
 
 	rathole := ""
@@ -517,7 +522,7 @@ func preflightPgBouncerInstallWithChecks(
 		return fmt.Errorf("preflight PgBouncer gagal: binary tidak ditemukan: %s", paths.PgBouncerPath)
 	}
 
-	for _, dllName := range []string{pgBouncerLibEvent, pgBouncerLibSSL, pgBouncerLibCrypto} {
+	for _, dllName := range []string{pgBouncerLibEvent, pgBouncerLibSSL, pgBouncerLibCrypto, pgBouncerLibWinPth} {
 		dllPath := filepath.Join(filepath.Dir(paths.PgBouncerPath), dllName)
 		if !fileExists(dllPath) {
 			return fmt.Errorf("preflight PgBouncer gagal: dependency tidak ditemukan: %s", dllPath)

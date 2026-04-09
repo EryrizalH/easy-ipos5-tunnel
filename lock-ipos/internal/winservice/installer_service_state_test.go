@@ -78,6 +78,7 @@ func TestPreflightPgBouncerInstallWithChecks_Success(t *testing.T) {
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibEvent))
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibSSL))
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibCrypto))
+	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibWinPth))
 	mustWrite(t, filepath.Join(pgBinDir, "psql.exe"))
 
 	cfg := Config{PGBinPath: pgBinDir}
@@ -108,6 +109,7 @@ func TestPreflightPgBouncerInstallWithChecks_BackendUnreachable(t *testing.T) {
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibEvent))
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibSSL))
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibCrypto))
+	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibWinPth))
 	mustWrite(t, filepath.Join(pgBinDir, "psql.exe"))
 
 	cfg := Config{PGBinPath: pgBinDir}
@@ -141,6 +143,7 @@ func TestPreflightPgBouncerInstallWithChecks_PortUnavailable(t *testing.T) {
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibEvent))
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibSSL))
 	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibCrypto))
+	mustWrite(t, filepath.Join(bundleDir, pgBouncerLibWinPth))
 	mustWrite(t, filepath.Join(pgBinDir, "psql.exe"))
 
 	cfg := Config{PGBinPath: pgBinDir}
