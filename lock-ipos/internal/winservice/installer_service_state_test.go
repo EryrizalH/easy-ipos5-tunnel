@@ -156,7 +156,12 @@ func TestPreflightPgBouncerInstallWithChecks_PortUnavailable(t *testing.T) {
 
 	err := preflightPgBouncerInstallWithChecks(cfg, paths,
 		func(_ string, _ time.Duration) error { return nil },
-		func(address string) error { return fmt.Errorf("listen %s: address already in use", address) },
+		func(address string) error {
+			if address != "0.0.0.0:5444" {
+				t.Fatalf("expected PgBouncer listener preflight on 0.0.0.0:5444, got %s", address)
+			}
+			return fmt.Errorf("listen %s: address already in use", address)
+		},
 		func(_ string) (bool, error) { return false, nil },
 	)
 	if err == nil {

@@ -113,7 +113,7 @@ if ($null -eq $svc) {
 }
 
 if ($svc.Status -ne 'Running') {
-    throw "Service $serviceName berhasil dibuat tetapi belum berjalan. Cek Windows Event Viewer dan pastikan endpoint client pada client.toml siap (default: 6432/5480/5485) serta PGbouncer aktif."
+    throw "Service $serviceName berhasil dibuat tetapi belum berjalan. Cek Windows Event Viewer dan pastikan endpoint client pada client.toml siap (default: 5444/5480/5485) serta PGbouncer aktif."
 }
 
 Write-Host "Menyiapkan GUI autostart..." -ForegroundColor Cyan

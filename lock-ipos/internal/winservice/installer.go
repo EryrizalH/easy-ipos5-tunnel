@@ -25,29 +25,31 @@ import (
 )
 
 const (
-	DefaultServiceName  = "EasyRatholeClient"
-	pgBouncerService    = "PgBouncer"
-	guiBinaryName       = "ipos5-rathole-gui.exe"
-	pgBouncerBinary     = "pgbouncer.exe"
-	pgBouncerLibEvent   = "libevent-7.dll"
-	pgBouncerLibSSL     = "libssl-3-x64.dll"
-	pgBouncerLibCrypto  = "libcrypto-3-x64.dll"
-	pgBouncerLibWinPth  = "libwinpthread-1.dll"
-	pgBouncerIniName    = "pgbouncer.ini"
-	pgBouncerDBsName    = "pgbouncer-databases.json"
-	pgBouncerUserlist   = "userlist.txt"
-	launcherFileName    = "launch-gui-admin.ps1"
-	shortcutFileName    = "ipos5-rathole.lnk"
-	pgBouncerHost       = "127.0.0.1"
-	pgBouncerPort       = 5444
-	postgresLegacyPort  = 5444
-	postgresBackendPort = 5445
-	postgresBackend     = "127.0.0.1:5445"
-	dbClientForwardAddr = "127.0.0.1:5444"
-	pgBouncerStartWait  = 45 * time.Second
-	serviceStartWait    = 30 * time.Second
-	servicePollInterval = 1 * time.Second
-	pgBouncerHealthWait = 30 * time.Second
+	DefaultServiceName        = "EasyRatholeClient"
+	pgBouncerService          = "PgBouncer"
+	guiBinaryName             = "ipos5-rathole-gui.exe"
+	pgBouncerBinary           = "pgbouncer.exe"
+	pgBouncerLibEvent         = "libevent-7.dll"
+	pgBouncerLibSSL           = "libssl-3-x64.dll"
+	pgBouncerLibCrypto        = "libcrypto-3-x64.dll"
+	pgBouncerLibWinPth        = "libwinpthread-1.dll"
+	pgBouncerIniName          = "pgbouncer.ini"
+	pgBouncerDBsName          = "pgbouncer-databases.json"
+	pgBouncerUserlist         = "userlist.txt"
+	launcherFileName          = "launch-gui-admin.ps1"
+	shortcutFileName          = "ipos5-rathole.lnk"
+	pgBouncerHost             = "127.0.0.1"
+	pgBouncerListenHost       = "0.0.0.0"
+	pgBouncerPort             = 5444
+	postgresLegacyPort        = 5444
+	postgresBackendPort       = 5445
+	postgresBackend           = "127.0.0.1:5445"
+	dbClientForwardAddr       = "127.0.0.1:5444"
+	pgBouncerFirewallRuleName = "IPOS5TunnelPublik PgBouncer 5444"
+	pgBouncerStartWait        = 45 * time.Second
+	serviceStartWait          = 30 * time.Second
+	servicePollInterval       = 1 * time.Second
+	pgBouncerHealthWait       = 30 * time.Second
 )
 
 var scStatePattern = regexp.MustCompile(`STATE\s*:\s*\d+\s+([A-Z_]+)`)
@@ -246,6 +248,32 @@ func BuildPgBouncerInstallCommands(paths BundlePaths, logRoot string) [][]string
 		{"set", pgBouncerService, "AppRotateOnline", "1"},
 		{"set", pgBouncerService, "AppRotateSeconds", "86400"},
 		{"set", pgBouncerService, "AppRotateBytes", "1048576"},
+	}
+}
+
+func BuildPgBouncerFirewallDeleteCommand() []string {
+	return []string{
+		"advfirewall",
+		"firewall",
+		"delete",
+		"rule",
+		"name=" + pgBouncerFirewallRuleName,
+	}
+}
+
+func BuildPgBouncerFirewallAddCommand() []string {
+	return []string{
+		"advfirewall",
+		"firewall",
+		"add",
+		"rule",
+		"name=" + pgBouncerFirewallRuleName,
+		"dir=in",
+		"action=allow",
+		"protocol=TCP",
+		fmt.Sprintf("localport=%d", pgBouncerPort),
+		"remoteip=any",
+		"profile=any",
 	}
 }
 
@@ -451,6 +479,13 @@ func UninstallServiceWithProgress(cfg Config, reporter progress.Reporter) error 
 	}
 	reporter.FinishStep("remove-pgbouncer-service", true, "Service PgBouncer sudah bersih")
 
+	reporter.StartStep("remove-pgbouncer-firewall", "Menutup firewall LAN PgBouncer")
+	if err := removePgBouncerFirewallRuleWithProgress(reporter, runner.run); err != nil {
+		reporter.FinishStep("remove-pgbouncer-firewall", false, err.Error())
+		return err
+	}
+	reporter.FinishStep("remove-pgbouncer-firewall", true, "Rule firewall PgBouncer sudah dibersihkan")
+
 	reporter.StartStep("rollback-postgres-port", "Mengembalikan port PostgreSQL ke 5444")
 	if err := rollbackPostgresPort(cfg.PGBinPath); err != nil {
 		reporter.FinishStep("rollback-postgres-port", false, err.Error())
@@ -540,6 +575,17 @@ func installOrUpdatePgBouncerCore(cfg Config, paths BundlePaths, logRoot string,
 	}
 	if emitSteps {
 		reporter.FinishStep("wait-pgbouncer-running", true, "PgBouncer sudah RUNNING")
+		reporter.StartStep("configure-pgbouncer-firewall", "Membuka akses firewall LAN PgBouncer")
+	}
+	if err := syncPgBouncerFirewallRuleWithProgress(reporter, runner.run); err != nil {
+		wrapped := fmt.Errorf("gagal sinkronisasi firewall PgBouncer: %w", err)
+		if emitSteps {
+			reporter.FinishStep("configure-pgbouncer-firewall", false, wrapped.Error())
+		}
+		return wrapped
+	}
+	if emitSteps {
+		reporter.FinishStep("configure-pgbouncer-firewall", true, "Firewall inbound TCP 5444 sudah aktif untuk semua sumber")
 	}
 	return nil
 }
@@ -770,7 +816,7 @@ func buildPgBouncerIni(entries []pgBouncerDatabaseEntry) string {
 	lines = append(lines,
 		"",
 		"[pgbouncer]",
-		"listen_addr = 127.0.0.1",
+		"listen_addr = "+pgBouncerListenHost,
 		fmt.Sprintf("listen_port = %d", pgBouncerPort),
 		"auth_type = md5",
 		"auth_file = userlist.txt",
@@ -832,6 +878,62 @@ func uninstallPgBouncerWithProgress(runner commandRunner, reporter progress.Repo
 		time.Sleep(500 * time.Millisecond)
 	}
 	return fmt.Errorf("service %s belum terhapus setelah timeout", pgBouncerService)
+}
+
+func syncPgBouncerFirewallRule() error {
+	return syncPgBouncerFirewallRuleWithProgress(progress.NopReporter(), run)
+}
+
+func syncPgBouncerFirewallRuleWithProgress(reporter progress.Reporter, runFn func(string, ...string) (string, error)) error {
+	reporter = normalizeReporter(reporter)
+	if err := removePgBouncerFirewallRuleWithProgress(reporter, runFn); err != nil {
+		return err
+	}
+	if _, err := runFn("netsh", BuildPgBouncerFirewallAddCommand()...); err != nil {
+		return fmt.Errorf("gagal menambah rule firewall %q: %w", pgBouncerFirewallRuleName, err)
+	}
+	return nil
+}
+
+func removePgBouncerFirewallRule() error {
+	return removePgBouncerFirewallRuleWithProgress(progress.NopReporter(), run)
+}
+
+func removePgBouncerFirewallRuleWithProgress(reporter progress.Reporter, runFn func(string, ...string) (string, error)) error {
+	reporter = normalizeReporter(reporter)
+	exists, err := pgBouncerFirewallRuleExists(runFn)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		reporter.Log("Rule firewall PgBouncer belum ada, skip hapus")
+		return nil
+	}
+	if _, err := runFn("netsh", BuildPgBouncerFirewallDeleteCommand()...); err != nil {
+		return fmt.Errorf("gagal menghapus rule firewall %q: %w", pgBouncerFirewallRuleName, err)
+	}
+	return nil
+}
+
+func pgBouncerFirewallRuleExists(runFn func(string, ...string) (string, error)) (bool, error) {
+	out, err := runFn("netsh", "advfirewall", "firewall", "show", "rule", "name="+pgBouncerFirewallRuleName)
+	if err != nil {
+		if firewallRuleMissingOutput(out) {
+			return false, nil
+		}
+		return false, fmt.Errorf("gagal cek rule firewall %q: %w", pgBouncerFirewallRuleName, err)
+	}
+	if firewallRuleMissingOutput(out) {
+		return false, nil
+	}
+	return strings.Contains(strings.ToLower(out), strings.ToLower(pgBouncerFirewallRuleName)), nil
+}
+
+func firewallRuleMissingOutput(out string) bool {
+	lower := strings.ToLower(out)
+	return strings.Contains(lower, "no rules match") ||
+		strings.Contains(lower, "tidak ada aturan yang cocok") ||
+		strings.Contains(lower, "tidak ada rule yang cocok")
 }
 
 func cleanupPgBouncerArtifacts(bundleDir string) error {
@@ -1075,7 +1177,7 @@ func preflightPgBouncerInstallWithChecks(
 		return fmt.Errorf("preflight PgBouncer gagal: backend PostgreSQL %s tidak dapat dijangkau: %w", postgresBackend, err)
 	}
 
-	listenAddr := fmt.Sprintf("%s:%d", pgBouncerHost, pgBouncerPort)
+	listenAddr := fmt.Sprintf("%s:%d", pgBouncerListenHost, pgBouncerPort)
 	if err := portAvailableFn(listenAddr); err != nil {
 		exists, svcErr := serviceExistsFn(pgBouncerService)
 		if svcErr != nil {

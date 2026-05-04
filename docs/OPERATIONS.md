@@ -61,7 +61,9 @@ sudo ss -ltnp | grep -E ':5444|:5480|:5485|:8088'
 
 Catatan alur database default:
 - Port VPS tetap `5444`.
-- Client Windows wajib menyalakan PGbouncer `127.0.0.1:6432` yang meneruskan ke PostgreSQL `127.0.0.1:5444`.
+- Client Windows tetap menjalankan rathole ke `127.0.0.1:5444`.
+- Saat mode PgBouncer aktif, PostgreSQL pindah ke `127.0.0.1:5445` dan PgBouncer listen di `0.0.0.0:5444` agar bisa diakses lokal maupun LAN.
+- Installer Windows juga membuat rule firewall inbound TCP `5444` untuk semua sumber.
 - Pastikan file PGbouncer (`pgbouncer.ini` dan `userlist.txt`) tersimpan aman dan konsisten dengan kredensial PG lock.
 
 Untuk control port rathole, lihat dari state file:

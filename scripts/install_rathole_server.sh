@@ -96,8 +96,8 @@ defaults = [
         "service_key": "port_5444",
         "protocol": "tcp",
         "remote_bind_port": 5444,
-        "client_local_addr": "127.0.0.1:6432",
-        "client_local_port": 6432,
+        "client_local_addr": "127.0.0.1:5444",
+        "client_local_port": 5444,
     },
     {
         "name": "pos_http",

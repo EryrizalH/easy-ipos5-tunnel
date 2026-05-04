@@ -124,10 +124,37 @@ func TestBuildPgBouncerInstallCommands(t *testing.T) {
 	}
 }
 
+func TestBuildPgBouncerFirewallCommands(t *testing.T) {
+	deleteCmd := strings.Join(BuildPgBouncerFirewallDeleteCommand(), " ")
+	if !strings.Contains(deleteCmd, "delete rule") {
+		t.Fatalf("expected delete firewall command, got %s", deleteCmd)
+	}
+	if !strings.Contains(deleteCmd, pgBouncerFirewallRuleName) {
+		t.Fatalf("expected firewall rule name in delete command, got %s", deleteCmd)
+	}
+
+	addCmd := strings.Join(BuildPgBouncerFirewallAddCommand(), " ")
+	checks := []string{
+		"add rule",
+		pgBouncerFirewallRuleName,
+		"localport=5444",
+		"remoteip=any",
+		"profile=any",
+	}
+	for _, needle := range checks {
+		if !strings.Contains(addCmd, needle) {
+			t.Fatalf("expected add firewall command to contain %q, got %s", needle, addCmd)
+		}
+	}
+}
+
 func TestBuildPgBouncerIni_DefaultFallback(t *testing.T) {
 	got := buildPgBouncerIni(nil)
 	if !strings.Contains(got, "postgres = host=127.0.0.1 port=5445 dbname=postgres") {
 		t.Fatalf("expected default postgres mapping, got %s", got)
+	}
+	if !strings.Contains(got, "listen_addr = 0.0.0.0") {
+		t.Fatalf("expected listen_addr 0.0.0.0, got %s", got)
 	}
 	if !strings.Contains(got, "listen_port = 5444") {
 		t.Fatalf("expected listen_port 5444, got %s", got)
@@ -342,6 +369,82 @@ func TestDesktopShortcutDirs(t *testing.T) {
 	dirs := desktopShortcutDirs()
 	if len(dirs) != 2 {
 		t.Fatalf("expected 2 desktop dirs, got %d", len(dirs))
+	}
+}
+
+func TestSyncPgBouncerFirewallRuleWithProgress_IsIdempotentAcrossReruns(t *testing.T) {
+	t.Helper()
+	var calls []string
+	ruleExists := false
+
+	runFn := func(name string, args ...string) (string, error) {
+		calls = append(calls, strings.Join(append([]string{name}, args...), " "))
+		if name != "netsh" {
+			t.Fatalf("expected netsh command, got %s", name)
+		}
+		if len(args) < 4 {
+			t.Fatalf("unexpected args: %#v", args)
+		}
+		switch args[2] {
+		case "show":
+			if ruleExists {
+				return "Rule Name: " + pgBouncerFirewallRuleName, nil
+			}
+			return "No rules match the specified criteria.", nil
+		case "delete":
+			ruleExists = false
+			return "Deleted 1 rule(s).", nil
+		case "add":
+			ruleExists = true
+			return "Ok.", nil
+		default:
+			t.Fatalf("unexpected firewall action: %#v", args)
+			return "", nil
+		}
+	}
+
+	if err := syncPgBouncerFirewallRuleWithProgress(nil, runFn); err != nil {
+		t.Fatalf("first sync unexpected error = %v", err)
+	}
+	if err := syncPgBouncerFirewallRuleWithProgress(nil, runFn); err != nil {
+		t.Fatalf("second sync unexpected error = %v", err)
+	}
+	if !ruleExists {
+		t.Fatal("expected firewall rule to exist after rerun")
+	}
+
+	expected := []string{
+		"netsh advfirewall firewall show rule name=" + pgBouncerFirewallRuleName,
+		"netsh " + strings.Join(BuildPgBouncerFirewallAddCommand(), " "),
+		"netsh advfirewall firewall show rule name=" + pgBouncerFirewallRuleName,
+		"netsh " + strings.Join(BuildPgBouncerFirewallDeleteCommand(), " "),
+		"netsh " + strings.Join(BuildPgBouncerFirewallAddCommand(), " "),
+	}
+	if len(calls) != len(expected) {
+		t.Fatalf("expected %d firewall calls, got %#v", len(expected), calls)
+	}
+	for idx, want := range expected {
+		if calls[idx] != want {
+			t.Fatalf("unexpected call %d: want %q, got %q", idx, want, calls[idx])
+		}
+	}
+}
+
+func TestRemovePgBouncerFirewallRuleWithProgress_SkipsWhenMissing(t *testing.T) {
+	var calls []string
+	runFn := func(name string, args ...string) (string, error) {
+		calls = append(calls, strings.Join(append([]string{name}, args...), " "))
+		return "No rules match the specified criteria.", nil
+	}
+
+	if err := removePgBouncerFirewallRuleWithProgress(nil, runFn); err != nil {
+		t.Fatalf("removePgBouncerFirewallRuleWithProgress() unexpected error = %v", err)
+	}
+	if len(calls) != 1 {
+		t.Fatalf("expected only one show call when rule missing, got %#v", calls)
+	}
+	if !strings.Contains(calls[0], "show rule") {
+		t.Fatalf("expected show-rule call, got %q", calls[0])
 	}
 }
 

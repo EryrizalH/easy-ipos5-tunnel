@@ -118,8 +118,8 @@ if not "%ERRORLEVEL%"=="0" (
 
 echo.
 echo Selesai.
-echo Jika endpoint lokal sesuai client.toml sudah aktif (default: 6432/5480/5485),
-echo dan PGbouncer untuk PostgreSQL berjalan pada 127.0.0.1:6432,
+echo Jika endpoint lokal sesuai client.toml sudah aktif (default: 5444/5480/5485),
+echo dan PGbouncer untuk PostgreSQL berjalan pada 127.0.0.1:5444 atau IP LAN mesin ini:5444,
 echo tunnel publik akan langsung bekerja.
 echo.
 pause

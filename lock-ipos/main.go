@@ -270,7 +270,7 @@ func (m *model) installPgBouncerCmd() tea.Cmd {
 		if err := winservice.InstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445 dan PgBouncer listen di 127.0.0.1:5444. Service EasyRatholeClient tidak di-install ulang."}
+		return serviceActionCompletedMsg{success: true, message: "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445, PgBouncer listen di 0.0.0.0:5444, dan firewall inbound TCP 5444 dibuka untuk semua sumber. Service EasyRatholeClient tidak di-install ulang."}
 	}
 }
 
@@ -551,7 +551,7 @@ func (m *model) runProgressWorkflow(option int, ch chan any) {
 			sendServiceResult(false, "", err)
 			return
 		}
-		summary := "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445 dan PgBouncer listen di 127.0.0.1:5444. Service EasyRatholeClient tidak di-install ulang."
+		summary := "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445, PgBouncer listen di 0.0.0.0:5444, dan firewall inbound TCP 5444 dibuka untuk semua sumber. Service EasyRatholeClient tidak di-install ulang."
 		reporter.Summary(summary)
 		sendServiceResult(true, summary, nil)
 	case optionUninstallService:
@@ -610,6 +610,7 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 			{ID: "prepare-pgbouncer-runtime", Label: "Menyiapkan file runtime PgBouncer"},
 			{ID: "install-pgbouncer-service", Label: "Install/update service PgBouncer"},
 			{ID: "wait-pgbouncer-running", Label: "Menunggu service PgBouncer RUNNING"},
+			{ID: "configure-pgbouncer-firewall", Label: "Membuka firewall LAN TCP 5444"},
 			{ID: "health-check-pgbouncer", Label: "Health check PgBouncer"},
 		}
 	case optionUninstallService:
@@ -617,6 +618,7 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 			{ID: "validate-admin", Label: "Validasi hak Administrator"},
 			{ID: "remove-tunnel-service", Label: "Menghapus EasyRatholeClient"},
 			{ID: "remove-pgbouncer-service", Label: "Menghapus service PgBouncer"},
+			{ID: "remove-pgbouncer-firewall", Label: "Menutup firewall LAN TCP 5444"},
 			{ID: "rollback-postgres-port", Label: "Mengembalikan port PostgreSQL ke 5444"},
 			{ID: "cleanup-artifacts", Label: "Membersihkan artefak runtime dan shortcut"},
 		}

@@ -140,7 +140,7 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 	case 2:
 		actionTitle = "Install PgBouncer"
 		actionDesc = "Anda akan install/update service PgBouncer untuk meningkatkan performa koneksi PostgreSQL."
-		consequence = "Installer akan migrasi PostgreSQL ke 127.0.0.1:5445, lalu PgBouncer listen di 127.0.0.1:5444."
+		consequence = "Installer akan migrasi PostgreSQL ke 127.0.0.1:5445, lalu PgBouncer listen di 0.0.0.0:5444 dan membuka firewall TCP 5444 untuk semua sumber."
 		detailLines = []string{
 			"Service Name: PgBouncer",
 			"Bundle Dir : " + bundleDir,
