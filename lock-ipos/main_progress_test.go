@@ -6,6 +6,20 @@ import (
 	"github.com/lock-ipos/lock-ipos/internal/progress"
 )
 
+func TestProgressPlan_InstallIPPublic_DoesNotIncludeLegacyPgBouncer(t *testing.T) {
+	title, steps := progressPlan(optionInstallIPPublic)
+
+	if title != "Install IP Public" {
+		t.Fatalf("unexpected title: %s", title)
+	}
+
+	for _, step := range steps {
+		if step.ID == "legacy-pgbouncer" {
+			t.Fatalf("install IP public plan should not include legacy PgBouncer step")
+		}
+	}
+}
+
 func TestNewProgressStateData_InitializesPendingSteps(t *testing.T) {
 	title, steps := progressPlan(optionInstallPgBouncer)
 	data := newProgressStateData(title, steps)

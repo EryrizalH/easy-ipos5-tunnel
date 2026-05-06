@@ -2,10 +2,14 @@ package winservice
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/lock-ipos/lock-ipos/internal/progress"
 )
 
 func TestResolveBundlePaths_Success(t *testing.T) {
@@ -156,6 +160,46 @@ func TestBuildPgBouncerFirewallCommands(t *testing.T) {
 		if !strings.Contains(addCmd, needle) {
 			t.Fatalf("expected add firewall command to contain %q, got %s", needle, addCmd)
 		}
+	}
+}
+
+func TestExecuteInstallModeWithHandlers_IPPublicOnlySkipsPgBouncerFlow(t *testing.T) {
+	tunnelCalls := 0
+	pgBouncerCalls := 0
+	healthCalls := 0
+
+	err := executeInstallModeWithHandlers(
+		Config{InstallMode: InstallModeIPPublicOnly},
+		BundlePaths{},
+		`C:\ProgramData\easy-rathole-client\logs`,
+		progress.NopReporter(),
+		commandRunner{},
+		installModeHandlers{
+			installTunnelService: func(Config, BundlePaths, string, progress.Reporter, commandRunner) error {
+				tunnelCalls++
+				return nil
+			},
+			installPgBouncer: func(Config, BundlePaths, string, progress.Reporter, commandRunner) error {
+				pgBouncerCalls++
+				return errors.New("pgbouncer flow should not run for IP public install")
+			},
+			waitPgBouncerHealth: func(string, time.Duration, progress.Reporter) error {
+				healthCalls++
+				return errors.New("pgbouncer health check should not run for IP public install")
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("executeInstallModeWithHandlers() unexpected error = %v", err)
+	}
+	if tunnelCalls != 1 {
+		t.Fatalf("expected tunnel installer to run once, got %d", tunnelCalls)
+	}
+	if pgBouncerCalls != 0 {
+		t.Fatalf("expected PgBouncer installer to be skipped, got %d calls", pgBouncerCalls)
+	}
+	if healthCalls != 0 {
+		t.Fatalf("expected PgBouncer health check to be skipped, got %d calls", healthCalls)
 	}
 }
 

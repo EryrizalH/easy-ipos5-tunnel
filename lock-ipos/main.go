@@ -593,7 +593,6 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 			{ID: "resolve-bundle", Label: "Validasi bundle installer"},
 			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
 			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
-			{ID: "legacy-pgbouncer", Label: "Migrasi PgBouncer lama bila ada"},
 			{ID: "remove-tunnel-service", Label: "Menyiapkan reinstall service tunnel"},
 			{ID: "install-tunnel-service", Label: "Install/update EasyRatholeClient"},
 			{ID: "wait-tunnel-running", Label: "Menunggu service RUNNING"},
