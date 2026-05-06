@@ -167,7 +167,7 @@ Environment variable monitor PostgreSQL (opsional):
 
 - `setup.exe`
 - `ipos5-rathole-service.exe`
-- `rathole.exe`
+- `ipos5-rathole.exe`
 - `ipos5-rathole-gui.exe`
 - `nssm.exe`
 - `pgbouncer.exe`
@@ -194,7 +194,7 @@ Environment variable monitor PostgreSQL (opsional):
 
 Catatan paket terbaru:
 - Entry point resmi installer Windows adalah `setup.exe` (menu interaktif).
-- `EasyRatholeClient` dijalankan lewat wrapper headless `ipos5-rathole-service.exe`, lalu wrapper itu mengeksekusi `rathole.exe client.toml`.
+- `EasyRatholeClient` dijalankan lewat wrapper headless `ipos5-rathole-service.exe`, lalu wrapper itu mengeksekusi `ipos5-rathole.exe client.toml`.
 - Script template lama seperti `setup-client.cmd`/`install-service.cmd` bukan alur utama bundle dashboard saat ini.
 - Saat install sukses, shortcut desktop `ipos5-rathole` dibuat untuk membuka GUI jendela utama dengan UAC (Run as Administrator).
 - `setup.exe` akan auto-install service `PgBouncer` dulu (fail-fast jika gagal), lalu install `EasyRatholeClient`.
@@ -203,7 +203,7 @@ Catatan paket terbaru:
   - `scripts/build_windows_unified.ps1` membangun `setup.exe`
   - `scripts/build_windows_service_wrapper.ps1` membangun `ipos5-rathole-service.exe`
   - `scripts/build_windows_gui.ps1` membangun `ipos5-rathole-gui.exe`
-  - `scripts/download_rathole_windows.ps1` mengunduh `rathole.exe` resmi untuk Windows x86_64
+  - `assets/windows/ipos5-rathole.exe` tetap dipakai sebagai binary tunnel Windows custom milik repo ini
 - Build asset PGbouncer Windows dari source repository resmi:
   - repo: `https://github.com/pgbouncer/pgbouncer`
   - helper script: `scripts/build_pgbouncer_windows.ps1`

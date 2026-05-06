@@ -32,7 +32,7 @@ func TestParseArgs_ExplicitOverrides(t *testing.T) {
 		[]string{
 			"--bundle-dir", `D:\vpn`,
 			"--config", `D:\cfg\custom.toml`,
-			"--rathole-bin", `D:\bin\rathole.exe`,
+			"--rathole-bin", `D:\bin\ipos5-rathole.exe`,
 			"--service-name", "CustomSvc",
 		},
 		`D:\ignored`,
@@ -47,7 +47,7 @@ func TestParseArgs_ExplicitOverrides(t *testing.T) {
 	if cfg.ConfigPath != `D:\cfg\custom.toml` {
 		t.Fatalf("unexpected config path: %s", cfg.ConfigPath)
 	}
-	if cfg.RatholePath != `D:\bin\rathole.exe` {
+	if cfg.RatholePath != `D:\bin\ipos5-rathole.exe` {
 		t.Fatalf("unexpected rathole path: %s", cfg.RatholePath)
 	}
 	if cfg.ServiceName != "CustomSvc" {

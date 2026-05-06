@@ -61,7 +61,7 @@ Ensure-Admin
 
 $baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $serviceWrapperExe = Join-Path $baseDir "ipos5-rathole-service.exe"
-$ratholeExe = Join-Path $baseDir "rathole.exe"
+$ratholeExe = Join-Path $baseDir "ipos5-rathole.exe"
 $configFile = Join-Path $baseDir "client.toml"
 $serviceName = "{{WINDOWS_SERVICE_NAME}}"
 $guiSetupScript = Join-Path $baseDir "install-gui-autostart.ps1"
@@ -74,7 +74,7 @@ if (-not (Test-Path $serviceWrapperExe)) {
 }
 
 if (-not (Test-Path $ratholeExe)) {
-    throw "Tidak menemukan rathole.exe pada folder bundle"
+    throw "Tidak menemukan ipos5-rathole.exe pada folder bundle"
 }
 
 if (-not (Test-Path $configFile)) {

@@ -16,7 +16,7 @@ import (
 const (
 	DefaultServiceName       = "EasyRatholeClient"
 	DefaultConfigName        = "client.toml"
-	DefaultRatholeBinaryName = "rathole.exe"
+	DefaultRatholeBinaryName = "ipos5-rathole.exe"
 
 	defaultStartupGracePeriod  = 3 * time.Second
 	defaultShutdownGracePeriod = 10 * time.Second
@@ -48,10 +48,10 @@ func ParseArgs(args []string, executableDir string) (Config, error) {
 
 	fs := flag.NewFlagSet("ipos5-rathole-service", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	fs.StringVar(&bundleDir, "bundle-dir", bundleDir, "Directory containing rathole.exe and client.toml")
+	fs.StringVar(&bundleDir, "bundle-dir", bundleDir, "Directory containing ipos5-rathole.exe and client.toml")
 	fs.StringVar(&configPath, "config", "", "Path to client.toml")
 	fs.StringVar(&serviceName, "service-name", serviceName, "Windows service name for log context")
-	fs.StringVar(&ratholePath, "rathole-bin", "", "Path to rathole.exe")
+	fs.StringVar(&ratholePath, "rathole-bin", "", "Path to ipos5-rathole.exe")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
 	}

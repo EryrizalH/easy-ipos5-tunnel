@@ -87,7 +87,7 @@ func TestBuildInstallCommands(t *testing.T) {
 	paths := BundlePaths{
 		NSSMPath:           `D:\bundle\nssm.exe`,
 		ServiceWrapperPath: `D:\bundle\ipos5-rathole-service.exe`,
-		RatholePath:        `D:\bundle\rathole.exe`,
+		RatholePath:        `D:\bundle\ipos5-rathole.exe`,
 		GUIPath:            `D:\bundle\ipos5-rathole-gui.exe`,
 		ClientTomlPath:     `D:\bundle\client.toml`,
 		PgBouncerPath:      `D:\bundle\pgbouncer.exe`,
@@ -103,7 +103,7 @@ func TestBuildInstallCommands(t *testing.T) {
 	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install EasyRatholeClient") {
 		t.Fatalf("unexpected first command: %s", got)
 	}
-	if got := strings.Join(cmds[0], " "); !strings.Contains(got, `ipos5-rathole-service.exe --bundle-dir D:\bundle --config D:\bundle\client.toml --rathole-bin D:\bundle\rathole.exe`) {
+	if got := strings.Join(cmds[0], " "); !strings.Contains(got, `ipos5-rathole-service.exe --bundle-dir D:\bundle --config D:\bundle\client.toml --rathole-bin D:\bundle\ipos5-rathole.exe`) {
 		t.Fatalf("install command must target wrapper and explicit args, got: %s", got)
 	}
 

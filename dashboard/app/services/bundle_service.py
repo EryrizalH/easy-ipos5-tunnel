@@ -12,7 +12,7 @@ from typing import Any
 from .tunnel_ports import normalize_service_ports
 
 WINDOWS_SERVICE_WRAPPER_NAME = "ipos5-rathole-service.exe"
-WINDOWS_RATHOLE_BINARY_NAME = "rathole.exe"
+WINDOWS_RATHOLE_BINARY_NAME = "ipos5-rathole.exe"
 WINDOWS_GUI_BINARY_NAME = "ipos5-rathole-gui.exe"
 WINDOWS_UNIFIED_NAME = "setup.exe"
 WINDOWS_NSSM_NAME = "nssm.exe"

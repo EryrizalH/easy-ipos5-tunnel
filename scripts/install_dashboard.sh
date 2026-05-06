@@ -19,6 +19,15 @@ main() {
   local bundles_dir="${easy_root}/bundles"
   local cache_dir="${easy_root}/cache"
   local dashboard_port
+  local venv_dir
+  local admin_username
+  local admin_password
+  local token
+  local credentials_file
+  local service_file
+  local now
+  local public_ip
+
   dashboard_port="$(state_get "$state_file" "dashboard_port" "8088")"
 
   ensure_dir "$deploy_dir" 755
@@ -35,7 +44,7 @@ main() {
   [[ -f "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll"
   [[ -f "${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll"
   [[ -f "${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe"
-  [[ -f "${PROJECT_ROOT}/assets/windows/rathole.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/rathole.exe"
+  [[ -f "${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe"
 
   rm -rf "${deploy_dir}/app"
   cp -R "${PROJECT_ROOT}/dashboard/app" "${deploy_dir}/app"
@@ -48,7 +57,7 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/assets/windows/setup-client.cmd.tpl" "${resources_dir}/assets/windows/setup-client.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/setup.exe" "${resources_dir}/assets/windows/setup.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe" "${resources_dir}/assets/windows/ipos5-rathole-service.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/rathole.exe" "${resources_dir}/assets/windows/rathole.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe" "${resources_dir}/assets/windows/ipos5-rathole.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole-gui.exe" "${resources_dir}/assets/windows/ipos5-rathole-gui.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/nssm.exe" "${resources_dir}/assets/windows/nssm.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.exe" "${resources_dir}/assets/windows/pgbouncer.exe"
@@ -63,19 +72,17 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/assets/linux/install-client.sh.tpl" "${resources_dir}/assets/linux/install-client.sh.tpl"
   install -m 0644 "${PROJECT_ROOT}/templates/rathole/client.toml.tpl" "${resources_dir}/templates/rathole/client.toml.tpl"
 
-  local venv_dir="${deploy_dir}/.venv"
+  venv_dir="${deploy_dir}/.venv"
   if [[ ! -x "${venv_dir}/bin/python" ]]; then
     python3 -m venv "$venv_dir"
   fi
   "${venv_dir}/bin/pip" install --upgrade pip >/dev/null
   "${venv_dir}/bin/pip" install -r "${deploy_dir}/requirements.txt" >/dev/null
 
-  local admin_username
-  local admin_password
-  local token
   admin_username="$(state_get "$state_file" "admin_username" "admin")"
   admin_password="$(state_get "$state_file" "admin_password" "")"
   token="$(state_get "$state_file" "token" "")"
+  public_ip="$(state_get "$state_file" "public_ip" "127.0.0.1")"
 
   [[ -n "$admin_password" ]] || admin_password="$(random_string 24)"
   [[ -n "$token" ]] || token="$(random_string 40)"
@@ -88,16 +95,16 @@ main() {
   PYTHONPATH="$deploy_dir" \
   "${venv_dir}/bin/python" -m app.bootstrap
 
-  local credentials_file="${easy_root}/state/dashboard-credentials.txt"
-  cat > "$credentials_file" <<EOF
-Dashboard URL      : http://$(state_get "$state_file" "public_ip" "127.0.0.1"):${dashboard_port}
-Username           : ${admin_username}
-Password           : ${admin_password}
-Generated at (UTC) : $(date -u +%Y-%m-%dT%H:%M:%SZ)
-EOF
+  credentials_file="${easy_root}/state/dashboard-credentials.txt"
+  {
+    printf 'Dashboard URL      : http://%s:%s\n' "$public_ip" "$dashboard_port"
+    printf 'Username           : %s\n' "$admin_username"
+    printf 'Password           : %s\n' "$admin_password"
+    printf 'Generated at (UTC) : %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  } > "$credentials_file"
   chmod 0600 "$credentials_file"
 
-  local service_file="/etc/systemd/system/easy-rathole-dashboard.service"
+  service_file="/etc/systemd/system/easy-rathole-dashboard.service"
   render_template "${PROJECT_ROOT}/dashboard/systemd/easy-rathole-dashboard.service.tpl" "$service_file" \
     DASHBOARD_WORKDIR "$deploy_dir" \
     DASHBOARD_VENV "$venv_dir" \
@@ -113,7 +120,6 @@ EOF
   systemctl restart easy-rathole-dashboard
   systemctl is-active --quiet easy-rathole-dashboard || fail "Gagal menjalankan service: easy-rathole-dashboard"
 
-  local now
   now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   state_merge_json "$state_file" "{\
     \"admin_username\": \"${admin_username}\", \

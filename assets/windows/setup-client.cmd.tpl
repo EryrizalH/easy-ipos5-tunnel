@@ -33,15 +33,15 @@ if not exist "ipos5-rathole-service.exe" (
   exit /b 1
 )
 
-if not exist "rathole.exe" (
-  echo [ERROR] Binary tunnel tidak ditemukan: rathole.exe
+if not exist "ipos5-rathole.exe" (
+  echo [ERROR] Binary tunnel tidak ditemukan: ipos5-rathole.exe
   echo         Pastikan ZIP client windows diextract lengkap.
   pause
   exit /b 1
 )
 
 echo [OK] Service wrapper ditemukan: ipos5-rathole-service.exe
-echo [OK] Binary tunnel ditemukan: rathole.exe
+echo [OK] Binary tunnel ditemukan: ipos5-rathole.exe
 
 if not exist "{{WINDOWS_GUI_BINARY_NAME}}" (
   echo [ERROR] GUI binary tidak ditemukan: {{WINDOWS_GUI_BINARY_NAME}}

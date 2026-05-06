@@ -28,7 +28,7 @@ const (
 	DefaultServiceName        = "EasyRatholeClient"
 	pgBouncerService          = "PgBouncer"
 	serviceWrapperBinary      = "ipos5-rathole-service.exe"
-	ratholeBinary             = "rathole.exe"
+	ratholeBinary             = "ipos5-rathole.exe"
 	guiBinaryName             = "ipos5-rathole-gui.exe"
 	pgBouncerBinary           = "pgbouncer.exe"
 	pgBouncerLibEvent         = "libevent-7.dll"
