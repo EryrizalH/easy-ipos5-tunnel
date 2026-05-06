@@ -11,13 +11,14 @@ import (
 func TestResolveBundlePaths_Success(t *testing.T) {
 	tmp := t.TempDir()
 	mustWrite(t, filepath.Join(tmp, "nssm.exe"))
+	mustWrite(t, filepath.Join(tmp, serviceWrapperBinary))
+	mustWrite(t, filepath.Join(tmp, ratholeBinary))
 	mustWrite(t, filepath.Join(tmp, "pgbouncer.exe"))
 	mustWrite(t, filepath.Join(tmp, "libevent-7.dll"))
 	mustWrite(t, filepath.Join(tmp, "libssl-3-x64.dll"))
 	mustWrite(t, filepath.Join(tmp, "libcrypto-3-x64.dll"))
 	mustWrite(t, filepath.Join(tmp, "libwinpthread-1.dll"))
 	mustWrite(t, filepath.Join(tmp, "client.toml"))
-	mustWrite(t, filepath.Join(tmp, "ipos5-rathole.exe"))
 	mustWrite(t, filepath.Join(tmp, guiBinaryName))
 
 	paths, err := ResolveBundlePaths(tmp)
@@ -28,7 +29,10 @@ func TestResolveBundlePaths_Success(t *testing.T) {
 	if !strings.HasSuffix(strings.ToLower(paths.NSSMPath), "nssm.exe") {
 		t.Fatalf("NSSMPath unexpected: %s", paths.NSSMPath)
 	}
-	if !strings.HasSuffix(strings.ToLower(paths.RatholePath), "ipos5-rathole.exe") {
+	if !strings.HasSuffix(strings.ToLower(paths.ServiceWrapperPath), serviceWrapperBinary) {
+		t.Fatalf("ServiceWrapperPath unexpected: %s", paths.ServiceWrapperPath)
+	}
+	if !strings.HasSuffix(strings.ToLower(paths.RatholePath), ratholeBinary) {
 		t.Fatalf("RatholePath unexpected: %s", paths.RatholePath)
 	}
 	if !strings.HasSuffix(strings.ToLower(paths.ClientTomlPath), "client.toml") {
@@ -58,7 +62,10 @@ func TestResolveBundlePaths_MissingFiles(t *testing.T) {
 	if !strings.Contains(msg, "client.toml") {
 		t.Fatalf("error should mention client.toml, got: %v", err)
 	}
-	if !strings.Contains(msg, "ipos5-rathole.exe/rathole.exe") {
+	if !strings.Contains(msg, serviceWrapperBinary) {
+		t.Fatalf("error should mention service wrapper binary, got: %v", err)
+	}
+	if !strings.Contains(msg, ratholeBinary) {
 		t.Fatalf("error should mention rathole binary, got: %v", err)
 	}
 	if !strings.Contains(msg, guiBinaryName) {
@@ -78,13 +85,14 @@ func TestResolveBundlePaths_MissingFiles(t *testing.T) {
 func TestBuildInstallCommands(t *testing.T) {
 	cfg := Config{ServiceName: "EasyRatholeClient", BundleDir: `D:\bundle`}
 	paths := BundlePaths{
-		NSSMPath:          `D:\bundle\nssm.exe`,
-		RatholePath:       `D:\bundle\ipos5-rathole.exe`,
-		GUIPath:           `D:\bundle\ipos5-rathole-gui.exe`,
-		ClientTomlPath:    `D:\bundle\client.toml`,
-		PgBouncerPath:     `D:\bundle\pgbouncer.exe`,
-		PgBouncerIniPath:  `D:\bundle\pgbouncer.ini`,
-		PgBouncerUserPath: `D:\bundle\userlist.txt`,
+		NSSMPath:           `D:\bundle\nssm.exe`,
+		ServiceWrapperPath: `D:\bundle\ipos5-rathole-service.exe`,
+		RatholePath:        `D:\bundle\rathole.exe`,
+		GUIPath:            `D:\bundle\ipos5-rathole-gui.exe`,
+		ClientTomlPath:     `D:\bundle\client.toml`,
+		PgBouncerPath:      `D:\bundle\pgbouncer.exe`,
+		PgBouncerIniPath:   `D:\bundle\pgbouncer.ini`,
+		PgBouncerUserPath:  `D:\bundle\userlist.txt`,
 	}
 
 	cmds := BuildInstallCommands(cfg, paths, `C:\ProgramData\easy-rathole-client\logs`)
@@ -94,6 +102,9 @@ func TestBuildInstallCommands(t *testing.T) {
 
 	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install EasyRatholeClient") {
 		t.Fatalf("unexpected first command: %s", got)
+	}
+	if got := strings.Join(cmds[0], " "); !strings.Contains(got, `ipos5-rathole-service.exe --bundle-dir D:\bundle --config D:\bundle\client.toml --rathole-bin D:\bundle\rathole.exe`) {
+		t.Fatalf("install command must target wrapper and explicit args, got: %s", got)
 	}
 
 	hasAutoStart := false
@@ -178,7 +189,8 @@ func TestResolveBundlePaths_IPPublicModeAllowsMissingPgBouncer(t *testing.T) {
 	tmp := t.TempDir()
 	mustWrite(t, filepath.Join(tmp, "nssm.exe"))
 	mustWrite(t, filepath.Join(tmp, "client.toml"))
-	mustWrite(t, filepath.Join(tmp, "ipos5-rathole.exe"))
+	mustWrite(t, filepath.Join(tmp, serviceWrapperBinary))
+	mustWrite(t, filepath.Join(tmp, ratholeBinary))
 	mustWrite(t, filepath.Join(tmp, guiBinaryName))
 
 	_, err := resolveBundlePaths(tmp, false)

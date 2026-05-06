@@ -26,20 +26,22 @@ if not exist "client.toml" (
   exit /b 1
 )
 
-set "RATHOLE_BIN="
-if exist "ipos5-rathole.exe" set "RATHOLE_BIN=ipos5-rathole.exe"
-if not defined RATHOLE_BIN if exist "rathole.exe" set "RATHOLE_BIN=rathole.exe"
-
-if not defined RATHOLE_BIN (
-  echo [ERROR] Binary rathole tidak ditemukan.
-  echo         Cari salah satu file ini di folder yang sama:
-  echo         - ipos5-rathole.exe
-  echo         - rathole.exe
+if not exist "ipos5-rathole-service.exe" (
+  echo [ERROR] Service wrapper tidak ditemukan: ipos5-rathole-service.exe
+  echo         Pastikan ZIP client windows diextract lengkap.
   pause
   exit /b 1
 )
 
-echo [OK] Binary ditemukan: %RATHOLE_BIN%
+if not exist "rathole.exe" (
+  echo [ERROR] Binary tunnel tidak ditemukan: rathole.exe
+  echo         Pastikan ZIP client windows diextract lengkap.
+  pause
+  exit /b 1
+)
+
+echo [OK] Service wrapper ditemukan: ipos5-rathole-service.exe
+echo [OK] Binary tunnel ditemukan: rathole.exe
 
 if not exist "{{WINDOWS_GUI_BINARY_NAME}}" (
   echo [ERROR] GUI binary tidak ditemukan: {{WINDOWS_GUI_BINARY_NAME}}

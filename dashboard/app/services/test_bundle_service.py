@@ -44,7 +44,8 @@ class BundleServiceTest(unittest.TestCase):
             bundles.mkdir(parents=True, exist_ok=True)
 
             for name in (
-                bundle_service.WINDOWS_BINARY_NAME,
+                bundle_service.WINDOWS_SERVICE_WRAPPER_NAME,
+                bundle_service.WINDOWS_RATHOLE_BINARY_NAME,
                 bundle_service.WINDOWS_GUI_BINARY_NAME,
                 bundle_service.WINDOWS_UNIFIED_NAME,
                 bundle_service.WINDOWS_NSSM_NAME,
@@ -93,6 +94,8 @@ class BundleServiceTest(unittest.TestCase):
             self.assertTrue(bundle_path.exists())
             with zipfile.ZipFile(bundle_path) as zf:
                 names = set(zf.namelist())
+                self.assertIn(bundle_service.WINDOWS_SERVICE_WRAPPER_NAME, names)
+                self.assertIn(bundle_service.WINDOWS_RATHOLE_BINARY_NAME, names)
                 self.assertIn(bundle_service.WINDOWS_PGBOUNCER_DATABASES_NAME, names)
                 payload = json.loads(zf.read(bundle_service.WINDOWS_PGBOUNCER_DATABASES_NAME).decode("utf-8"))
                 client_toml = zf.read("client.toml").decode("utf-8")

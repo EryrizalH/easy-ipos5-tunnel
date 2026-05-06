@@ -11,7 +11,8 @@ from typing import Any
 
 from .tunnel_ports import normalize_service_ports
 
-WINDOWS_BINARY_NAME = "ipos5-rathole.exe"
+WINDOWS_SERVICE_WRAPPER_NAME = "ipos5-rathole-service.exe"
+WINDOWS_RATHOLE_BINARY_NAME = "rathole.exe"
 WINDOWS_GUI_BINARY_NAME = "ipos5-rathole-gui.exe"
 WINDOWS_UNIFIED_NAME = "setup.exe"
 WINDOWS_NSSM_NAME = "nssm.exe"
@@ -125,7 +126,8 @@ def render_pgbouncer_databases_json(state: dict[str, Any]) -> str:
 
 
 def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
-    windows_bin = resources_dir() / f"assets/windows/{WINDOWS_BINARY_NAME}"
+    windows_wrapper_bin = resources_dir() / f"assets/windows/{WINDOWS_SERVICE_WRAPPER_NAME}"
+    windows_rathole_bin = resources_dir() / f"assets/windows/{WINDOWS_RATHOLE_BINARY_NAME}"
     windows_gui_bin = resources_dir() / f"assets/windows/{WINDOWS_GUI_BINARY_NAME}"
     windows_unified_bin = resources_dir() / f"assets/windows/{WINDOWS_UNIFIED_NAME}"
     nssm_exe = resources_dir() / f"assets/windows/{WINDOWS_NSSM_NAME}"
@@ -136,7 +138,8 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     pgbouncer_libwinpth = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_LIBWINPTH_NAME}"
     pgbouncer_ini_tpl = resources_dir() / "assets/windows/pgbouncer.ini.tpl"
     pgbouncer_userlist_sample = resources_dir() / f"assets/windows/{WINDOWS_PGBOUNCER_USERLIST_NAME}"
-    require_file(windows_bin, WINDOWS_BINARY_NAME)
+    require_file(windows_wrapper_bin, WINDOWS_SERVICE_WRAPPER_NAME)
+    require_file(windows_rathole_bin, WINDOWS_RATHOLE_BINARY_NAME)
     require_file(windows_gui_bin, WINDOWS_GUI_BINARY_NAME)
     require_file(windows_unified_bin, WINDOWS_UNIFIED_NAME)
     require_file(nssm_exe, WINDOWS_NSSM_NAME)
@@ -153,7 +156,8 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
 
     temp_dir = Path(tempfile.mkdtemp(prefix="easy-rathole-win-"))
     try:
-        shutil.copy2(windows_bin, temp_dir / WINDOWS_BINARY_NAME)
+        shutil.copy2(windows_wrapper_bin, temp_dir / WINDOWS_SERVICE_WRAPPER_NAME)
+        shutil.copy2(windows_rathole_bin, temp_dir / WINDOWS_RATHOLE_BINARY_NAME)
         shutil.copy2(windows_gui_bin, temp_dir / WINDOWS_GUI_BINARY_NAME)
         shutil.copy2(windows_unified_bin, temp_dir / WINDOWS_UNIFIED_NAME)
         shutil.copy2(nssm_exe, temp_dir / WINDOWS_NSSM_NAME)
@@ -192,13 +196,14 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "6) GUI tidak autostart saat login Windows; buka manual via shortcut desktop.",
                     "7) Saat Uninstall Service, shortcut desktop GUI ikut dihapus.",
                     f"8) Service default yang dipakai: {WINDOWS_SERVICE_NAME}",
-                    "9) Entry point installer resmi paket ini adalah setup.exe.",
-                    "   Script template lama (setup-client.cmd/install-service.cmd) bukan jalur utama bundle dashboard.",
-                    "10) Jika install PgBouncer (menu 2) gagal, proses dibatalkan (fail-fast).",
-                    "11) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
+                    "9) setup.exe adalah installer interaktif; service Windows tidak menjalankan setup.exe.",
+                    f"10) Service wrapper {WINDOWS_SERVICE_WRAPPER_NAME} akan menjalankan {WINDOWS_RATHOLE_BINARY_NAME} dengan client.toml.",
+                    "11) Script template lama (setup-client.cmd/install-service.cmd) bukan jalur utama bundle dashboard.",
+                    "12) Jika install PgBouncer (menu 2) gagal, proses dibatalkan (fail-fast).",
+                    "13) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
                     "    Daftar database PgBouncer dibaca dari pgbouncer-databases.json bila tersedia.",
-                    "12) Paket ini wajib utuh:",
-                    "   setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + pgbouncer-databases.json + userlist.sample.txt",
+                    "14) Paket ini wajib utuh:",
+                    "   setup.exe + ipos5-rathole-service.exe + rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + pgbouncer-databases.json + userlist.sample.txt",
                 ]
             )
             + "\n",

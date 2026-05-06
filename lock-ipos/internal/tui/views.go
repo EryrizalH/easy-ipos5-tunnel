@@ -135,7 +135,7 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 		detailLines = []string{
 			"Service Name: " + serviceName,
 			"Bundle Dir : " + bundleDir,
-			"Wajib ada  : nssm.exe, ipos5-rathole.exe/rathole.exe, ipos5-rathole-gui.exe, client.toml",
+			"Wajib ada  : nssm.exe, ipos5-rathole-service.exe, rathole.exe, ipos5-rathole-gui.exe, client.toml",
 		}
 	case 2:
 		actionTitle = "Install PgBouncer"

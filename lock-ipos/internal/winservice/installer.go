@@ -27,6 +27,8 @@ import (
 const (
 	DefaultServiceName        = "EasyRatholeClient"
 	pgBouncerService          = "PgBouncer"
+	serviceWrapperBinary      = "ipos5-rathole-service.exe"
+	ratholeBinary             = "rathole.exe"
 	guiBinaryName             = "ipos5-rathole-gui.exe"
 	pgBouncerBinary           = "pgbouncer.exe"
 	pgBouncerLibEvent         = "libevent-7.dll"
@@ -76,14 +78,15 @@ type commandRunner struct {
 
 // BundlePaths contains required sidecar files.
 type BundlePaths struct {
-	NSSMPath          string
-	RatholePath       string
-	GUIPath           string
-	ClientTomlPath    string
-	PgBouncerPath     string
-	PgBouncerIniPath  string
-	PgBouncerDBsPath  string
-	PgBouncerUserPath string
+	NSSMPath           string
+	ServiceWrapperPath string
+	RatholePath        string
+	GUIPath            string
+	ClientTomlPath     string
+	PgBouncerPath      string
+	PgBouncerIniPath   string
+	PgBouncerDBsPath   string
+	PgBouncerUserPath  string
 }
 
 type pgBouncerDatabaseEntry struct {
@@ -146,6 +149,8 @@ func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, e
 
 	nssm := filepath.Join(cleanDir, "nssm.exe")
 	clientToml := filepath.Join(cleanDir, "client.toml")
+	serviceWrapperPath := filepath.Join(cleanDir, serviceWrapperBinary)
+	ratholePath := filepath.Join(cleanDir, ratholeBinary)
 	guiPath := filepath.Join(cleanDir, guiBinaryName)
 	pgBouncerPath := filepath.Join(cleanDir, pgBouncerBinary)
 	pgBouncerLibEventPath := filepath.Join(cleanDir, pgBouncerLibEvent)
@@ -156,17 +161,18 @@ func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, e
 	pgBouncerDBsPath := filepath.Join(cleanDir, pgBouncerDBsName)
 	pgBouncerUserPath := filepath.Join(cleanDir, pgBouncerUserlist)
 
-	ratholeCandidates := []string{
-		filepath.Join(cleanDir, "ipos5-rathole.exe"),
-		filepath.Join(cleanDir, "rathole.exe"),
-	}
-
 	missing := make([]string, 0, 6)
 	if !fileExists(nssm) {
 		missing = append(missing, "nssm.exe")
 	}
 	if !fileExists(clientToml) {
 		missing = append(missing, "client.toml")
+	}
+	if !fileExists(serviceWrapperPath) {
+		missing = append(missing, serviceWrapperBinary)
+	}
+	if !fileExists(ratholePath) {
+		missing = append(missing, ratholeBinary)
 	}
 	if !fileExists(guiPath) {
 		missing = append(missing, guiBinaryName)
@@ -189,30 +195,20 @@ func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, e
 		}
 	}
 
-	rathole := ""
-	for _, candidate := range ratholeCandidates {
-		if fileExists(candidate) {
-			rathole = candidate
-			break
-		}
-	}
-	if rathole == "" {
-		missing = append(missing, "ipos5-rathole.exe/rathole.exe")
-	}
-
 	if len(missing) > 0 {
 		return BundlePaths{}, fmt.Errorf("file sidecar wajib tidak lengkap di %s: %s", cleanDir, strings.Join(missing, ", "))
 	}
 
 	return BundlePaths{
-		NSSMPath:          nssm,
-		RatholePath:       rathole,
-		GUIPath:           guiPath,
-		ClientTomlPath:    clientToml,
-		PgBouncerPath:     pgBouncerPath,
-		PgBouncerIniPath:  pgBouncerIniPath,
-		PgBouncerDBsPath:  pgBouncerDBsPath,
-		PgBouncerUserPath: pgBouncerUserPath,
+		NSSMPath:           nssm,
+		ServiceWrapperPath: serviceWrapperPath,
+		RatholePath:        ratholePath,
+		GUIPath:            guiPath,
+		ClientTomlPath:     clientToml,
+		PgBouncerPath:      pgBouncerPath,
+		PgBouncerIniPath:   pgBouncerIniPath,
+		PgBouncerDBsPath:   pgBouncerDBsPath,
+		PgBouncerUserPath:  pgBouncerUserPath,
 	}, nil
 }
 
@@ -220,7 +216,15 @@ func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, e
 func BuildInstallCommands(cfg Config, paths BundlePaths, logRoot string) [][]string {
 	cfg = cfg.normalized()
 	return [][]string{
-		{"install", cfg.ServiceName, paths.RatholePath, paths.ClientTomlPath},
+		{
+			"install",
+			cfg.ServiceName,
+			paths.ServiceWrapperPath,
+			"--bundle-dir", cfg.BundleDir,
+			"--config", paths.ClientTomlPath,
+			"--rathole-bin", paths.RatholePath,
+			"--service-name", cfg.ServiceName,
+		},
 		{"set", cfg.ServiceName, "AppDirectory", cfg.BundleDir},
 		{"set", cfg.ServiceName, "Start", "SERVICE_AUTO_START"},
 		{"set", cfg.ServiceName, "DisplayName", "IPOS5TunnelPublik Client"},

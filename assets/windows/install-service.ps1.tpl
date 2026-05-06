@@ -60,16 +60,8 @@ function Remove-ExistingServiceIfAny {
 Ensure-Admin
 
 $baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ratholeExe = $null
-$exeCandidates = @("ipos5-rathole.exe", "rathole.exe")
-foreach ($exeName in $exeCandidates) {
-    $candidate = Join-Path $baseDir $exeName
-    if (Test-Path $candidate) {
-        $ratholeExe = $candidate
-        break
-    }
-}
-
+$serviceWrapperExe = Join-Path $baseDir "ipos5-rathole-service.exe"
+$ratholeExe = Join-Path $baseDir "rathole.exe"
 $configFile = Join-Path $baseDir "client.toml"
 $serviceName = "{{WINDOWS_SERVICE_NAME}}"
 $guiSetupScript = Join-Path $baseDir "install-gui-autostart.ps1"
@@ -77,8 +69,12 @@ $logRoot = Join-Path $env:ProgramData "easy-rathole-client\\logs"
 $stdoutLog = Join-Path $logRoot ($serviceName + ".stdout.log")
 $stderrLog = Join-Path $logRoot ($serviceName + ".stderr.log")
 
-if (-not $ratholeExe) {
-    throw "Tidak menemukan ipos5-rathole.exe atau rathole.exe pada folder bundle"
+if (-not (Test-Path $serviceWrapperExe)) {
+    throw "Tidak menemukan ipos5-rathole-service.exe pada folder bundle"
+}
+
+if (-not (Test-Path $ratholeExe)) {
+    throw "Tidak menemukan rathole.exe pada folder bundle"
 }
 
 if (-not (Test-Path $configFile)) {
@@ -92,7 +88,7 @@ Remove-ExistingServiceIfAny -ServiceName $serviceName
 
 New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
 
-& $nssm install $serviceName $ratholeExe $configFile
+& $nssm install $serviceName $serviceWrapperExe --bundle-dir $baseDir --config $configFile --rathole-bin $ratholeExe --service-name $serviceName
 & $nssm set $serviceName AppDirectory $baseDir
 & $nssm set $serviceName Start SERVICE_AUTO_START
 & $nssm set $serviceName DisplayName "IPOS5TunnelPublik Client"
@@ -122,7 +118,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "Setup GUI autostart gagal dengan exit code $LASTEXITCODE"
 }
 
-Write-Host "Executable terpakai: $(Split-Path -Leaf $ratholeExe)" -ForegroundColor Cyan
+Write-Host "Service wrapper: $(Split-Path -Leaf $serviceWrapperExe)" -ForegroundColor Cyan
+Write-Host "Tunnel binary: $(Split-Path -Leaf $ratholeExe)" -ForegroundColor Cyan
 Write-Host "GUI executable: {{WINDOWS_GUI_BINARY_NAME}}" -ForegroundColor Cyan
 Write-Host "Task autostart GUI: {{WINDOWS_GUI_TASK_NAME}}" -ForegroundColor Cyan
 Write-Host "Log stderr: $stderrLog" -ForegroundColor Cyan

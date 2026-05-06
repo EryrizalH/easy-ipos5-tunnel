@@ -34,6 +34,8 @@ main() {
   [[ -f "${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll"
   [[ -f "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll"
   [[ -f "${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll"
+  [[ -f "${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe"
+  [[ -f "${PROJECT_ROOT}/assets/windows/rathole.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/rathole.exe"
 
   rm -rf "${deploy_dir}/app"
   cp -R "${PROJECT_ROOT}/dashboard/app" "${deploy_dir}/app"
@@ -45,7 +47,8 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-service.cmd.tpl" "${resources_dir}/assets/windows/uninstall-service.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/setup-client.cmd.tpl" "${resources_dir}/assets/windows/setup-client.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/setup.exe" "${resources_dir}/assets/windows/setup.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe" "${resources_dir}/assets/windows/ipos5-rathole.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe" "${resources_dir}/assets/windows/ipos5-rathole-service.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/rathole.exe" "${resources_dir}/assets/windows/rathole.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole-gui.exe" "${resources_dir}/assets/windows/ipos5-rathole-gui.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/nssm.exe" "${resources_dir}/assets/windows/nssm.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.exe" "${resources_dir}/assets/windows/pgbouncer.exe"

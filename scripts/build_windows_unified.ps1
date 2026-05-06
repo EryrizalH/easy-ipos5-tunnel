@@ -8,7 +8,7 @@ if (-not (Test-Path $unifiedDir)) {
     throw "Folder lock-ipos tidak ditemukan: $unifiedDir"
 }
 
-Write-Host "Building unified Windows client..." -ForegroundColor Cyan
+Write-Host "Building interactive Windows setup.exe..." -ForegroundColor Cyan
 
 $env:GOOS = "windows"
 $env:GOARCH = "amd64"
@@ -18,7 +18,7 @@ Push-Location $unifiedDir
 try {
     & go build -ldflags "-s -w" -o $outPath .
     if ($LASTEXITCODE -ne 0) {
-        throw "go build unified gagal dengan exit code $LASTEXITCODE"
+        throw "go build setup.exe gagal dengan exit code $LASTEXITCODE"
     }
 }
 finally {
@@ -26,12 +26,12 @@ finally {
 }
 
 if (-not (Test-Path $outPath)) {
-    throw "Output unified exe tidak ditemukan: $outPath"
+    throw "Output setup.exe tidak ditemukan: $outPath"
 }
 
 $file = Get-Item $outPath
 if ($file.Length -le 0) {
-    throw "Output unified exe kosong: $outPath"
+    throw "Output setup.exe kosong: $outPath"
 }
 
-Write-Host "Sukses build unified exe: $($file.FullName) ($($file.Length) bytes)" -ForegroundColor Green
+Write-Host "Sukses build setup.exe: $($file.FullName) ($($file.Length) bytes)" -ForegroundColor Green

@@ -16,8 +16,9 @@ from .auth import verify_password
 from .db import connect, ensure_postgres_monitor_table, get_postgres_monitor_latest, get_setting, get_user
 from .services.bundle_service import (
     LINUX_SERVICE_NAME,
-    WINDOWS_BINARY_NAME,
     WINDOWS_GUI_BINARY_NAME,
+    WINDOWS_RATHOLE_BINARY_NAME,
+    WINDOWS_SERVICE_WRAPPER_NAME,
     WINDOWS_UNIFIED_NAME,
     WINDOWS_NSSM_NAME,
     WINDOWS_SERVICE_NAME,
@@ -176,10 +177,10 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (setup.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
+            "delivery": "Paket ZIP (setup.exe + ipos5-rathole-service.exe + rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
             "binary_source": (
                 "Bundled dari aset lokal dashboard: "
-                f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
+                f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_SERVICE_WRAPPER_NAME} + {WINDOWS_RATHOLE_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
             ),
             "setup_hint": "Jalankan setup.exe sebagai Administrator (install service membuat shortcut desktop GUI admin; GUI dibuka manual, tidak autostart)",
             "remote_endpoint": endpoint,
@@ -338,7 +339,8 @@ def download_windows(
                 f"{exc}. "
                 "Pastikan aset berikut tersedia pada server resources: "
                 "assets/windows/setup.exe, "
-                "assets/windows/ipos5-rathole.exe, "
+                "assets/windows/ipos5-rathole-service.exe, "
+                "assets/windows/rathole.exe, "
                 "assets/windows/ipos5-rathole-gui.exe, "
                 "assets/windows/nssm.exe, "
                 "assets/windows/pgbouncer.exe, "

@@ -728,7 +728,7 @@ func defaultBundleDir() string {
 
 func main() {
 	serviceName := flag.String("service-name", winservice.DefaultServiceName, "Windows service name")
-	bundleDir := flag.String("bundle-dir", defaultBundleDir(), "Directory containing sidecar files (nssm.exe, pgbouncer.exe, libevent-7.dll, libssl-3-x64.dll, libcrypto-3-x64.dll, ipos5-rathole.exe/rathole.exe, client.toml)")
+	bundleDir := flag.String("bundle-dir", defaultBundleDir(), "Directory containing sidecar files (nssm.exe, ipos5-rathole-service.exe, rathole.exe, pgbouncer.exe, libevent-7.dll, libssl-3-x64.dll, libcrypto-3-x64.dll, client.toml)")
 	flag.Parse()
 
 	if err := logger.Init(); err != nil {
