@@ -136,6 +136,7 @@ Fitur utama:
      - cache hit ratio
 4. Download bundle client:
    - `GET /download/windows`
+   - `GET /download/windows7`
    - `GET /download/linux`
 
 Health check endpoint:
@@ -163,7 +164,7 @@ Environment variable monitor PostgreSQL (opsional):
 
 ## 4) Client Windows
 
-### Isi bundle Windows
+### Isi bundle Windows (modern)
 
 - `setup.exe`
 - `ipos5-rathole-service.exe`
@@ -207,6 +208,28 @@ Catatan paket terbaru:
 - Build asset PGbouncer Windows dari source repository resmi:
   - repo: `https://github.com/pgbouncer/pgbouncer`
   - helper script: `scripts/build_pgbouncer_windows.ps1`
+
+### Isi bundle Windows 7 (terpisah)
+
+- `setup.exe`
+- `ipos5-rathole-service.exe`
+- `ipos5-rathole.exe`
+- `nssm.exe`
+- `pgbouncer.exe`
+- `libevent-7.dll`
+- `libssl-3-x64.dll`
+- `libcrypto-3-x64.dll`
+- `libwinpthread-1.dll`
+- `client.toml`
+- `pgbouncer.ini`
+- `userlist.sample.txt`
+- `README.txt`
+
+Catatan Windows 7:
+- Download melalui route `GET /download/windows7`.
+- Asset bundle dibaca dari folder terpisah `assets/windows7` lalu disalin ke `resources/assets/windows7`.
+- Varian Windows 7 sengaja **tanpa** `ipos5-rathole-gui.exe`.
+- Installer Win7 fokus ke service tunnel/kompatibilitas Win7; GUI desktop tidak termasuk di paket ini.
 
 ### Uninstall
 

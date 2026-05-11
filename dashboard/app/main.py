@@ -17,6 +17,12 @@ from .db import connect, ensure_postgres_monitor_table, get_postgres_monitor_lat
 from .services.bundle_service import (
     LINUX_SERVICE_NAME,
     WINDOWS_GUI_BINARY_NAME,
+    WINDOWS_PGBOUNCER_BINARY_NAME,
+    WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
+    WINDOWS_PGBOUNCER_LIBEVENT_NAME,
+    WINDOWS_PGBOUNCER_LIBSSL_NAME,
+    WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
+    WINDOWS_PGBOUNCER_USERLIST_NAME,
     WINDOWS_RATHOLE_BINARY_NAME,
     WINDOWS_SERVICE_WRAPPER_NAME,
     WINDOWS_UNIFIED_NAME,
@@ -24,6 +30,7 @@ from .services.bundle_service import (
     WINDOWS_SERVICE_NAME,
     generate_linux_bundle,
     generate_windows_bundle,
+    generate_windows7_bundle,
 )
 from .services.postgres_monitor_service import PostgresMonitorWorker
 from .services.tunnel_ports import exposed_ports_from_service_ports, normalize_service_ports
@@ -185,6 +192,18 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "setup_hint": "Jalankan setup.exe sebagai Administrator (install service membuat shortcut desktop GUI admin; GUI dibuka manual, tidak autostart)",
             "remote_endpoint": endpoint,
         },
+        {
+            "platform": "Windows 7",
+            "architecture": "x86_64",
+            "service_name": WINDOWS_SERVICE_NAME,
+            "delivery": "Paket ZIP (setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
+            "binary_source": (
+                "Bundled dari aset lokal dashboard versi Win7: "
+                f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_SERVICE_WRAPPER_NAME} + {WINDOWS_RATHOLE_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
+            ),
+            "setup_hint": "Jalankan setup.exe sebagai Administrator (varian Win7 tanpa GUI desktop).",
+            "remote_endpoint": endpoint,
+        },
     ]
 
 
@@ -292,6 +311,25 @@ def mask_token(token: str) -> str:
     return f"{token[:4]}{'*' * (len(token) - 8)}{token[-4:]}"
 
 
+def build_windows_bundle_error_message(
+    platform_label: str,
+    asset_dir: str,
+    required_assets: list[str],
+    exc: Exception,
+    *,
+    includes_gui: bool,
+) -> str:
+    assets_hint = ", ".join(f"assets/{asset_dir}/{name}" for name in required_assets)
+    extra = ""
+    if not includes_gui:
+        extra = " Bundle ini memang tidak memakai ipos5-rathole-gui.exe."
+    return (
+        f"Bundle {platform_label} belum siap. {exc}. "
+        f"Pastikan aset berikut tersedia pada server resources: {assets_hint}."
+        f"{extra}"
+    )
+
+
 @app.post("/token")
 def set_token(
     token: str = Form(...),
@@ -334,22 +372,68 @@ def download_windows(
     except (FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(
             status_code=400,
-            detail=(
-                "Bundle Windows belum siap. "
-                f"{exc}. "
-                "Pastikan aset berikut tersedia pada server resources: "
-                "assets/windows/setup.exe, "
-                "assets/windows/ipos5-rathole-service.exe, "
-                "assets/windows/ipos5-rathole.exe, "
-                "assets/windows/ipos5-rathole-gui.exe, "
-                "assets/windows/nssm.exe, "
-                "assets/windows/pgbouncer.exe, "
-                "assets/windows/libevent-7.dll, "
-                "assets/windows/libssl-3-x64.dll, "
-                "assets/windows/libcrypto-3-x64.dll, "
-                "assets/windows/libwinpthread-1.dll, "
-                "assets/windows/pgbouncer.ini.tpl, "
-                "assets/windows/userlist.sample.txt."
+            detail=build_windows_bundle_error_message(
+                "Windows",
+                "windows",
+                [
+                    WINDOWS_UNIFIED_NAME,
+                    WINDOWS_SERVICE_WRAPPER_NAME,
+                    WINDOWS_RATHOLE_BINARY_NAME,
+                    WINDOWS_GUI_BINARY_NAME,
+                    WINDOWS_NSSM_NAME,
+                    WINDOWS_PGBOUNCER_BINARY_NAME,
+                    WINDOWS_PGBOUNCER_LIBEVENT_NAME,
+                    WINDOWS_PGBOUNCER_LIBSSL_NAME,
+                    WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
+                    WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
+                    "pgbouncer.ini.tpl",
+                    WINDOWS_PGBOUNCER_USERLIST_NAME,
+                ],
+                exc,
+                includes_gui=True,
+            ),
+        ) from exc
+
+    return FileResponse(
+        path=bundle,
+        media_type="application/zip",
+        filename=bundle.name,
+    )
+
+
+@app.get("/download/windows7")
+def download_windows7(
+    _: str = Depends(require_auth),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    state = load_state()
+    token = get_setting(conn, "global_token", state.get("token", ""))
+    if not token:
+        raise HTTPException(status_code=400, detail="Token belum diset")
+
+    try:
+        bundle = generate_windows7_bundle(state, token)
+    except (FileNotFoundError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=build_windows_bundle_error_message(
+                "Windows 7",
+                "windows7",
+                [
+                    WINDOWS_UNIFIED_NAME,
+                    WINDOWS_SERVICE_WRAPPER_NAME,
+                    WINDOWS_RATHOLE_BINARY_NAME,
+                    WINDOWS_NSSM_NAME,
+                    WINDOWS_PGBOUNCER_BINARY_NAME,
+                    WINDOWS_PGBOUNCER_LIBEVENT_NAME,
+                    WINDOWS_PGBOUNCER_LIBSSL_NAME,
+                    WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
+                    WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
+                    "pgbouncer.ini.tpl",
+                    WINDOWS_PGBOUNCER_USERLIST_NAME,
+                ],
+                exc,
+                includes_gui=False,
             ),
         ) from exc
 

@@ -160,6 +160,7 @@ func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, e
 	pgBouncerIniPath := filepath.Join(cleanDir, pgBouncerIniName)
 	pgBouncerDBsPath := filepath.Join(cleanDir, pgBouncerDBsName)
 	pgBouncerUserPath := filepath.Join(cleanDir, pgBouncerUserlist)
+	hasGUI := fileExists(guiPath)
 
 	missing := make([]string, 0, 6)
 	if !fileExists(nssm) {
@@ -173,9 +174,6 @@ func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, e
 	}
 	if !fileExists(ratholePath) {
 		missing = append(missing, ratholeBinary)
-	}
-	if !fileExists(guiPath) {
-		missing = append(missing, guiBinaryName)
 	}
 	if requirePgBouncer {
 		if !fileExists(pgBouncerPath) {
@@ -203,7 +201,7 @@ func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, e
 		NSSMPath:           nssm,
 		ServiceWrapperPath: serviceWrapperPath,
 		RatholePath:        ratholePath,
-		GUIPath:            guiPath,
+		GUIPath:            chooseGUIPath(hasGUI, guiPath),
 		ClientTomlPath:     clientToml,
 		PgBouncerPath:      pgBouncerPath,
 		PgBouncerIniPath:   pgBouncerIniPath,
@@ -415,6 +413,10 @@ func installOrUpdateTunnelServiceWithProgress(cfg Config, paths BundlePaths, log
 	reporter.FinishStep("wait-tunnel-running", true, "Service tunnel sudah RUNNING")
 
 	reporter.StartStep("setup-gui-shortcut", "Menyiapkan shortcut GUI")
+	if strings.TrimSpace(paths.GUIPath) == "" {
+		reporter.FinishStep("setup-gui-shortcut", true, "Bundle tanpa GUI; shortcut desktop dilewati")
+		return nil
+	}
 	if err := setupGUIShortcut(cfg.BundleDir, paths.GUIPath); err != nil {
 		reporter.FinishStep("setup-gui-shortcut", false, err.Error())
 		return err
@@ -1379,6 +1381,21 @@ func runWithReporter(reporter progress.Reporter, name string, args ...string) (s
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+func chooseGUIPath(hasGUI bool, guiPath string) string {
+	if !hasGUI {
+		return ""
+	}
+	return guiPath
+}
+
+func BundleIncludesGUI(bundleDir string) bool {
+	cleanDir := strings.TrimSpace(bundleDir)
+	if cleanDir == "" {
+		cleanDir = "."
+	}
+	return fileExists(filepath.Join(cleanDir, guiBinaryName))
 }
 
 func BuildGUIShortcutSpec(bundleDir, guiPath string) GUIShortcutSpec {

@@ -260,7 +260,7 @@ func (m *model) installServiceCmd() tea.Cmd {
 		if err := winservice.InstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Install IP publik berhasil: service EasyRatholeClient terpasang. Forward DB diarahkan ke 127.0.0.1:5444 dan GUI dibuka lewat shortcut desktop 'ipos5-rathole' (UAC Run as Administrator)."}
+		return serviceActionCompletedMsg{success: true, message: installIPPublicSuccessMessage(m.bundleDir)}
 	}
 }
 
@@ -280,7 +280,7 @@ func (m *model) uninstallServiceCmd() tea.Cmd {
 		if err := winservice.UninstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Service IP Public dan PgBouncer berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444, dan GUI shortcut desktop sudah dibersihkan."}
+		return serviceActionCompletedMsg{success: true, message: uninstallSuccessMessage(m.bundleDir)}
 	}
 }
 
@@ -542,7 +542,7 @@ func (m *model) runProgressWorkflow(option int, ch chan any) {
 			sendServiceResult(false, "", err)
 			return
 		}
-		summary := "Install IP publik berhasil: service EasyRatholeClient terpasang. Forward DB diarahkan ke 127.0.0.1:5444 dan GUI dibuka lewat shortcut desktop 'ipos5-rathole' (UAC Run as Administrator)."
+		summary := installIPPublicSuccessMessage(m.bundleDir)
 		reporter.Summary(summary)
 		sendServiceResult(true, summary, nil)
 	case optionInstallPgBouncer:
@@ -560,7 +560,7 @@ func (m *model) runProgressWorkflow(option int, ch chan any) {
 			sendServiceResult(false, "", err)
 			return
 		}
-		summary := "Service IP Public dan PgBouncer berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444, dan GUI shortcut desktop sudah dibersihkan."
+		summary := uninstallSuccessMessage(m.bundleDir)
 		reporter.Summary(summary)
 		sendServiceResult(true, summary, nil)
 	case optionLockDB, optionUnlockDB:
@@ -646,6 +646,22 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 	default:
 		return "Memproses", nil
 	}
+}
+
+func installIPPublicSuccessMessage(bundleDir string) string {
+	base := "Install IP publik berhasil: service EasyRatholeClient terpasang. Forward DB diarahkan ke 127.0.0.1:5444."
+	if winservice.BundleIncludesGUI(bundleDir) {
+		return base + " GUI dibuka lewat shortcut desktop 'ipos5-rathole' (UAC Run as Administrator)."
+	}
+	return base + " Bundle ini tidak menyertakan GUI desktop."
+}
+
+func uninstallSuccessMessage(bundleDir string) string {
+	base := "Service IP Public dan PgBouncer berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444."
+	if winservice.BundleIncludesGUI(bundleDir) {
+		return base + " GUI shortcut desktop sudah dibersihkan."
+	}
+	return base + " Bundle ini memang tanpa GUI desktop."
 }
 
 func waitForProgress(ch <-chan any) tea.Cmd {

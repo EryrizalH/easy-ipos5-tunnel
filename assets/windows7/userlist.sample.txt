@@ -1,0 +1,1 @@
+"postgres" "md5<replace_with_pg_lock_md5_hash>"

@@ -72,9 +72,6 @@ func TestResolveBundlePaths_MissingFiles(t *testing.T) {
 	if !strings.Contains(msg, ratholeBinary) {
 		t.Fatalf("error should mention rathole binary, got: %v", err)
 	}
-	if !strings.Contains(msg, guiBinaryName) {
-		t.Fatalf("error should mention GUI binary, got: %v", err)
-	}
 	if !strings.Contains(msg, "pgbouncer.exe") {
 		t.Fatalf("error should mention pgbouncer.exe, got: %v", err)
 	}
@@ -235,11 +232,25 @@ func TestResolveBundlePaths_IPPublicModeAllowsMissingPgBouncer(t *testing.T) {
 	mustWrite(t, filepath.Join(tmp, "client.toml"))
 	mustWrite(t, filepath.Join(tmp, serviceWrapperBinary))
 	mustWrite(t, filepath.Join(tmp, ratholeBinary))
-	mustWrite(t, filepath.Join(tmp, guiBinaryName))
 
-	_, err := resolveBundlePaths(tmp, false)
+	paths, err := resolveBundlePaths(tmp, false)
 	if err != nil {
 		t.Fatalf("resolveBundlePaths(mode ip public) should allow missing PgBouncer assets, got %v", err)
+	}
+	if paths.GUIPath != "" {
+		t.Fatalf("expected GUIPath empty when GUI binary absent, got %s", paths.GUIPath)
+	}
+}
+
+func TestBundleIncludesGUI(t *testing.T) {
+	tmp := t.TempDir()
+	if BundleIncludesGUI(tmp) {
+		t.Fatal("expected bundle without GUI binary to report false")
+	}
+
+	mustWrite(t, filepath.Join(tmp, guiBinaryName))
+	if !BundleIncludesGUI(tmp) {
+		t.Fatal("expected bundle with GUI binary to report true")
 	}
 }
 

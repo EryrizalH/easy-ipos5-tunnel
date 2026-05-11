@@ -35,6 +35,7 @@ main() {
   ensure_dir "$bundles_dir" 750
   ensure_dir "$cache_dir" 750
   ensure_dir "$resources_dir/assets/windows" 755
+  ensure_dir "$resources_dir/assets/windows7" 755
   ensure_dir "$resources_dir/assets/linux" 755
   ensure_dir "$resources_dir/templates/rathole" 755
 
@@ -69,6 +70,9 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/uninstall-gui-autostart.ps1.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.ini.tpl" "${resources_dir}/assets/windows/pgbouncer.ini.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/userlist.sample.txt" "${resources_dir}/assets/windows/userlist.sample.txt"
+  if [[ -d "${PROJECT_ROOT}/assets/windows7" ]]; then
+    cp -R "${PROJECT_ROOT}/assets/windows7/." "${resources_dir}/assets/windows7/"
+  fi
   install -m 0644 "${PROJECT_ROOT}/assets/linux/install-client.sh.tpl" "${resources_dir}/assets/linux/install-client.sh.tpl"
   install -m 0644 "${PROJECT_ROOT}/templates/rathole/client.toml.tpl" "${resources_dir}/templates/rathole/client.toml.tpl"
 
