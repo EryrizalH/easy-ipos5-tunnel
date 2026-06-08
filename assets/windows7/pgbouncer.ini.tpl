@@ -6,6 +6,7 @@
 
 [databases]
 postgres = host=127.0.0.1 port=5445 dbname=postgres
+* = host=127.0.0.1 port=5445
 
 [pgbouncer]
 listen_addr = 0.0.0.0

@@ -211,8 +211,8 @@ func TestBuildPgBouncerIni_DefaultFallback(t *testing.T) {
 	if !strings.Contains(got, "listen_port = 5444") {
 		t.Fatalf("expected listen_port 5444, got %s", got)
 	}
-	if strings.Contains(got, "* = host=127.0.0.1") {
-		t.Fatalf("expected explicit database mapping instead of wildcard, got %s", got)
+	if !strings.Contains(got, "* = host=127.0.0.1 port=5445") {
+		t.Fatalf("expected wildcard database mapping, got %s", got)
 	}
 }
 

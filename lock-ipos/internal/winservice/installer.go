@@ -406,7 +406,9 @@ func installOrUpdateTunnelServiceWithProgress(cfg Config, paths BundlePaths, log
 
 	reporter.StartStep("wait-tunnel-running", "Menunggu service RUNNING")
 	if err := waitServiceStateWithProgress(cfg.ServiceName, "RUNNING", serviceStartWait, reporter); err != nil {
-		wrapped := fmt.Errorf("service %s gagal mencapai RUNNING: %w", cfg.ServiceName, err)
+		stdoutLog := filepath.Join(logRoot, cfg.ServiceName+".stdout.log")
+		stderrLog := filepath.Join(logRoot, cfg.ServiceName+".stderr.log")
+		wrapped := fmt.Errorf("service %s gagal mencapai RUNNING: %w (cek log: %s dan %s)", cfg.ServiceName, err, stderrLog, stdoutLog)
 		reporter.FinishStep("wait-tunnel-running", false, wrapped.Error())
 		return wrapped
 	}
@@ -830,6 +832,7 @@ func buildPgBouncerIni(entries []pgBouncerDatabaseEntry) string {
 	for _, entry := range entries {
 		lines = append(lines, fmt.Sprintf("%s = host=%s port=%d dbname=%s", entry.Name, pgBouncerHost, postgresBackendPort, entry.BackendDBName))
 	}
+	lines = append(lines, fmt.Sprintf("* = host=%s port=%d", pgBouncerHost, postgresBackendPort))
 	lines = append(lines,
 		"",
 		"[pgbouncer]",
@@ -1303,10 +1306,30 @@ func waitServiceStateWithQuery(
 		if err == nil && lastState == target {
 			return nil
 		}
+		if err == nil && target == "RUNNING" && isTerminalServiceState(lastState) {
+			return buildWaitServiceStateError(
+				fmt.Sprintf("service %s masuk state %s sebelum mencapai %s", serviceName, lastState, target),
+				lastErr,
+				lastOutput,
+			)
+		}
 		sleepFn(pollInterval)
 	}
 
 	errMsg := fmt.Sprintf("timeout menunggu service %s ke status %s (state terakhir: %s)", serviceName, target, lastState)
+	return buildWaitServiceStateError(errMsg, lastErr, lastOutput)
+}
+
+func isTerminalServiceState(state string) bool {
+	switch strings.ToUpper(strings.TrimSpace(state)) {
+	case "PAUSED", "STOPPED":
+		return true
+	default:
+		return false
+	}
+}
+
+func buildWaitServiceStateError(errMsg, lastErr, lastOutput string) error {
 	if strings.TrimSpace(lastErr) != "" {
 		errMsg += "; error terakhir: " + lastErr
 	}

@@ -63,6 +63,50 @@ func TestWaitServiceStateWithQuery_TimeoutIncludesLastState(t *testing.T) {
 	}
 }
 
+func TestWaitServiceStateWithQuery_FailsFastOnPaused(t *testing.T) {
+	calls := 0
+	queryFn := func(_ string) (string, string, error) {
+		calls++
+		return "PAUSED", "STATE : 7 PAUSED", nil
+	}
+
+	err := waitServiceStateWithQuery("EasyRatholeClient", "RUNNING", time.Minute, 0, queryFn, func(time.Duration) {
+		t.Fatal("sleep should not be called after PAUSED terminal state")
+	})
+	if err == nil {
+		t.Fatal("expected PAUSED terminal state error")
+	}
+	if calls != 1 {
+		t.Fatalf("expected one poll before fail-fast, got %d", calls)
+	}
+	msg := strings.ToUpper(err.Error())
+	if !strings.Contains(msg, "PAUSED") || !strings.Contains(msg, "SC QUERY TERAKHIR") {
+		t.Fatalf("error should include PAUSED and sc query output, got: %v", err)
+	}
+}
+
+func TestWaitServiceStateWithQuery_FailsFastOnStopped(t *testing.T) {
+	calls := 0
+	queryFn := func(_ string) (string, string, error) {
+		calls++
+		return "STOPPED", "STATE : 1 STOPPED", nil
+	}
+
+	err := waitServiceStateWithQuery("EasyRatholeClient", "RUNNING", time.Minute, 0, queryFn, func(time.Duration) {
+		t.Fatal("sleep should not be called after STOPPED terminal state")
+	})
+	if err == nil {
+		t.Fatal("expected STOPPED terminal state error")
+	}
+	if calls != 1 {
+		t.Fatalf("expected one poll before fail-fast, got %d", calls)
+	}
+	msg := strings.ToUpper(err.Error())
+	if !strings.Contains(msg, "STOPPED") || !strings.Contains(msg, "SC QUERY TERAKHIR") {
+		t.Fatalf("error should include STOPPED and sc query output, got: %v", err)
+	}
+}
+
 func TestPreflightPgBouncerInstallWithChecks_Success(t *testing.T) {
 	tmp := t.TempDir()
 	bundleDir := filepath.Join(tmp, "bundle")

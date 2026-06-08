@@ -1,10 +1,14 @@
 package servicewrapper
 
 import (
+	"bytes"
+	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseArgs_DefaultsFromExecutableDir(t *testing.T) {
@@ -92,5 +96,47 @@ func TestValidate_MissingConfig(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(err.Error()), "client.toml") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRun_ReturnsErrorWhenRatholeExitsZeroAfterGrace(t *testing.T) {
+	tmp := t.TempDir()
+	configPath := filepath.Join(tmp, DefaultConfigName)
+	if err := os.WriteFile(configPath, []byte("ok"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	helperPath := filepath.Join(tmp, "exit-zero-helper.exe")
+	helperSource := filepath.Join(tmp, "exit-zero-helper.go")
+	helperCode := `package main
+
+import "time"
+
+func main() {
+	time.Sleep(300 * time.Millisecond)
+}
+`
+	if err := os.WriteFile(helperSource, []byte(helperCode), 0o644); err != nil {
+		t.Fatalf("WriteFile(helper) error = %v", err)
+	}
+	if out, err := exec.Command("go", "build", "-o", helperPath, helperSource).CombinedOutput(); err != nil {
+		t.Fatalf("go build helper failed: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+
+	var stdout bytes.Buffer
+	err := Run(context.Background(), Config{
+		BundleDir:          tmp,
+		ConfigPath:         configPath,
+		RatholePath:        helperPath,
+		StartupGracePeriod: time.Nanosecond,
+	}, &stdout, nil)
+	if err == nil {
+		t.Fatal("expected error when child exits cleanly after startup grace")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "tanpa error") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "terlalu cepat") {
+		t.Fatalf("expected startup grace to elapse before exit, got early-exit error: %v", err)
 	}
 }

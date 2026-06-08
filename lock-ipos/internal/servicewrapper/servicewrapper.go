@@ -166,7 +166,7 @@ func Run(ctx context.Context, cfg Config, stdout, stderr io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("rathole berhenti: %w", err)
 		}
-		return nil
+		return errors.New("rathole berhenti tanpa error")
 	case <-ctx.Done():
 		fmt.Fprintln(stdout, "[service-wrapper] shutdown diminta, menghentikan rathole")
 		return shutdownChild(cmd, waitCh, cfg.ShutdownGracePeriod, stdout)
