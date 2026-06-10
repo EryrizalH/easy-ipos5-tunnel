@@ -772,12 +772,12 @@ register_bucardo_sync() {
 
   log INFO "Mendaftarkan Bucardo untuk database ${dbname}"
   remove_bucardo_objects "$dbname"
-  bucardo add db "$vps_db" dbhost="$vps_host" dbport="$vps_port" dbname="$dbname" dbuser="$vps_user" dbpass="$vps_pass"
-  bucardo add db "$private_db" dbhost="$private_host" dbport="$private_port" dbname="$dbname" dbuser="$private_user" dbpass="$private_pass"
-  bucardo add dbgroup "$dbgroup" "${vps_db}:source" "${private_db}:source"
-  bucardo add all tables db="$vps_db" relgroup="$relgroup"
-  bucardo add all sequences db="$vps_db" relgroup="$relgroup"
-  bucardo add sync "$sync_name" relgroup="$relgroup" dbs="$dbgroup" conflict_strategy=bucardo_latest
+  bucardo add db "$vps_db" dbhost="$vps_host" dbport="$vps_port" dbname="$dbname" dbuser="$vps_user" dbpass="$vps_pass" || return 1
+  bucardo add db "$private_db" dbhost="$private_host" dbport="$private_port" dbname="$dbname" dbuser="$private_user" dbpass="$private_pass" || return 1
+  bucardo add dbgroup "$dbgroup" "${vps_db}:source" "${private_db}:source" || return 1
+  bucardo add all tables db="$vps_db" relgroup="$relgroup" || return 1
+  bucardo add all sequences db="$vps_db" relgroup="$relgroup" || return 1
+  bucardo add sync "$sync_name" relgroup="$relgroup" dbs="$dbgroup" conflict_strategy=bucardo_latest || return 1
   echo "$sync_name"
 }
 
@@ -790,7 +790,7 @@ sync_registered_objects() {
   vps_db="vps_${slug}"
   bucardo add all tables db="$vps_db" relgroup="$relgroup" >/dev/null 2>&1 || true
   bucardo add all sequences db="$vps_db" relgroup="$relgroup" >/dev/null 2>&1 || true
-  bucardo update sync "$sync_name" onetimecopy=2
+  bucardo update sync "$sync_name" onetimecopy=2 || return 1
 }
 
 finalize_aggregate_state() {
