@@ -1,0 +1,4 @@
+interface:
+  display_name: "Easy Rathole Workflow"
+  short_description: "Develop easy-Rathole without breaking deploy flows"
+  default_prompt: "Use $easy-rathole-workflow to implement and verify an easy-Rathole project change."
