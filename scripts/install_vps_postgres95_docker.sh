@@ -70,9 +70,9 @@ main() {
 
   local easy_root="${EASY_RATHOLE_ROOT:-/opt/easy-rathole}"
   local state_file="${EASY_RATHOLE_STATE_FILE:-${easy_root}/state/install-state.json}"
-  local data_dir="${EASY_RATHOLE_VPS_DB_DATA_DIR:-${easy_root}/postgres93/data}"
-  local container_name="${EASY_RATHOLE_VPS_DB_CONTAINER:-postgres93}"
-  local image="${EASY_RATHOLE_VPS_DB_IMAGE:-postgres:9.3}"
+  local data_dir="${EASY_RATHOLE_VPS_DB_DATA_DIR:-${easy_root}/postgres95/data}"
+  local container_name="${EASY_RATHOLE_VPS_DB_CONTAINER:-postgres95}"
+  local image="${EASY_RATHOLE_VPS_DB_IMAGE:-postgres:9.5}"
   local vps_addr
   if [[ -n "${EASY_RATHOLE_VPS_DB_ADDR:-}" ]]; then
     vps_addr="$EASY_RATHOLE_VPS_DB_ADDR"
@@ -91,7 +91,7 @@ main() {
   local dbuser="${EASY_RATHOLE_VPS_DB_USER:-$(json_get "$state_file" "db_sync_mode.vps_db_user" "sysi5adm")}"
   local dbpass="${EASY_RATHOLE_VPS_DB_PASSWORD:-$(json_get "$state_file" "db_sync_mode.vps_db_password" "u&aV23cc.o82dtr1x89c")}"
 
-  log INFO "Menginstal prerequisite Docker untuk PostgreSQL 9.3 VPS..."
+  log INFO "Menginstal prerequisite Docker untuk PostgreSQL 9.5 VPS..."
   apt-get update -y
   DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io ca-certificates
   systemctl enable docker >/dev/null
@@ -126,7 +126,7 @@ main() {
   else
     log INFO "Menarik image PostgreSQL VPS: ${image}"
     if ! docker pull "$image"; then
-      fail "Gagal pull ${image}. Jika tag postgres:9.3 tidak tersedia di registry, set EASY_RATHOLE_VPS_DB_IMAGE ke image PostgreSQL 9.3 yang sudah dipin/tersedia."
+      fail "Gagal pull ${image}. Jika tag postgres:9.5 tidak tersedia di registry, set EASY_RATHOLE_VPS_DB_IMAGE ke image PostgreSQL 9.5 yang sudah dipin/tersedia."
     fi
 
     log INFO "Membuat container ${container_name} (${bind_host}:${bind_port} -> 5432)"
@@ -204,7 +204,7 @@ path.parent.mkdir(parents=True, exist_ok=True)
 path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
 PY
   chmod 0600 "$state_file"
-  log INFO "PostgreSQL 9.3 VPS siap di ${bind_host}:${bind_port}."
+  log INFO "PostgreSQL 9.5 VPS siap di ${bind_host}:${bind_port}."
 }
 
 main "$@"

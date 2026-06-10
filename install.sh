@@ -209,10 +209,10 @@ main() {
   local install_vps_db
   install_vps_db="${EASY_RATHOLE_INSTALL_VPS_DB:-${EASY_RATHOLE_INSTALL_DB_SYNC:-0}}"
   if [[ "$install_vps_db" == "1" ]]; then
-    run_step "$current_step" "$total_steps" "Install PostgreSQL 9.3 VPS Docker" \
-      bash "${SCRIPT_DIR}/scripts/install_vps_postgres93_docker.sh"
+    run_step "$current_step" "$total_steps" "Install PostgreSQL 9.5 VPS Docker" \
+      bash "${SCRIPT_DIR}/scripts/install_vps_postgres95_docker.sh"
   else
-    skip_step "$current_step" "$total_steps" "Install PostgreSQL 9.3 VPS Docker" "set EASY_RATHOLE_INSTALL_VPS_DB=1 untuk mengaktifkan"
+    skip_step "$current_step" "$total_steps" "Install PostgreSQL 9.5 VPS Docker" "set EASY_RATHOLE_INSTALL_VPS_DB=1 untuk mengaktifkan"
   fi
   current_step=$((current_step + 1))
 

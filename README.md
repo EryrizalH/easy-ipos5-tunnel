@@ -7,7 +7,7 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
 - Install server `rathole` + systemd service (`rathole`)
 - Port forward TCP server default (VPS): **5444**, **5480**, **5485**
 - Mode DB sync opsional: PostgreSQL VPS tersinkron publish di **0.0.0.0:5444**, sedangkan tunnel replikasi private memakai **127.0.0.1:5445** di VPS
-- Installer dapat memasang PostgreSQL **9.3** di VPS via Docker agar versi database VPS sama dengan client.
+- Installer dapat memasang PostgreSQL **9.5** di VPS via Docker agar versi database VPS sama dengan client.
 - PgBouncer client tetap opsional:
   - tanpa PgBouncer: PostgreSQL Windows tetap `127.0.0.1:5444`
   - dengan PgBouncer: aplikasi tetap `127.0.0.1:5444`, backend PostgreSQL pindah ke `127.0.0.1:5445`
@@ -62,13 +62,13 @@ Urutan default:
 1. Hardening baseline server.
 2. Install dependency runtime.
 3. Jika DB sync aktif, siapkan state DB sync awal.
-4. Jika DB sync aktif, install PostgreSQL 9.3 Docker di VPS pada `0.0.0.0:5444`.
+4. Jika DB sync aktif, install PostgreSQL 9.5 Docker di VPS pada `0.0.0.0:5444`.
 5. Install rathole server + service `rathole`.
 6. Install dashboard + service `easy-rathole-dashboard`.
 7. Buka firewall untuk control port + port publik `5444/5480/5485` + port dashboard. Saat DB sync aktif, rathole DB tunnel `5445` hanya bind ke `127.0.0.1` dan tidak dibuka publik.
 8. Jika DB sync aktif, finalisasi clone awal DB client ke VPS dan Bucardo dilakukan dari tombol **Finalisasi DB Sync** di dashboard setelah client tunnel reachable.
 
-Jika `EASY_RATHOLE_INSTALL_DB_SYNC=1`, installer memasang PostgreSQL 9.3 VPS via Docker dan dashboard langsung bisa dipakai untuk download bundle client. Setelah service client aktif, buka dashboard lalu jalankan **Finalisasi DB Sync**. Jika client belum terkoneksi, state ditandai `waiting_for_client=true`; ulangi tombol finalisasi setelah client online.
+Jika `EASY_RATHOLE_INSTALL_DB_SYNC=1`, installer memasang PostgreSQL 9.5 VPS via Docker dan dashboard langsung bisa dipakai untuk download bundle client. Setelah service client aktif, buka dashboard lalu jalankan **Finalisasi DB Sync**. Jika client belum terkoneksi, state ditandai `waiting_for_client=true`; ulangi tombol finalisasi setelah client online.
 
 ### Opsi environment (opsional)
 
@@ -91,7 +91,7 @@ sudo EASY_RATHOLE_DASHBOARD_ALLOW_CIDR="1.2.3.4/32" bash install.sh
 # ganti port dashboard (default 8088)
 sudo DASHBOARD_PORT=9090 bash install.sh
 
-# aktifkan DB sync + install PostgreSQL 9.3 VPS via Docker
+# aktifkan DB sync + install PostgreSQL 9.5 VPS via Docker
 sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
 
 # bila hanya ingin install DB VPS tanpa Bucardo
@@ -329,7 +329,7 @@ Variabel PostgreSQL VPS Docker:
 
 ```bash
 sudo EASY_RATHOLE_INSTALL_VPS_DB=1 \
-  EASY_RATHOLE_VPS_DB_IMAGE=postgres:9.3 \
+  EASY_RATHOLE_VPS_DB_IMAGE=postgres:9.5 \
   EASY_RATHOLE_VPS_DB_BIND_HOST=0.0.0.0 \
   EASY_RATHOLE_VPS_DB_NAME=postgres \
   EASY_RATHOLE_VPS_DB_USER=sysi5adm \
@@ -337,7 +337,7 @@ sudo EASY_RATHOLE_INSTALL_VPS_DB=1 \
   bash install.sh
 ```
 
-Catatan: image default adalah `postgres:9.3`. Karena tag lama bisa tidak tersedia lagi di registry publik, pin `EASY_RATHOLE_VPS_DB_IMAGE` ke image PostgreSQL 9.3 yang tersedia/teruji bila pull default gagal.
+Catatan: image default adalah `postgres:9.5`. Karena tag lama bisa tidak tersedia lagi di registry publik, pin `EASY_RATHOLE_VPS_DB_IMAGE` ke image PostgreSQL 9.5 yang tersedia/teruji bila pull default gagal.
 
 Clone awal melalui dashboard:
 

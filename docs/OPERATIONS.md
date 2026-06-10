@@ -86,23 +86,23 @@ journalctl -u easy-rathole-dashboard -f
 
 ## Setup DB sync Bucardo
 
-Installer dapat memasang PostgreSQL 9.3 di VPS via Docker dan menyiapkan dashboard sebelum finalisasi Bucardo:
+Installer dapat memasang PostgreSQL 9.5 di VPS via Docker dan menyiapkan dashboard sebelum finalisasi Bucardo:
 
 ```bash
 sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
 ```
 
 Default container:
-- image: `postgres:9.3`
-- container: `postgres93`
+- image: `postgres:9.5`
+- container: `postgres95`
 - bind: `0.0.0.0:5444`
-- volume data: `/opt/easy-rathole/postgres93/data`
+- volume data: `/opt/easy-rathole/postgres95/data`
 
-Jika registry tidak menyediakan `postgres:9.3`, gunakan image PostgreSQL 9.3 yang sudah dipin:
+Jika registry tidak menyediakan `postgres:9.5`, gunakan image PostgreSQL 9.5 yang sudah dipin:
 
 ```bash
 sudo EASY_RATHOLE_INSTALL_VPS_DB=1 \
-  EASY_RATHOLE_VPS_DB_IMAGE=registry.example.com/postgres:9.3 \
+  EASY_RATHOLE_VPS_DB_IMAGE=registry.example.com/postgres:9.5 \
   EASY_RATHOLE_VPS_DB_BIND_HOST=0.0.0.0 \
   bash install.sh
 ```
@@ -136,7 +136,7 @@ Finalisasi Bucardo:
 4. Tekan tombol **Finalisasi DB Sync** di dashboard.
 
 Installer otomatis memasang prerequisite berikut sebelum dashboard aktif:
-- Docker + PostgreSQL 9.3 VPS container, kecuali `EASY_RATHOLE_INSTALL_VPS_DB=0`
+- Docker + PostgreSQL 9.5 VPS container, kecuali `EASY_RATHOLE_INSTALL_VPS_DB=0`
 - Rathole server/client config
 - Dashboard dan bundle generator
 
