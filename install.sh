@@ -162,6 +162,8 @@ data["db_sync_mode"] = existing
 path.parent.mkdir(parents=True, exist_ok=True)
 path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
 PY
+  local status=$?
+  (( status == 0 )) || return "$status"
   chmod 0600 "$state_file"
 }
 
@@ -173,12 +175,16 @@ main() {
   export EASY_RATHOLE_CONFIG_DIR="${EASY_RATHOLE_CONFIG_DIR:-/etc/easy-rathole}"
   export EASY_RATHOLE_STATE_FILE="${EASY_RATHOLE_STATE_FILE:-${EASY_RATHOLE_ROOT}/state/install-state.json}"
 
-  log INFO "Menyiapkan baseline keamanan server..."
-  bash "${SCRIPT_DIR}/scripts/prepare_server.sh"
+  local total_steps=7
+  local current_step=1
 
-  log INFO "Menginstal dependensi..."
-  apt-get update -y
-  DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  run_step "$current_step" "$total_steps" "Hardening baseline server" \
+    bash "${SCRIPT_DIR}/scripts/prepare_server.sh"
+  current_step=$((current_step + 1))
+
+  install_runtime_dependencies() {
+    apt-get update -y &&
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     unzip \
     python3 \
@@ -187,36 +193,45 @@ main() {
     ca-certificates \
     systemd \
     iproute2
+  }
+
+  run_step "$current_step" "$total_steps" "Install dependency runtime" install_runtime_dependencies
+  current_step=$((current_step + 1))
 
   if [[ "${EASY_RATHOLE_INSTALL_DB_SYNC:-0}" == "1" ]]; then
-    log INFO "Menyiapkan state DB sync awal..."
-    initialize_db_sync_mode "${EASY_RATHOLE_STATE_FILE}"
+    run_step "$current_step" "$total_steps" "Initialize state DB sync" \
+      initialize_db_sync_mode "${EASY_RATHOLE_STATE_FILE}"
+  else
+    skip_step "$current_step" "$total_steps" "Initialize state DB sync" "EASY_RATHOLE_INSTALL_DB_SYNC bukan 1"
   fi
-
-  log INFO "Menginstal server rathole..."
-  bash "${SCRIPT_DIR}/scripts/install_rathole_server.sh"
+  current_step=$((current_step + 1))
 
   local install_vps_db
   install_vps_db="${EASY_RATHOLE_INSTALL_VPS_DB:-${EASY_RATHOLE_INSTALL_DB_SYNC:-0}}"
   if [[ "$install_vps_db" == "1" ]]; then
-    log INFO "Menginstal PostgreSQL 9.3 VPS via Docker..."
-    bash "${SCRIPT_DIR}/scripts/install_vps_postgres93_docker.sh"
+    run_step "$current_step" "$total_steps" "Install PostgreSQL 9.3 VPS Docker" \
+      bash "${SCRIPT_DIR}/scripts/install_vps_postgres93_docker.sh"
   else
-    log INFO "Install PostgreSQL VPS dilewati. Set EASY_RATHOLE_INSTALL_VPS_DB=1 untuk mengaktifkan."
+    skip_step "$current_step" "$total_steps" "Install PostgreSQL 9.3 VPS Docker" "set EASY_RATHOLE_INSTALL_VPS_DB=1 untuk mengaktifkan"
   fi
+  current_step=$((current_step + 1))
 
-  log INFO "Menginstal dashboard..."
-  bash "${SCRIPT_DIR}/scripts/install_dashboard.sh"
+  run_step "$current_step" "$total_steps" "Install rathole server + service" \
+    bash "${SCRIPT_DIR}/scripts/install_rathole_server.sh"
+  current_step=$((current_step + 1))
+
+  run_step "$current_step" "$total_steps" "Install dashboard + service" \
+    bash "${SCRIPT_DIR}/scripts/install_dashboard.sh"
+  current_step=$((current_step + 1))
+
+  run_step "$current_step" "$total_steps" "Configure firewall ports" \
+    configure_firewall_ports "${EASY_RATHOLE_STATE_FILE}"
 
   if [[ "${EASY_RATHOLE_INSTALL_DB_SYNC:-0}" == "1" ]]; then
-    log INFO "Menginstal Bucardo DB sync..."
-    bash "${SCRIPT_DIR}/scripts/install_db_sync_bucardo.sh"
+    log INFO "DB sync finalization pending. Buka dashboard setelah client tunnel aktif, lalu jalankan Finalisasi DB Sync."
   else
-    log INFO "DB sync Bucardo dilewati. Set EASY_RATHOLE_INSTALL_DB_SYNC=1 untuk mengaktifkan."
+    log INFO "DB sync Bucardo tidak aktif. Set EASY_RATHOLE_INSTALL_DB_SYNC=1 untuk mengaktifkan."
   fi
-
-  log INFO "Mengonfigurasi port firewall..."
-  configure_firewall_ports "${EASY_RATHOLE_STATE_FILE}"
 
   local public_ip
   local control_port
@@ -226,6 +241,10 @@ main() {
   local hardening_applied
   local hardening_ssh_port
   local forward_ports
+  local db_sync_enabled
+  local db_sync_waiting
+  local db_sync_clone_done
+  local db_sync_bucardo_configured
 
   public_ip="$(state_get "${EASY_RATHOLE_STATE_FILE}" "public_ip" "<unknown>")"
   control_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "rathole_control_port" "<unknown>")"
@@ -234,6 +253,62 @@ main() {
   credentials_file="$(state_get "${EASY_RATHOLE_STATE_FILE}" "credentials_file" "${EASY_RATHOLE_ROOT}/state/dashboard-credentials.txt")"
   hardening_applied="$(state_get "${EASY_RATHOLE_STATE_FILE}" "hardening_applied" "false")"
   hardening_ssh_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "hardening_ssh_port" "22")"
+  db_sync_enabled="$(python3 - "${EASY_RATHOLE_STATE_FILE}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+sync = data.get("db_sync_mode")
+print("true" if isinstance(sync, dict) and sync.get("enabled") is True else "false")
+PY
+)"
+  db_sync_waiting="$(python3 - "${EASY_RATHOLE_STATE_FILE}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+sync = data.get("db_sync_mode")
+print("true" if isinstance(sync, dict) and sync.get("waiting_for_client") is True else "false")
+PY
+)"
+  db_sync_clone_done="$(python3 - "${EASY_RATHOLE_STATE_FILE}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+sync = data.get("db_sync_mode")
+print("true" if isinstance(sync, dict) and sync.get("initial_clone_done") is True else "false")
+PY
+)"
+  db_sync_bucardo_configured="$(python3 - "${EASY_RATHOLE_STATE_FILE}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+sync = data.get("db_sync_mode")
+print("true" if isinstance(sync, dict) and sync.get("bucardo_configured") is True else "false")
+PY
+)"
   forward_ports="$(
     python3 - "${EASY_RATHOLE_STATE_FILE}" <<'PY'
 import json
@@ -305,6 +380,13 @@ Services:
 Baseline keamanan:
   - hardening diterapkan : ${hardening_applied}
   - port SSH diizinkan   : ${hardening_ssh_port}
+
+DB sync:
+  - aktif                 : ${db_sync_enabled}
+  - initial clone         : ${db_sync_clone_done}
+  - Bucardo configured    : ${db_sync_bucardo_configured}
+  - waiting for client    : ${db_sync_waiting}
+  - finalisasi            : jalankan dari dashboard setelah client tunnel aktif
 ============================================================
 EOF
 }

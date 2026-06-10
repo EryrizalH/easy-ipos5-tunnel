@@ -61,13 +61,14 @@ Urutan default:
 
 1. Hardening baseline server.
 2. Install dependency runtime.
-3. Install rathole server + service `rathole`.
+3. Jika DB sync aktif, siapkan state DB sync awal.
 4. Jika DB sync aktif, install PostgreSQL 9.3 Docker di VPS pada `0.0.0.0:5444`.
-5. Install dashboard + service `easy-rathole-dashboard`.
-6. Jika DB sync aktif dan client tunnel sudah reachable, clone awal DB client ke VPS lalu aktifkan Bucardo.
+5. Install rathole server + service `rathole`.
+6. Install dashboard + service `easy-rathole-dashboard`.
 7. Buka firewall untuk control port + port publik `5444/5480/5485` + port dashboard. Saat DB sync aktif, rathole DB tunnel `5445` hanya bind ke `127.0.0.1` dan tidak dibuka publik.
+8. Jika DB sync aktif, finalisasi clone awal DB client ke VPS dan Bucardo dilakukan dari tombol **Finalisasi DB Sync** di dashboard setelah client tunnel reachable.
 
-Jika `EASY_RATHOLE_INSTALL_DB_SYNC=1`, installer memasang PostgreSQL 9.3 VPS via Docker. Jika client belum terkoneksi, state ditandai `waiting_for_client=true`; jalankan ulang installer setelah client online untuk clone awal dan Bucardo.
+Jika `EASY_RATHOLE_INSTALL_DB_SYNC=1`, installer memasang PostgreSQL 9.3 VPS via Docker dan dashboard langsung bisa dipakai untuk download bundle client. Setelah service client aktif, buka dashboard lalu jalankan **Finalisasi DB Sync**. Jika client belum terkoneksi, state ditandai `waiting_for_client=true`; ulangi tombol finalisasi setelah client online.
 
 ### Opsi environment (opsional)
 
@@ -90,7 +91,7 @@ sudo EASY_RATHOLE_DASHBOARD_ALLOW_CIDR="1.2.3.4/32" bash install.sh
 # ganti port dashboard (default 8088)
 sudo DASHBOARD_PORT=9090 bash install.sh
 
-# aktifkan DB sync + install PostgreSQL 9.3 VPS via Docker + Bucardo
+# aktifkan DB sync + install PostgreSQL 9.3 VPS via Docker
 sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
 
 # bila hanya ingin install DB VPS tanpa Bucardo
@@ -318,7 +319,7 @@ journalctl -u easy-rathole-dashboard -n 100 --no-pager
 sudo ss -ltnp | grep -E ':5444|:5480|:5485|:8088'
 ```
 
-Untuk mengaktifkan setup Bucardo dari installer utama, isi `db_sync_mode` di state terlebih dahulu lalu jalankan. Jika `db_sync_mode` belum ada, installer PostgreSQL VPS akan membuat default DB sync state:
+Untuk menyiapkan DB sync, jalankan installer dengan mode DB sync. Installer memasang PostgreSQL VPS, rathole, dan dashboard; finalisasi Bucardo dilakukan dari dashboard setelah client tunnel aktif:
 
 ```bash
 sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
@@ -338,7 +339,7 @@ sudo EASY_RATHOLE_INSTALL_VPS_DB=1 \
 
 Catatan: image default adalah `postgres:9.3`. Karena tag lama bisa tidak tersedia lagi di registry publik, pin `EASY_RATHOLE_VPS_DB_IMAGE` ke image PostgreSQL 9.3 yang tersedia/teruji bila pull default gagal.
 
-Clone awal otomatis:
+Clone awal melalui dashboard:
 
 - Source clone adalah DB private/client via `127.0.0.1:5445`.
 - DB VPS tidak akan dioverwrite bila sudah berisi object user, kecuali `EASY_RATHOLE_FORCE_INITIAL_CLONE=1`.
@@ -348,7 +349,7 @@ Clone awal otomatis:
 Sequence ganjil/genap sengaja tidak diterapkan otomatis. Jalankan hanya setelah backup dan snapshot awal kedua database sama:
 
 ```bash
-sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 EASY_RATHOLE_APPLY_SEQUENCE_POLICY=1 bash install.sh
+sudo EASY_RATHOLE_APPLY_SEQUENCE_POLICY=1 /opt/easy-rathole/src/easy-ipos5-tunnel/scripts/install_db_sync_bucardo.sh
 ```
 
 Lihat panduan operasional lanjutan di: `docs/OPERATIONS.md`.

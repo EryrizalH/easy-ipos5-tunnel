@@ -117,7 +117,8 @@ main() {
     DB_PATH "$db_path" \
     BUNDLES_DIR "$bundles_dir" \
     CACHE_DIR "$cache_dir" \
-    RESOURCES_DIR "$resources_dir"
+    RESOURCES_DIR "$resources_dir" \
+    SOURCE_DIR "$PROJECT_ROOT"
 
   systemctl daemon-reload
   systemctl enable easy-rathole-dashboard >/dev/null
@@ -134,6 +135,7 @@ main() {
     \"db_path\": \"${db_path}\", \
     \"bundles_dir\": \"${bundles_dir}\", \
     \"resources_dir\": \"${resources_dir}\", \
+    \"source_dir\": \"${PROJECT_ROOT}\", \
     \"updated_at\": \"${now}\"\
   }"
 

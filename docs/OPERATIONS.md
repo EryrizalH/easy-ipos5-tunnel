@@ -86,10 +86,10 @@ journalctl -u easy-rathole-dashboard -f
 
 ## Setup DB sync Bucardo
 
-Installer dapat memasang PostgreSQL 9.3 di VPS via Docker. Jalankan sebelum Bucardo bila DB VPS belum tersedia:
+Installer dapat memasang PostgreSQL 9.3 di VPS via Docker dan menyiapkan dashboard sebelum finalisasi Bucardo:
 
 ```bash
-sudo EASY_RATHOLE_INSTALL_VPS_DB=1 bash install.sh
+sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
 ```
 
 Default container:
@@ -128,21 +128,21 @@ Isi state sebelum menjalankan setup:
 
 Gunakan `private_db_backend_mode=pgbouncer_backend` bila private PostgreSQL sudah dipindah ke `127.0.0.1:5445`.
 
-Jalankan setup Bucardo:
+Finalisasi Bucardo:
 
-```bash
-sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
-```
+1. Login dashboard.
+2. Download dan install bundle client.
+3. Pastikan service client aktif dan tunnel private DB reachable.
+4. Tekan tombol **Finalisasi DB Sync** di dashboard.
 
-Perintah di atas otomatis memasang prerequisite berikut:
+Installer otomatis memasang prerequisite berikut sebelum dashboard aktif:
 - Docker + PostgreSQL 9.3 VPS container, kecuali `EASY_RATHOLE_INSTALL_VPS_DB=0`
 - Rathole server/client config
-- Bucardo + PostgreSQL client di VPS
 - Dashboard dan bundle generator
 
-Jika client belum terkoneksi ke rathole, setup Bucardo tidak dianggap gagal total. Installer menyimpan `db_sync_mode.waiting_for_client=true`; jalankan ulang setelah client online agar clone awal dan Bucardo dipasang.
+Saat tombol finalisasi ditekan, dashboard menjalankan setup Bucardo dan PostgreSQL client di VPS. Jika client belum terkoneksi ke rathole, setup Bucardo tidak dianggap gagal total. Dashboard menyimpan `db_sync_mode.waiting_for_client=true`; tekan tombol finalisasi lagi setelah client online agar clone awal dan Bucardo dipasang.
 
-Clone awal otomatis:
+Clone awal melalui dashboard:
 - Source clone adalah DB private/client via `127.0.0.1:5445`.
 - Dump disimpan di `/opt/easy-rathole/backups`.
 - DB VPS non-empty tidak dioverwrite kecuali `EASY_RATHOLE_FORCE_INITIAL_CLONE=1`.
@@ -151,7 +151,7 @@ Clone awal otomatis:
 Terapkan sequence ganjil/genap hanya setelah backup, restore snapshot awal, dan aplikasi di kedua sisi sedang berhenti:
 
 ```bash
-sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 EASY_RATHOLE_APPLY_SEQUENCE_POLICY=1 bash install.sh
+sudo EASY_RATHOLE_APPLY_SEQUENCE_POLICY=1 /opt/easy-rathole/src/easy-ipos5-tunnel/scripts/install_db_sync_bucardo.sh
 ```
 
 Verifikasi koneksi Bucardo:

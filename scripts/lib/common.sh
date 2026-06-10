@@ -9,6 +9,59 @@ log() {
   printf '[%s] [%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$level" "$*"
 }
 
+progress_bar() {
+  local current="$1"
+  local total="$2"
+  local width="${3:-20}"
+  local percent=0
+  local filled=0
+  local empty=0
+
+  if (( total > 0 )); then
+    percent=$(( current * 100 / total ))
+    filled=$(( current * width / total ))
+  fi
+  empty=$(( width - filled ))
+
+  printf '['
+  printf '%*s' "$filled" '' | tr ' ' '#'
+  printf '%*s' "$empty" '' | tr ' ' '-'
+  printf '] %3d%%' "$percent"
+}
+
+run_step() {
+  local current="$1"
+  local total="$2"
+  local label="$3"
+  shift 3
+
+  local start_ts
+  start_ts="$(date +%s)"
+  printf '[%s] [STEP] %s %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$(progress_bar "$current" "$total")" "$label"
+
+  if "$@"; then
+    local elapsed
+    elapsed=$(( $(date +%s) - start_ts ))
+    printf '[%s] [ OK ] %s (%ss)\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$label" "$elapsed"
+    return 0
+  fi
+
+  local status=$?
+  local elapsed
+  elapsed=$(( $(date +%s) - start_ts ))
+  printf '[%s] [FAIL] %s (%ss, exit=%s)\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$label" "$elapsed" "$status"
+  return "$status"
+}
+
+skip_step() {
+  local current="$1"
+  local total="$2"
+  local label="$3"
+  local reason="${4:-dilewati}"
+
+  printf '[%s] [SKIP] %s %s - %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$(progress_bar "$current" "$total")" "$label" "$reason"
+}
+
 fail() {
   log ERROR "$*"
   exit 1

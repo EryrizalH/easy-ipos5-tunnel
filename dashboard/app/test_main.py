@@ -6,6 +6,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 os.environ.setdefault("EASY_RATHOLE_PG_MONITOR_ENABLED", "0")
 
@@ -35,6 +36,7 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
             "EASY_RATHOLE_STATE_FILE": os.environ.get("EASY_RATHOLE_STATE_FILE"),
             "EASY_RATHOLE_RESOURCES_DIR": os.environ.get("EASY_RATHOLE_RESOURCES_DIR"),
             "EASY_RATHOLE_BUNDLES_DIR": os.environ.get("EASY_RATHOLE_BUNDLES_DIR"),
+            "EASY_RATHOLE_DB_SYNC_FINALIZE_SCRIPT": os.environ.get("EASY_RATHOLE_DB_SYNC_FINALIZE_SCRIPT"),
         }
         os.environ["EASY_RATHOLE_DB_PATH"] = str(self.db_path)
         os.environ["EASY_RATHOLE_STATE_FILE"] = str(self.state_path)
@@ -137,6 +139,114 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         self.assertIn("Windows 7", detail)
         self.assertIn("assets/windows7/setup.exe", detail)
         self.assertIn("tidak memakai ipos5-rathole-gui.exe", detail)
+
+    def write_finalize_script(self) -> Path:
+        script = self.root / "install_db_sync_bucardo.sh"
+        script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        os.environ["EASY_RATHOLE_DB_SYNC_FINALIZE_SCRIPT"] = str(script)
+        return script
+
+    def test_finalize_db_sync_rejects_when_disabled(self) -> None:
+        save_state({}, self.state_path)
+
+        response = main.finalize_db_sync(_="admin")
+
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("DB+sync+belum+aktif", response.headers["location"])
+
+    def test_finalize_db_sync_reports_configured_after_success(self) -> None:
+        self.write_finalize_script()
+        save_state(
+            {
+                "db_sync_mode": {
+                    "enabled": True,
+                    "initial_clone_done": False,
+                    "bucardo_configured": False,
+                    "waiting_for_client": False,
+                }
+            },
+            self.state_path,
+        )
+
+        def fake_run(*args, **kwargs):
+            save_state(
+                {
+                    "db_sync_mode": {
+                        "enabled": True,
+                        "initial_clone_done": True,
+                        "bucardo_configured": True,
+                        "waiting_for_client": False,
+                    }
+                },
+                self.state_path,
+            )
+            return main.subprocess.CompletedProcess(args=args[0], returncode=0, stdout="ok", stderr="")
+
+        with patch.object(main.subprocess, "run", side_effect=fake_run):
+            response = main.finalize_db_sync(_="admin")
+
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("Finalisasi+DB+sync+berhasil", response.headers["location"])
+
+    def test_finalize_db_sync_reports_waiting_client_after_success(self) -> None:
+        self.write_finalize_script()
+        save_state(
+            {
+                "db_sync_mode": {
+                    "enabled": True,
+                    "initial_clone_done": False,
+                    "bucardo_configured": False,
+                    "waiting_for_client": False,
+                }
+            },
+            self.state_path,
+        )
+
+        def fake_run(*args, **kwargs):
+            save_state(
+                {
+                    "db_sync_mode": {
+                        "enabled": True,
+                        "initial_clone_done": False,
+                        "bucardo_configured": False,
+                        "waiting_for_client": True,
+                    }
+                },
+                self.state_path,
+            )
+            return main.subprocess.CompletedProcess(args=args[0], returncode=0, stdout="waiting", stderr="")
+
+        with patch.object(main.subprocess, "run", side_effect=fake_run):
+            response = main.finalize_db_sync(_="admin")
+
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("menunggu+client", response.headers["location"])
+
+    def test_finalize_db_sync_reports_subprocess_failure(self) -> None:
+        self.write_finalize_script()
+        save_state(
+            {
+                "db_sync_mode": {
+                    "enabled": True,
+                    "initial_clone_done": False,
+                    "bucardo_configured": False,
+                    "waiting_for_client": False,
+                }
+            },
+            self.state_path,
+        )
+
+        completed = main.subprocess.CompletedProcess(
+            args=["bash", "install_db_sync_bucardo.sh"],
+            returncode=1,
+            stdout="",
+            stderr="private db error",
+        )
+        with patch.object(main.subprocess, "run", return_value=completed):
+            response = main.finalize_db_sync(_="admin")
+
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("Finalisasi+DB+sync+gagal", response.headers["location"])
 
 
 if __name__ == "__main__":

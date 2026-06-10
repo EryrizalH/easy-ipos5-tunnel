@@ -176,6 +176,15 @@
 
     .btn.secondary { background: var(--secondary); }
     .btn.secondary:hover { background: #1f2937; }
+    .btn.warning { background: var(--warning); }
+    .btn.warning:hover { background: #92400e; }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
 
     .inline-kv {
       display: grid;
@@ -359,6 +368,9 @@
             <div>Private Sync Tunnel</div>
             <div class="mono">{{ private_sync_tunnel_addr }}</div>
 
+            <div>Status DB Sync</div>
+            <div class="mono">{{ db_sync_status_label }}</div>
+
             <div>Initial Clone</div>
             <div class="mono">{% if initial_clone_done %}done{% elif db_sync_waiting_for_client %}waiting-client{% else %}pending{% endif %}</div>
 
@@ -366,6 +378,14 @@
             <div class="mono">{% if bucardo_configured %}configured{% elif db_sync_waiting_for_client %}waiting-client{% else %}pending{% endif %}</div>
           {% endif %}
         </div>
+        {% if db_sync_finalize_available %}
+          <form class="action-row" method="post" action="/db-sync/finalize">
+            <button class="btn warning" type="submit">Finalisasi DB Sync</button>
+          </form>
+          <p class="small muted">Jalankan setelah client rathole aktif dan private DB reachable lewat tunnel <span class="mono">{{ private_sync_tunnel_addr }}</span>.</p>
+        {% elif db_sync_enabled and bucardo_configured %}
+          <p class="small status-active">DB sync sudah selesai dikonfigurasi.</p>
+        {% endif %}
 
         <p style="margin-top: 12px;"><strong>Port TCP Dibuka</strong></p>
         <div>
