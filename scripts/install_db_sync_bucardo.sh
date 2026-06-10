@@ -329,10 +329,32 @@ main() {
     log WARN "Sequence policy dilewati. Set EASY_RATHOLE_APPLY_SEQUENCE_POLICY=1 hanya saat maintenance window."
   fi
 
-  if ! bucardo status >/dev/null 2>&1; then
-    log INFO "Inisialisasi database kontrol Bucardo"
-    bucardo install --batch --quiet
+  log INFO "Konfigurasi kredensial bucardorc..."
+  cat <<EOF >/etc/bucardorc
+dbhost=127.0.0.1
+dbport=5432
+dbuser=bucardo
+dbpass=bucardo
+EOF
+  cp /etc/bucardorc /root/.bucardorc || true
+  local postgres_home
+  postgres_home="$(getent passwd postgres | cut -d: -f6)"
+  if [[ -n "$postgres_home" && -d "$postgres_home" ]]; then
+    cp /etc/bucardorc "${postgres_home}/.bucardorc" || true
+    chown postgres:postgres "${postgres_home}/.bucardorc" || true
+    chmod 0600 "${postgres_home}/.bucardorc" || true
   fi
+  chmod 0600 /etc/bucardorc /root/.bucardorc || true
+
+  systemctl start postgresql || true
+
+  if ! bucardo status >/dev/null 2>&1; then
+    log INFO "Inisialisasi database kontrol Bucardo..."
+    sudo -u postgres bucardo install --batch --quiet --dbuser=postgres
+  fi
+
+  log INFO "Mengatur password user bucardo di host PostgreSQL..."
+  sudo -u postgres psql -c "ALTER USER bucardo WITH PASSWORD 'bucardo';" || true
 
   log INFO "Mendaftarkan database Bucardo"
   bucardo remove sync "$sync_name" --force >/dev/null 2>&1 || true
