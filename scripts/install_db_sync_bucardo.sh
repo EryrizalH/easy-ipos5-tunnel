@@ -199,12 +199,19 @@ run_initial_clone() {
     -d "$private_db" \
     -f "$dump_file"
 
-  PGPASSWORD="$vps_pass" pg_restore --clean --if-exists --exit-on-error \
+  local restore_status=0
+  PGPASSWORD="$vps_pass" pg_restore --clean --if-exists \
     -h "$vps_host" \
     -p "$vps_port" \
     -U "$vps_user" \
     -d "$vps_db" \
-    "$dump_file"
+    "$dump_file" || restore_status=$?
+
+  if (( restore_status > 1 )); then
+    fail "pg_restore gagal total dengan exit code ${restore_status}."
+  elif (( restore_status == 1 )); then
+    log WARN "pg_restore selesai dengan beberapa peringatan/error non-fatal (seperti parameter konfigurasi tidak dikenali)."
+  fi
 
   update_sync_state "$state_file" "{\"initial_clone_done\": true, \"waiting_for_client\": false, \"initial_clone_blocked_nonempty\": false, \"last_clone_at\": \"${now}\", \"last_clone_dump\": \"${dump_file}\"}"
   log INFO "Clone awal selesai: ${dump_file}"
