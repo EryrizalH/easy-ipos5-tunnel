@@ -186,8 +186,8 @@ def run_postgres_probe(cfg: dict[str, Any]) -> dict[str, Any]:
             cur.execute(
                 """
                 SELECT
-                  COUNT(*) FILTER (WHERE state = 'active') AS active_connections,
-                  COUNT(*) FILTER (WHERE waiting = true) AS waiting_connections
+                  COALESCE(SUM(CASE WHEN state = 'active' THEN 1 ELSE 0 END), 0) AS active_connections,
+                  COALESCE(SUM(CASE WHEN waiting = true THEN 1 ELSE 0 END), 0) AS waiting_connections
                 FROM pg_stat_activity
                 WHERE datname = current_database();
                 """
