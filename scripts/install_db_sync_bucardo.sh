@@ -340,6 +340,11 @@ main() {
 
   # Temporary remove any existing bucardorc to ensure installation uses Unix domain socket peer authentication
   rm -f /etc/bucardorc /root/.bucardorc || true
+  local postgres_home
+  postgres_home="$(getent passwd postgres | cut -d: -f6)"
+  if [[ -n "$postgres_home" ]]; then
+    rm -f "${postgres_home}/.bucardorc" || true
+  fi
 
   if ! sudo -u postgres bucardo status >/dev/null 2>&1; then
     log INFO "Inisialisasi database kontrol Bucardo..."
