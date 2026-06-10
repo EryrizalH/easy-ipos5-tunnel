@@ -98,11 +98,31 @@ main() {
   systemctl start docker
   ensure_command docker
 
+  # Stop rathole service temporarily to avoid port conflict (e.g. port 5444)
+  if systemctl is-active --quiet rathole; then
+    log INFO "Menghentikan service rathole sementara untuk menghindari konflik port ${bind_port}..."
+    systemctl stop rathole || true
+  fi
+
   ensure_dir "$data_dir" 700
 
   if docker ps -a --format '{{.Names}}' | grep -Fxq "$container_name"; then
     log INFO "Container ${container_name} sudah ada; memastikan status running."
-    docker start "$container_name" >/dev/null
+    if ! docker start "$container_name" >/dev/null 2>&1; then
+      log WARN "Gagal menjalankan container ${container_name} yang ada. Melakukan recreate..."
+      docker rm -f "$container_name" >/dev/null 2>&1 || true
+      
+      log INFO "Membuat container ${container_name} (${bind_host}:${bind_port} -> 5432)"
+      docker run -d \
+        --name "$container_name" \
+        --restart unless-stopped \
+        -e POSTGRES_USER="$dbuser" \
+        -e POSTGRES_PASSWORD="$dbpass" \
+        -e POSTGRES_DB="$dbname" \
+        -v "${data_dir}:/var/lib/postgresql/data" \
+        -p "${bind_host}:${bind_port}:5432" \
+        "$image" >/dev/null
+    fi
   else
     log INFO "Menarik image PostgreSQL VPS: ${image}"
     if ! docker pull "$image"; then
