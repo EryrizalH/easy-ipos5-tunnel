@@ -703,7 +703,7 @@ ensure_bucardo_control() {
     sudo -u postgres bucardo install --batch --quiet --dbuser=postgres
   else
     log INFO "Database kontrol Bucardo sudah terdeteksi. Menjalankan upgrade/validasi..."
-    sudo -u postgres bucardo upgrade --batch --quiet || true
+    sudo -u postgres bucardo upgrade --batch --quiet --dbuser=postgres || true
   fi
 
   sudo -u postgres psql -c "ALTER USER bucardo WITH PASSWORD 'bucardo';" || true
@@ -1041,46 +1041,44 @@ print(json.dumps(sorted(set(out)), separators=(",", ":")))
 PY
 )"
     if [[ "$unsupported_tables" != "[]" ]]; then
-      remove_bucardo_objects "$dbname"
-      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Tabel tanpa primary/unique key tidak bisa direplikasi 2-way oleh Bucardo." "preflight_database" "" "$unsupported_tables"
-      had_error=1
-      continue
+      log WARN "Beberapa tabel di ${dbname} tidak memiliki primary/unique key dan dilewati oleh Bucardo."
+      update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "Beberapa tabel dilewati (tidak ada primary/unique key)." "preflight_database" "" "$unsupported_tables"
     fi
 
     if ! apply_sequence_policy "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" 1; then
-      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Sequence policy VPS gagal." "sequence_policy"
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Sequence policy VPS gagal." "sequence_policy" "" "$unsupported_tables"
       had_error=1
       continue
     fi
     if ! apply_sequence_policy "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" 2; then
-      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Sequence policy private gagal." "sequence_policy"
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Sequence policy private gagal." "sequence_policy" "" "$unsupported_tables"
       had_error=1
       continue
     fi
 
-    update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "" "register_bucardo"
+    update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "" "register_bucardo" "" "$unsupported_tables"
     if [[ "$registered_contains" == "true" ]]; then
       if ! detail="$(sync_registered_objects "$dbname" "$sync_name" 2>&1)"; then
-        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Auto-register tabel/sequence baru gagal." "register_bucardo" "$detail"
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Auto-register tabel/sequence baru gagal." "register_bucardo" "$detail" "$unsupported_tables"
         had_error=1
         continue
       fi
     else
       if ! detail="$(register_bucardo_sync "$dbname" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass" 2>&1)"; then
-        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Registrasi Bucardo gagal. Periksa schema mismatch atau kredensial DB." "register_bucardo" "$detail"
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Registrasi Bucardo gagal. Periksa schema mismatch atau kredensial DB." "register_bucardo" "$detail" "$unsupported_tables"
         had_error=1
         continue
       fi
     fi
 
-    update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "" "repair_metadata"
+    update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "" "repair_metadata" "" "$unsupported_tables"
     if ! detail="$(ensure_bucardo_sync_metadata "$dbname" "$sync_name" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass" 2>&1)"; then
-      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Repair metadata Bucardo remote atau validate sync gagal." "repair_metadata" "$detail"
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Repair metadata Bucardo remote atau validate sync gagal." "repair_metadata" "$detail" "$unsupported_tables"
       had_error=1
       continue
     fi
 
-    update_db_record "$state_file" "$dbname" "synced" "$sync_name" "" "synced"
+    update_db_record "$state_file" "$dbname" "synced" "$sync_name" "" "synced" "" "$unsupported_tables"
   done <<<"$db_names"
 
   log INFO "Restart Bucardo"
