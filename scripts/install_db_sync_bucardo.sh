@@ -438,6 +438,7 @@ sync_schema_best_effort() {
   schema_file="${backup_dir}/${safe}-${source_label}-to-${target_label}-schema-${stamp}.sql"
 
   if ! PGPASSWORD="$source_pass" pg_dump --schema-only --no-owner --no-privileges \
+    --exclude-schema=bucardo \
     -h "$source_host" \
     -p "$source_port" \
     -U "$source_user" \
@@ -486,6 +487,61 @@ BEGIN
 END
 \$\$;
 SQL
+}
+
+ensure_bucardo_remote_truncate_tables() {
+  local host="$1"
+  local port="$2"
+  local dbname="$3"
+  local user="$4"
+  local password="$5"
+  local label="$6"
+
+  log INFO "Memastikan metadata truncate Bucardo tersedia di ${label}/${dbname}"
+  PGPASSWORD="$password" psql -v ON_ERROR_STOP=1 \
+    "host=${host} port=${port} dbname=${dbname} user=${user}" <<'SQL'
+CREATE SCHEMA IF NOT EXISTS bucardo;
+
+CREATE TABLE IF NOT EXISTS bucardo.bucardo_truncate_trigger (
+  tablename   OID         NOT NULL,
+  sname       TEXT        NOT NULL,
+  tname       TEXT        NOT NULL,
+  sync        TEXT        NOT NULL,
+  replicated  TIMESTAMPTZ     NULL,
+  cdate       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS bucardo_truncate_trigger_index
+  ON bucardo.bucardo_truncate_trigger (sync, tablename)
+  WHERE replicated IS NULL;
+
+CREATE TABLE IF NOT EXISTS bucardo.bucardo_truncate_trigger_log (
+  tablename   OID         NOT NULL,
+  sname       TEXT        NOT NULL,
+  tname       TEXT        NOT NULL,
+  sync        TEXT        NOT NULL,
+  target      TEXT        NOT NULL,
+  replicated  TIMESTAMPTZ NOT NULL,
+  cdate       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+SQL
+}
+
+ensure_bucardo_sync_metadata() {
+  local dbname="$1"
+  local sync_name="$2"
+  local vps_host="$3"
+  local vps_port="$4"
+  local vps_user="$5"
+  local vps_pass="$6"
+  local private_host="$7"
+  local private_port="$8"
+  local private_user="$9"
+  local private_pass="${10}"
+
+  ensure_bucardo_remote_truncate_tables "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" "vps"
+  ensure_bucardo_remote_truncate_tables "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" "private"
+  bucardo validate sync "$sync_name"
 }
 
 ensure_bucardo_control() {
@@ -801,6 +857,12 @@ main() {
         had_error=1
         continue
       fi
+    fi
+
+    if ! ensure_bucardo_sync_metadata "$dbname" "$sync_name" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass"; then
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Repair metadata Bucardo remote gagal. Pastikan user DB punya hak CREATE schema/table di kedua sisi."
+      had_error=1
+      continue
     fi
 
     update_db_record "$state_file" "$dbname" "synced" "$sync_name" ""

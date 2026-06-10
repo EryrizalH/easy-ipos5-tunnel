@@ -163,6 +163,22 @@ bucardo status
 bucardo list sync
 ```
 
+Jika `bucardo status` menunjukkan sync `Bad` dan log berisi:
+
+```text
+ERROR: relation "bucardo.bucardo_truncate_trigger" does not exist
+```
+
+jalankan finalisasi DB sync ulang dari dashboard, atau dari VPS:
+
+```bash
+sudo /opt/easy-rathole/src/easy-ipos5-tunnel/scripts/install_db_sync_bucardo.sh
+sudo bucardo restart
+bucardo status
+```
+
+Script finalisasi akan memastikan tabel metadata truncate Bucardo tersedia di DB VPS dan DB private, lalu menjalankan `bucardo validate sync` ulang. Jika tetap gagal, pastikan user DB sync punya hak `CREATE` pada database aplikasi di kedua sisi.
+
 ## Jalankan ulang installer
 
 Installer bersifat idempotent dasar, sehingga aman dijalankan ulang:
