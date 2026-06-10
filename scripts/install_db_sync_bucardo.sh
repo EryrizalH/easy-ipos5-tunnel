@@ -790,7 +790,7 @@ sync_registered_objects() {
   vps_db="vps_${slug}"
   bucardo add all tables db="$vps_db" relgroup="$relgroup" >/dev/null 2>&1 || true
   bucardo add all sequences db="$vps_db" relgroup="$relgroup" >/dev/null 2>&1 || true
-  bucardo update sync "$sync_name" onetimecopy=2 >/dev/null 2>&1 || true
+  bucardo update sync "$sync_name" onetimecopy=2
 }
 
 finalize_aggregate_state() {
@@ -1057,14 +1057,35 @@ PY
     fi
 
     update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "" "register_bucardo" "" "$unsupported_tables"
+    local reg_exit_code=0
+    local reg_detail_file
+    reg_detail_file="$(mktemp)"
     if [[ "$registered_contains" == "true" ]]; then
-      if ! detail="$(sync_registered_objects "$dbname" "$sync_name" 2>&1)"; then
+      (
+        set -euo pipefail
+        sync_registered_objects "$dbname" "$sync_name"
+      ) >"$reg_detail_file" 2>&1 || reg_exit_code=$?
+      
+      local detail
+      detail="$(cat "$reg_detail_file")"
+      rm -f "$reg_detail_file"
+      
+      if (( reg_exit_code != 0 )); then
         update_db_record "$state_file" "$dbname" "error" "$sync_name" "Auto-register tabel/sequence baru gagal." "register_bucardo" "$detail" "$unsupported_tables"
         had_error=1
         continue
       fi
     else
-      if ! detail="$(register_bucardo_sync "$dbname" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass" 2>&1)"; then
+      (
+        set -euo pipefail
+        register_bucardo_sync "$dbname" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass"
+      ) >"$reg_detail_file" 2>&1 || reg_exit_code=$?
+      
+      local detail
+      detail="$(cat "$reg_detail_file")"
+      rm -f "$reg_detail_file"
+      
+      if (( reg_exit_code != 0 )); then
         update_db_record "$state_file" "$dbname" "error" "$sync_name" "Registrasi Bucardo gagal. Periksa schema mismatch atau kredensial DB." "register_bucardo" "$detail" "$unsupported_tables"
         had_error=1
         continue
