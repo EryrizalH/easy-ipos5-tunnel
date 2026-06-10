@@ -9,9 +9,11 @@ configure_firewall_ports() {
   local control_port
   local dashboard_port
   local dashboard_allow_cidr="${EASY_RATHOLE_DASHBOARD_ALLOW_CIDR:-}"
+  local exposed_ports_json
 
   control_port="$(state_get "$state_file" "rathole_control_port" "0")"
   dashboard_port="$(state_get "$state_file" "dashboard_port" "8088")"
+  exposed_ports_json="$(state_get "$state_file" "exposed_ports" "[]")"
 
   local remote_ports_json
   remote_ports_json="$(state_get "$state_file" "service_ports" "[]")"
@@ -20,7 +22,7 @@ configure_firewall_ports() {
     [[ -n "$port" ]] || continue
     ports+=("$port")
   done < <(
-    python3 - "$remote_ports_json" <<'PY'
+    python3 - "$remote_ports_json" "$exposed_ports_json" <<'PY'
 import json
 import sys
 
@@ -29,9 +31,26 @@ try:
 except Exception:
     rows = []
 
+try:
+    configured_ports = json.loads(sys.argv[2])
+except Exception:
+    configured_ports = []
+
 seen = set()
+for raw_port in configured_ports:
+    try:
+        port = int(raw_port)
+    except Exception:
+        continue
+    if port in seen:
+        continue
+    seen.add(port)
+    print(port)
+
 for row in rows:
     if not isinstance(row, dict):
+        continue
+    if row.get("expose_public") is False:
         continue
     try:
         port = int(row.get("remote_bind_port"))
@@ -86,6 +105,66 @@ PY
   fi
 }
 
+initialize_db_sync_mode() {
+  local state_file="$1"
+  local vps_bind_host="${EASY_RATHOLE_VPS_DB_BIND_HOST:-0.0.0.0}"
+  local vps_bind_port="${EASY_RATHOLE_VPS_DB_PORT:-5444}"
+  local private_addr="${EASY_RATHOLE_SYNC_PRIVATE_ADDR:-127.0.0.1:5445}"
+  local backend_mode="${EASY_RATHOLE_PRIVATE_DB_BACKEND_MODE:-direct}"
+  local dbname="${EASY_RATHOLE_VPS_DB_NAME:-postgres}"
+  local dbuser="${EASY_RATHOLE_VPS_DB_USER:-sysi5adm}"
+  local dbpass="${EASY_RATHOLE_VPS_DB_PASSWORD:-u&aV23cc.o82dtr1x89c}"
+
+  python3 - "$state_file" "$vps_bind_host" "$vps_bind_port" "$private_addr" "$backend_mode" "$dbname" "$dbuser" "$dbpass" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+vps_bind_host = sys.argv[2]
+vps_bind_port = sys.argv[3]
+private_addr = sys.argv[4]
+backend_mode = sys.argv[5]
+dbname = sys.argv[6]
+dbuser = sys.argv[7]
+dbpass = sys.argv[8]
+
+try:
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+except Exception:
+    data = {}
+
+existing = data.get("db_sync_mode")
+if not isinstance(existing, dict):
+    existing = {}
+
+existing.update(
+    {
+        "enabled": True,
+        "vps_db_addr": (
+            f"{vps_bind_host}:{vps_bind_port}"
+            if existing.get("vps_db_addr") in (None, "", "127.0.0.1:5444", "localhost:5444")
+            else existing.get("vps_db_addr")
+        ),
+        "private_db_tunnel_addr": existing.get("private_db_tunnel_addr") or private_addr,
+        "private_db_backend_mode": existing.get("private_db_backend_mode") or backend_mode,
+        "dbname": existing.get("dbname") or dbname,
+        "vps_db_user": existing.get("vps_db_user") or dbuser,
+        "vps_db_password": existing.get("vps_db_password") or dbpass,
+        "private_db_user": existing.get("private_db_user") or dbuser,
+        "private_db_password": existing.get("private_db_password") or dbpass,
+        "initial_clone_done": bool(existing.get("initial_clone_done", False)),
+        "bucardo_configured": bool(existing.get("bucardo_configured", False)),
+        "waiting_for_client": bool(existing.get("waiting_for_client", False)),
+    }
+)
+data["db_sync_mode"] = existing
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+PY
+  chmod 0600 "$state_file"
+}
+
 main() {
   require_root
   ensure_ubuntu_22_plus
@@ -109,11 +188,32 @@ main() {
     systemd \
     iproute2
 
+  if [[ "${EASY_RATHOLE_INSTALL_DB_SYNC:-0}" == "1" ]]; then
+    log INFO "Menyiapkan state DB sync awal..."
+    initialize_db_sync_mode "${EASY_RATHOLE_STATE_FILE}"
+  fi
+
   log INFO "Menginstal server rathole..."
   bash "${SCRIPT_DIR}/scripts/install_rathole_server.sh"
 
+  local install_vps_db
+  install_vps_db="${EASY_RATHOLE_INSTALL_VPS_DB:-${EASY_RATHOLE_INSTALL_DB_SYNC:-0}}"
+  if [[ "$install_vps_db" == "1" ]]; then
+    log INFO "Menginstal PostgreSQL 9.3 VPS via Docker..."
+    bash "${SCRIPT_DIR}/scripts/install_vps_postgres93_docker.sh"
+  else
+    log INFO "Install PostgreSQL VPS dilewati. Set EASY_RATHOLE_INSTALL_VPS_DB=1 untuk mengaktifkan."
+  fi
+
   log INFO "Menginstal dashboard..."
   bash "${SCRIPT_DIR}/scripts/install_dashboard.sh"
+
+  if [[ "${EASY_RATHOLE_INSTALL_DB_SYNC:-0}" == "1" ]]; then
+    log INFO "Menginstal Bucardo DB sync..."
+    bash "${SCRIPT_DIR}/scripts/install_db_sync_bucardo.sh"
+  else
+    log INFO "DB sync Bucardo dilewati. Set EASY_RATHOLE_INSTALL_DB_SYNC=1 untuk mengaktifkan."
+  fi
 
   log INFO "Mengonfigurasi port firewall..."
   configure_firewall_ports "${EASY_RATHOLE_STATE_FILE}"
@@ -153,10 +253,22 @@ except Exception:
 
 rows = data.get("service_ports")
 ports = []
+seen = set()
+for raw_port in data.get("exposed_ports", []):
+    try:
+        port = int(raw_port)
+    except Exception:
+        continue
+    if port in seen:
+        continue
+    seen.add(port)
+    ports.append(str(port))
+
 if isinstance(rows, list):
-    seen = set()
     for row in rows:
         if not isinstance(row, dict):
+            continue
+        if row.get("expose_public") is False:
             continue
         try:
             port = int(row.get("remote_bind_port"))

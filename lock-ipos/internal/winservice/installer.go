@@ -55,7 +55,7 @@ const (
 )
 
 var scStatePattern = regexp.MustCompile(`STATE\s*:\s*\d+\s+([A-Z_]+)`)
-var clientDBAddrPattern = regexp.MustCompile(`127\.0\.0\.1:(6432|5444|5445)`)
+var legacyClientDBAddrPattern = regexp.MustCompile(`127\.0\.0\.1:6432`)
 
 type InstallMode string
 
@@ -973,7 +973,7 @@ func ensureDBForwardAddress(clientTomlPath string) error {
 		return fmt.Errorf("gagal membaca client.toml: %w", err)
 	}
 	content := string(raw)
-	rewritten := clientDBAddrPattern.ReplaceAllString(content, dbClientForwardAddr)
+	rewritten := legacyClientDBAddrPattern.ReplaceAllString(content, dbClientForwardAddr)
 	if rewritten == content {
 		return nil
 	}

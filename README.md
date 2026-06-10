@@ -5,8 +5,12 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
 ## Ringkasan fitur
 
 - Install server `rathole` + systemd service (`rathole`)
-- Port forward TCP server (VPS): **5444**, **5480**, **5485**
-- Mapping database default: **VPS 5444 -> Client 127.0.0.1:5444 (rathole) -> PGbouncer 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445**
+- Port forward TCP server default (VPS): **5444**, **5480**, **5485**
+- Mode DB sync opsional: PostgreSQL VPS tersinkron publish di **0.0.0.0:5444**, sedangkan tunnel replikasi private memakai **127.0.0.1:5445** di VPS
+- Installer dapat memasang PostgreSQL **9.3** di VPS via Docker agar versi database VPS sama dengan client.
+- PgBouncer client tetap opsional:
+  - tanpa PgBouncer: PostgreSQL Windows tetap `127.0.0.1:5444`
+  - dengan PgBouncer: aplikasi tetap `127.0.0.1:5444`, backend PostgreSQL pindah ke `127.0.0.1:5445`
 - Control port rathole dipilih otomatis (random, port kosong)
 - Dashboard FastAPI (HTTP + Basic Auth) untuk:
   - melihat status service dan status port forward
@@ -58,8 +62,12 @@ Urutan default:
 1. Hardening baseline server.
 2. Install dependency runtime.
 3. Install rathole server + service `rathole`.
-4. Install dashboard + service `easy-rathole-dashboard`.
-5. Buka firewall untuk control port + remote bind ports tunnel (default 5444/5480/5485) + port dashboard.
+4. Jika DB sync aktif, install PostgreSQL 9.3 Docker di VPS pada `0.0.0.0:5444`.
+5. Install dashboard + service `easy-rathole-dashboard`.
+6. Jika DB sync aktif dan client tunnel sudah reachable, clone awal DB client ke VPS lalu aktifkan Bucardo.
+7. Buka firewall untuk control port + port publik `5444/5480/5485` + port dashboard. Saat DB sync aktif, rathole DB tunnel `5445` hanya bind ke `127.0.0.1` dan tidak dibuka publik.
+
+Jika `EASY_RATHOLE_INSTALL_DB_SYNC=1`, installer memasang PostgreSQL 9.3 VPS via Docker. Jika client belum terkoneksi, state ditandai `waiting_for_client=true`; jalankan ulang installer setelah client online untuk clone awal dan Bucardo.
 
 ### Opsi environment (opsional)
 
@@ -81,6 +89,12 @@ sudo EASY_RATHOLE_DASHBOARD_ALLOW_CIDR="1.2.3.4/32" bash install.sh
 
 # ganti port dashboard (default 8088)
 sudo DASHBOARD_PORT=9090 bash install.sh
+
+# aktifkan DB sync + install PostgreSQL 9.3 VPS via Docker + Bucardo
+sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
+
+# bila hanya ingin install DB VPS tanpa Bucardo
+sudo EASY_RATHOLE_INSTALL_VPS_DB=1 bash install.sh
 ```
 
 > ⚠️ `EASY_RATHOLE_DISABLE_SSH_PASSWORD=1` hanya aman jika login SSH key-based sudah teruji. Script akan menolak jika `authorized_keys` tidak ditemukan.
@@ -111,6 +125,22 @@ Setelah install selesai, installer menampilkan:
 
 - State file: `/opt/easy-rathole/state/install-state.json`
   - kunci penting baru: `service_ports` (contoh item DB: `remote_bind_port=5444`, `client_local_port=5444`)
+  - mode sync DB opsional:
+    ```json
+    {
+      "db_sync_mode": {
+        "enabled": true,
+        "vps_db_addr": "0.0.0.0:5444",
+        "private_db_tunnel_addr": "127.0.0.1:5445",
+        "private_db_backend_mode": "direct",
+        "initial_clone_done": false,
+        "bucardo_configured": false,
+        "waiting_for_client": false
+      }
+    }
+    ```
+    Gunakan `private_db_backend_mode=pgbouncer_backend` bila PostgreSQL private sudah dipindah ke backend `127.0.0.1:5445` oleh PgBouncer.
+- Metadata PostgreSQL VPS Docker disimpan pada `vps_postgres`.
 - Config rathole server: `/etc/easy-rathole/server.toml`
 - Credential dashboard: `/opt/easy-rathole/state/dashboard-credentials.txt`
 - DB dashboard (sqlite): `/opt/easy-rathole/state/easy-rathole.db`
@@ -129,8 +159,8 @@ Fitur utama:
 3. Monitoring status:
    - `rathole`
    - `easy-rathole-dashboard`
-   - status port remote bind tunnel (default 5444/5480/5485)
-  - performa PostgreSQL client via tunnel `127.0.0.1:5444` (PgBouncer expose `0.0.0.0:5444`, backend PostgreSQL `127.0.0.1:5445`):
+   - status port remote bind tunnel publik
+   - performa PostgreSQL VPS lokal via `127.0.0.1:5444` saat DB sync aktif, atau port DB forward default saat sync tidak aktif:
      - `connect_ms`, `query_ms`, `tx_ms`
      - active/waiting connections
      - cache hit ratio
@@ -154,7 +184,7 @@ Environment variable monitor PostgreSQL (opsional):
 - `EASY_RATHOLE_PG_MONITOR_DSN` (disarankan, contoh: `host=127.0.0.1 port=5444 dbname=postgres user=monitor password=*** connect_timeout=3`)
 - Jika `DSN` tidak diisi, fallback:
   - `EASY_RATHOLE_PG_MONITOR_HOST` (default `127.0.0.1`)
-  - `EASY_RATHOLE_PG_MONITOR_PORT` (default mengikuti `service_ports.db.remote_bind_port`, biasanya `5444`)
+  - `EASY_RATHOLE_PG_MONITOR_PORT` (default `db_sync_mode.vps_db_addr` saat sync aktif; jika tidak, mengikuti `service_ports.db.remote_bind_port`)
   - `EASY_RATHOLE_PG_MONITOR_USER` (default `sysi5adm`)
   - `EASY_RATHOLE_PG_MONITOR_PASSWORD` (default `u&aV23cc.o82dtr1x89c`)
   - `EASY_RATHOLE_PG_MONITOR_DBNAME` (default `postgres`)
@@ -198,7 +228,8 @@ Catatan paket terbaru:
 - `EasyRatholeClient` dijalankan lewat wrapper headless `ipos5-rathole-service.exe`, lalu wrapper itu mengeksekusi `ipos5-rathole.exe client.toml`.
 - Script template lama seperti `setup-client.cmd`/`install-service.cmd` bukan alur utama bundle dashboard saat ini.
 - Saat install sukses, shortcut desktop `ipos5-rathole` dibuat untuk membuka GUI jendela utama dengan UAC (Run as Administrator).
-- `setup.exe` akan auto-install service `PgBouncer` dulu (fail-fast jika gagal), lalu install `EasyRatholeClient`.
+- PgBouncer tetap opsional. Menu `Install IP Public` tidak memindahkan PostgreSQL ke `5445`; menu `Install PgBouncer` memindahkan backend PostgreSQL ke `127.0.0.1:5445`.
+- Saat bundle dibuat untuk DB sync + PgBouncer backend, `client.toml` mempertahankan DB `local_addr=127.0.0.1:5445` agar Bucardo di VPS mencapai backend PostgreSQL, bukan PgBouncer.
 - Runtime file `pgbouncer.ini` dan `userlist.txt` dibuat otomatis saat install service.
 - Untuk menyiapkan asset Windows:
   - `scripts/build_windows_unified.ps1` membangun `setup.exe`
@@ -285,6 +316,39 @@ systemctl status easy-rathole-dashboard
 journalctl -u rathole -n 100 --no-pager
 journalctl -u easy-rathole-dashboard -n 100 --no-pager
 sudo ss -ltnp | grep -E ':5444|:5480|:5485|:8088'
+```
+
+Untuk mengaktifkan setup Bucardo dari installer utama, isi `db_sync_mode` di state terlebih dahulu lalu jalankan. Jika `db_sync_mode` belum ada, installer PostgreSQL VPS akan membuat default DB sync state:
+
+```bash
+sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
+```
+
+Variabel PostgreSQL VPS Docker:
+
+```bash
+sudo EASY_RATHOLE_INSTALL_VPS_DB=1 \
+  EASY_RATHOLE_VPS_DB_IMAGE=postgres:9.3 \
+  EASY_RATHOLE_VPS_DB_BIND_HOST=0.0.0.0 \
+  EASY_RATHOLE_VPS_DB_NAME=postgres \
+  EASY_RATHOLE_VPS_DB_USER=sysi5adm \
+  EASY_RATHOLE_VPS_DB_PASSWORD='u&aV23cc.o82dtr1x89c' \
+  bash install.sh
+```
+
+Catatan: image default adalah `postgres:9.3`. Karena tag lama bisa tidak tersedia lagi di registry publik, pin `EASY_RATHOLE_VPS_DB_IMAGE` ke image PostgreSQL 9.3 yang tersedia/teruji bila pull default gagal.
+
+Clone awal otomatis:
+
+- Source clone adalah DB private/client via `127.0.0.1:5445`.
+- DB VPS tidak akan dioverwrite bila sudah berisi object user, kecuali `EASY_RATHOLE_FORCE_INITIAL_CLONE=1`.
+- Dump sementara disimpan di `/opt/easy-rathole/backups`.
+- Role/auth di-dump best-effort sebelum restore. Password hash role bisa 1:1 hanya bila user dump punya permission cukup.
+
+Sequence ganjil/genap sengaja tidak diterapkan otomatis. Jalankan hanya setelah backup dan snapshot awal kedua database sama:
+
+```bash
+sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 EASY_RATHOLE_APPLY_SEQUENCE_POLICY=1 bash install.sh
 ```
 
 Lihat panduan operasional lanjutan di: `docs/OPERATIONS.md`.

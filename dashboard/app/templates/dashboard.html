@@ -311,7 +311,9 @@
       </div>
 
       <div class="card">
-        <div class="metric-label">PostgreSQL Client (VPS {{ db_remote_port }} -> {{ db_backend_local_addr }})</div>
+        <div class="metric-label">
+          PostgreSQL {% if db_sync_enabled %}Public DB {{ public_db_addr }}{% else %}Client (VPS {{ db_remote_port }} -> {{ db_backend_local_addr }}){% endif %}
+        </div>
         <p class="metric-value mono {% if postgres_monitor.status == 'Healthy' %}status-active{% elif postgres_monitor.status == 'Warning' %}status-warning{% else %}status-inactive{% endif %}">
           {{ postgres_monitor.status }}
         </p>
@@ -349,6 +351,20 @@
 
           <div>Port Dashboard</div>
           <div class="mono">{{ dashboard_port }}</div>
+
+          {% if db_sync_enabled %}
+            <div>Public DB</div>
+            <div class="mono">{{ public_db_addr }}</div>
+
+            <div>Private Sync Tunnel</div>
+            <div class="mono">{{ private_sync_tunnel_addr }}</div>
+
+            <div>Initial Clone</div>
+            <div class="mono">{% if initial_clone_done %}done{% elif db_sync_waiting_for_client %}waiting-client{% else %}pending{% endif %}</div>
+
+            <div>Bucardo</div>
+            <div class="mono">{% if bucardo_configured %}configured{% elif db_sync_waiting_for_client %}waiting-client{% else %}pending{% endif %}</div>
+          {% endif %}
         </div>
 
         <p style="margin-top: 12px;"><strong>Port TCP Dibuka</strong></p>
@@ -362,7 +378,7 @@
 
     <div class="details-grid">
       <details>
-        <summary>Detail Lanjutan: PostgreSQL Client (VPS {{ db_remote_port }} -> {{ db_backend_local_addr }})</summary>
+        <summary>Detail Lanjutan: PostgreSQL {% if db_sync_enabled %}2-Way Sync (Public {{ public_db_addr }}, Tunnel {{ private_sync_tunnel_addr }}){% else %}Client (VPS {{ db_remote_port }} -> {{ db_backend_local_addr }}){% endif %}</summary>
         <div class="table-wrap">
           <table>
             <thead>

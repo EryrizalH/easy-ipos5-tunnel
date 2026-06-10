@@ -274,6 +274,26 @@ func TestEnsureDBForwardAddress_UpdatesLegacy6432(t *testing.T) {
 	}
 }
 
+func TestEnsureDBForwardAddress_PreservesSyncBackend5445(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "client.toml")
+	if err := os.WriteFile(path, []byte("local_addr = \"127.0.0.1:5445\"\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	if err := ensureDBForwardAddress(path); err != nil {
+		t.Fatalf("ensureDBForwardAddress() error = %v", err)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if !strings.Contains(string(raw), "127.0.0.1:5445") {
+		t.Fatalf("expected DB sync backend address preserved, got %s", string(raw))
+	}
+}
+
 func TestLoadPgBouncerDatabaseEntries_DefaultWhenMissing(t *testing.T) {
 	entries, err := loadPgBouncerDatabaseEntries(filepath.Join(t.TempDir(), pgBouncerDBsName))
 	if err != nil {

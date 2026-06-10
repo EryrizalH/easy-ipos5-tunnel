@@ -30,6 +30,7 @@ def build_server_config(control_port: int, token: str, service_ports: list[dict[
         if not service_key:
             continue
         protocol = str(row.get("protocol", "tcp")).strip().lower() or "tcp"
+        bind_addr = str(row.get("bind_addr", "0.0.0.0")).strip() or "0.0.0.0"
         raw_port = row.get("remote_bind_port")
         if raw_port is None:
             continue
@@ -43,7 +44,7 @@ def build_server_config(control_port: int, token: str, service_ports: list[dict[
                 f"[server.services.{service_key}]",
                 f'type = "{protocol}"',
                 f'token = "{token}"',
-                f'bind_addr = "0.0.0.0:{remote_port}"',
+                f'bind_addr = "{bind_addr}:{remote_port}"',
                 "",
             ]
         )
@@ -79,7 +80,7 @@ def update_global_token(
     config_path = Path(state.get("rathole_config_path", "/etc/easy-rathole/server.toml"))
     control_port = int(state.get("rathole_control_port", 2333))
     service_name = str(state.get("rathole_service_name", "rathole"))
-    service_ports = normalize_service_ports(state.get("service_ports"))
+    service_ports = normalize_service_ports(state.get("service_ports"), state.get("db_sync_mode"))
 
     config_text = build_server_config(control_port=control_port, token=token, service_ports=service_ports)
     config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,7 +94,8 @@ def update_global_token(
         {
             "token": token,
             "service_ports": service_ports,
-            "exposed_ports": exposed_ports_from_service_ports(service_ports),
+            "exposed_ports": exposed_ports_from_service_ports(service_ports, state.get("db_sync_mode")),
+            "db_sync_mode": state.get("db_sync_mode", {}),
         }
     )
 

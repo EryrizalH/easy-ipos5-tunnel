@@ -258,12 +258,20 @@ def dashboard(
     current_token = get_setting(conn, "global_token", state.get("token", ""))
     rathole_service = str(state.get("rathole_service_name", "rathole"))
     dashboard_service = str(state.get("dashboard_service_name", "easy-rathole-dashboard"))
-    service_ports = normalize_service_ports(state.get("service_ports"))
+    db_sync_mode = state.get("db_sync_mode", {})
+    service_ports = normalize_service_ports(state.get("service_ports"), db_sync_mode)
     db_port_mapping = next((row for row in service_ports if str(row.get("name")) == "db"), {})
     db_remote_port = int(db_port_mapping.get("remote_bind_port", 5444))
     db_backend_local_addr = str(db_port_mapping.get("client_local_addr", "127.0.0.1:5444"))
-    exposed_ports = exposed_ports_from_service_ports(service_ports)
+    exposed_ports = exposed_ports_from_service_ports(service_ports, db_sync_mode)
+    db_sync_enabled = isinstance(db_sync_mode, dict) and db_sync_mode.get("enabled") is True
+    private_sync_tunnel_addr = (
+        str(db_sync_mode.get("private_db_tunnel_addr", "127.0.0.1:5445")) if db_sync_enabled else ""
+    )
     public_ip = str(state.get("public_ip", "<unknown>"))
+    public_db_bind_addr = str(db_sync_mode.get("vps_db_addr", "0.0.0.0:5444")) if db_sync_enabled else ""
+    public_db_port = public_db_bind_addr.rsplit(":", 1)[-1] if ":" in public_db_bind_addr else "5444"
+    public_db_addr = f"{public_ip}:{public_db_port}" if db_sync_enabled else ""
     control_port = str(state.get("rathole_control_port", "<unknown>"))
 
     flash_message = message or notice
@@ -291,6 +299,15 @@ def dashboard(
         "postgres_monitor": postgres_monitor,
         "db_remote_port": db_remote_port,
         "db_backend_local_addr": db_backend_local_addr,
+        "db_sync_enabled": db_sync_enabled,
+        "public_db_addr": public_db_addr,
+        "public_db_bind_addr": public_db_bind_addr,
+        "private_sync_tunnel_addr": private_sync_tunnel_addr,
+        "initial_clone_done": bool(db_sync_mode.get("initial_clone_done")) if isinstance(db_sync_mode, dict) else False,
+        "bucardo_configured": bool(db_sync_mode.get("bucardo_configured")) if isinstance(db_sync_mode, dict) else False,
+        "db_sync_waiting_for_client": bool(db_sync_mode.get("waiting_for_client"))
+        if isinstance(db_sync_mode, dict)
+        else False,
         "supported_clients": build_supported_clients(public_ip, control_port),
         "client_tunnel_details": build_client_tunnel_details(service_ports),
         "updated_at": state.get("updated_at", "-"),

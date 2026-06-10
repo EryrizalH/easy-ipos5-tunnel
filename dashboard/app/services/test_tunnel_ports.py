@@ -11,6 +11,67 @@ class TunnelPortsTest(unittest.TestCase):
         by_name = {row["name"]: row for row in rows}
         self.assertEqual(by_name["db"]["remote_bind_port"], 5444)
         self.assertEqual(by_name["db"]["client_local_port"], 5444)
+        self.assertEqual(by_name["db"]["bind_addr"], "0.0.0.0")
+        self.assertTrue(by_name["db"]["expose_public"])
+
+    def test_normalize_db_sync_direct_uses_internal_tunnel_to_private_5444(self) -> None:
+        rows = normalize_service_ports(
+            None,
+            {
+                "enabled": True,
+                "vps_db_addr": "127.0.0.1:5444",
+                "private_db_tunnel_addr": "127.0.0.1:5445",
+                "private_db_backend_mode": "direct",
+            },
+        )
+        by_name = {row["name"]: row for row in rows}
+        self.assertEqual(by_name["db"]["service_key"], "port_5445")
+        self.assertEqual(by_name["db"]["bind_addr"], "127.0.0.1")
+        self.assertEqual(by_name["db"]["remote_bind_port"], 5445)
+        self.assertEqual(by_name["db"]["client_local_addr"], "127.0.0.1:5444")
+        self.assertFalse(by_name["db"]["expose_public"])
+        self.assertEqual(
+            exposed_ports_from_service_ports(
+                rows,
+                {
+                    "enabled": True,
+                    "vps_db_addr": "0.0.0.0:5444",
+                    "private_db_tunnel_addr": "127.0.0.1:5445",
+                },
+            ),
+            [5444, 5480, 5485],
+        )
+
+    def test_normalize_db_sync_pgbouncer_backend_uses_private_5445(self) -> None:
+        rows = normalize_service_ports(
+            None,
+            {
+                "enabled": True,
+                "private_db_tunnel_addr": "127.0.0.1:5445",
+                "private_db_backend_mode": "pgbouncer_backend",
+            },
+        )
+        by_name = {row["name"]: row for row in rows}
+        self.assertEqual(by_name["db"]["client_local_addr"], "127.0.0.1:5445")
+        self.assertEqual(by_name["db"]["client_local_port"], 5445)
+
+    def test_db_sync_mode_overrides_legacy_db_service_ports(self) -> None:
+        rows = normalize_service_ports(
+            [
+                {
+                    "name": "db",
+                    "service_key": "port_5444",
+                    "protocol": "tcp",
+                    "remote_bind_port": 5444,
+                    "client_local_addr": "127.0.0.1:5444",
+                    "client_local_port": 5444,
+                }
+            ],
+            {"enabled": True, "private_db_backend_mode": "pgbouncer_backend"},
+        )
+        by_name = {row["name"]: row for row in rows}
+        self.assertEqual(by_name["db"]["remote_bind_port"], 5445)
+        self.assertEqual(by_name["db"]["client_local_addr"], "127.0.0.1:5445")
 
     def test_normalize_keeps_custom_extra_service(self) -> None:
         rows = normalize_service_ports(

@@ -111,6 +111,43 @@ class BundleServiceTest(unittest.TestCase):
             )
             self.assertIn("127.0.0.1:5444", client_toml)
 
+    def test_render_client_toml_db_sync_pgbouncer_backend_targets_5445(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            resources = root / "resources"
+            templates = resources / "templates" / "rathole"
+            templates.mkdir(parents=True, exist_ok=True)
+            (templates / "client.toml.tpl").write_text(
+                "remote_addr={{SERVER_ADDR}}:{{RATHOLE_CONTROL_PORT}}\n"
+                "db={{DB_SERVICE_KEY}} {{DB_CLIENT_LOCAL_ADDR}}\n"
+                "http={{POS_HTTP_SERVICE_KEY}} {{POS_HTTP_CLIENT_LOCAL_ADDR}}\n",
+                encoding="utf-8",
+            )
+
+            previous_resources = os.environ.get("EASY_RATHOLE_RESOURCES_DIR")
+            os.environ["EASY_RATHOLE_RESOURCES_DIR"] = str(resources)
+            try:
+                client_toml = bundle_service.render_client_toml(
+                    {
+                        "public_ip": "10.10.10.10",
+                        "rathole_control_port": 2333,
+                        "db_sync_mode": {
+                            "enabled": True,
+                            "private_db_tunnel_addr": "127.0.0.1:5445",
+                            "private_db_backend_mode": "pgbouncer_backend",
+                        },
+                    },
+                    token="demo-token",
+                )
+            finally:
+                if previous_resources is None:
+                    os.environ.pop("EASY_RATHOLE_RESOURCES_DIR", None)
+                else:
+                    os.environ["EASY_RATHOLE_RESOURCES_DIR"] = previous_resources
+
+            self.assertIn("db=port_5445 127.0.0.1:5445", client_toml)
+            self.assertIn("http=port_5480 127.0.0.1:5480", client_toml)
+
     def test_generate_windows7_bundle_excludes_gui_binary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

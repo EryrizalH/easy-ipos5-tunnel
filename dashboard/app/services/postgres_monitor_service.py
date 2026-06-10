@@ -43,6 +43,14 @@ def resolve_default_monitor_port() -> int:
     except Exception:
         return 5444
 
+    db_sync_mode = data.get("db_sync_mode")
+    if isinstance(db_sync_mode, dict) and db_sync_mode.get("enabled") is True:
+        vps_addr = str(db_sync_mode.get("vps_db_addr", "127.0.0.1:5444")).strip()
+        if ":" in vps_addr:
+            raw_port = vps_addr.rsplit(":", 1)[-1]
+            if raw_port.isdigit():
+                return int(raw_port)
+
     rows = data.get("service_ports")
     if not isinstance(rows, list):
         return 5444

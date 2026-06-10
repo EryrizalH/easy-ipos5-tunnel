@@ -76,17 +76,22 @@ main() {
 
   local config_file="${config_dir}/server.toml"
   local service_ports_raw
+  local db_sync_mode_raw
   local service_ports_json
   local db_service_key
+  local db_remote_bind_addr
   local db_remote_bind_port
   local pos_http_service_key
+  local pos_http_remote_bind_addr
   local pos_http_remote_bind_port
   local pos_worker_service_key
+  local pos_worker_remote_bind_addr
   local pos_worker_remote_bind_port
 
   service_ports_raw="$(state_get "$state_file" "service_ports" "[]")"
+  db_sync_mode_raw="$(state_get "$state_file" "db_sync_mode" "{}")"
   service_ports_json="$(
-    python3 - "$service_ports_raw" <<'PY'
+    python3 - "$service_ports_raw" "$db_sync_mode_raw" <<'PY'
 import json
 import sys
 
@@ -95,6 +100,8 @@ defaults = [
         "name": "db",
         "service_key": "port_5444",
         "protocol": "tcp",
+        "bind_addr": "0.0.0.0",
+        "expose_public": True,
         "remote_bind_port": 5444,
         "client_local_addr": "127.0.0.1:5444",
         "client_local_port": 5444,
@@ -103,6 +110,8 @@ defaults = [
         "name": "pos_http",
         "service_key": "port_5480",
         "protocol": "tcp",
+        "bind_addr": "0.0.0.0",
+        "expose_public": True,
         "remote_bind_port": 5480,
         "client_local_addr": "127.0.0.1:5480",
         "client_local_port": 5480,
@@ -111,6 +120,8 @@ defaults = [
         "name": "pos_worker",
         "service_key": "port_5485",
         "protocol": "tcp",
+        "bind_addr": "0.0.0.0",
+        "expose_public": True,
         "remote_bind_port": 5485,
         "client_local_addr": "127.0.0.1:5485",
         "client_local_port": 5485,
@@ -121,6 +132,39 @@ try:
     rows = json.loads(sys.argv[1])
 except Exception:
     rows = []
+
+try:
+    db_sync = json.loads(sys.argv[2])
+except Exception:
+    db_sync = {}
+
+sync_enabled = isinstance(db_sync, dict) and db_sync.get("enabled") is True
+if sync_enabled:
+    backend_mode = str(db_sync.get("private_db_backend_mode", "direct")).strip().lower()
+    private_local_addr = "127.0.0.1:5445" if backend_mode == "pgbouncer_backend" else "127.0.0.1:5444"
+    for row in defaults:
+        if row["name"] != "db":
+            continue
+        row.update(
+            {
+                "service_key": "port_5445",
+                "bind_addr": "127.0.0.1",
+                "expose_public": False,
+                "remote_bind_port": 5445,
+                "client_local_addr": private_local_addr,
+                "client_local_port": int(private_local_addr.rsplit(":", 1)[-1]),
+            }
+        )
+        tunnel_addr = str(db_sync.get("private_db_tunnel_addr", "")).strip()
+        if ":" in tunnel_addr:
+            host, port = tunnel_addr.rsplit(":", 1)
+            if host.strip() and port.isdigit():
+                row["bind_addr"] = host.strip()
+                row["remote_bind_port"] = int(port)
+        vps_addr = str(db_sync.get("vps_db_addr", "")).strip()
+        if vps_addr:
+            row["vps_db_addr"] = vps_addr
+        break
 
 by_name = {}
 for row in rows:
@@ -133,10 +177,16 @@ merged = []
 for default in defaults:
     row = default.copy()
     provided = by_name.get(default["name"], {})
-    for key in ("service_key", "protocol", "client_local_addr"):
+    if sync_enabled and default["name"] == "db":
+        merged.append(row)
+        continue
+    for key in ("service_key", "protocol", "bind_addr", "client_local_addr"):
         value = provided.get(key)
         if isinstance(value, str) and value.strip():
             row[key] = value.strip()
+    value = provided.get("expose_public")
+    if isinstance(value, bool):
+        row["expose_public"] = value
     for key in ("remote_bind_port", "client_local_port"):
         value = provided.get(key)
         try:
@@ -155,6 +205,10 @@ for row in rows:
         continue
     service_key = str(row.get("service_key", "")).strip()
     protocol = str(row.get("protocol", "tcp")).strip().lower() or "tcp"
+    bind_addr = str(row.get("bind_addr", "0.0.0.0")).strip() or "0.0.0.0"
+    expose_public = row.get("expose_public")
+    if not isinstance(expose_public, bool):
+        expose_public = bind_addr not in {"127.0.0.1", "localhost", "::1"}
     client_local_addr = str(row.get("client_local_addr", "")).strip()
     try:
         remote_bind_port = int(row.get("remote_bind_port"))
@@ -168,6 +222,8 @@ for row in rows:
             "name": name,
             "service_key": service_key,
             "protocol": protocol,
+            "bind_addr": bind_addr,
+            "expose_public": expose_public,
             "remote_bind_port": remote_bind_port,
             "client_local_addr": client_local_addr,
             "client_local_port": client_local_port,
@@ -185,6 +241,13 @@ rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
 print(rows.get("db", {}).get("service_key", "port_5444"))
 PY
 )"
+  db_remote_bind_addr="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(rows.get("db", {}).get("bind_addr", "0.0.0.0"))
+PY
+)"
   db_remote_bind_port="$(python3 - "$service_ports_json" <<'PY'
 import json
 import sys
@@ -197,6 +260,13 @@ import json
 import sys
 rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
 print(rows.get("pos_http", {}).get("service_key", "port_5480"))
+PY
+)"
+  pos_http_remote_bind_addr="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(rows.get("pos_http", {}).get("bind_addr", "0.0.0.0"))
 PY
 )"
   pos_http_remote_bind_port="$(python3 - "$service_ports_json" <<'PY'
@@ -213,6 +283,13 @@ rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
 print(rows.get("pos_worker", {}).get("service_key", "port_5485"))
 PY
 )"
+  pos_worker_remote_bind_addr="$(python3 - "$service_ports_json" <<'PY'
+import json
+import sys
+rows = {row.get("name"): row for row in json.loads(sys.argv[1])}
+print(rows.get("pos_worker", {}).get("bind_addr", "0.0.0.0"))
+PY
+)"
   pos_worker_remote_bind_port="$(python3 - "$service_ports_json" <<'PY'
 import json
 import sys
@@ -225,10 +302,13 @@ PY
     RATHOLE_CONTROL_PORT "$control_port" \
     GLOBAL_TOKEN "$token" \
     DB_SERVICE_KEY "$db_service_key" \
+    DB_REMOTE_BIND_ADDR "$db_remote_bind_addr" \
     DB_REMOTE_BIND_PORT "$db_remote_bind_port" \
     POS_HTTP_SERVICE_KEY "$pos_http_service_key" \
+    POS_HTTP_REMOTE_BIND_ADDR "$pos_http_remote_bind_addr" \
     POS_HTTP_REMOTE_BIND_PORT "$pos_http_remote_bind_port" \
     POS_WORKER_SERVICE_KEY "$pos_worker_service_key" \
+    POS_WORKER_REMOTE_BIND_ADDR "$pos_worker_remote_bind_addr" \
     POS_WORKER_REMOTE_BIND_PORT "$pos_worker_remote_bind_port"
 
   chmod 0640 "$config_file"
@@ -256,7 +336,42 @@ EOF
   systemctl is-active --quiet "$rathole_service" || fail "Gagal menjalankan service: ${rathole_service}"
 
   local now
+  local exposed_ports_json
   now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  exposed_ports_json="$(python3 - "$service_ports_json" "$db_sync_mode_raw" <<'PY'
+import json
+import sys
+ports = []
+seen = set()
+try:
+    db_sync = json.loads(sys.argv[2])
+except Exception:
+    db_sync = {}
+
+if isinstance(db_sync, dict) and db_sync.get("enabled") is True:
+    vps_addr = str(db_sync.get("vps_db_addr", "0.0.0.0:5444")).strip()
+    raw_port = vps_addr.rsplit(":", 1)[-1] if ":" in vps_addr else "5444"
+    try:
+        port = int(raw_port)
+    except Exception:
+        port = 5444
+    seen.add(port)
+    ports.append(port)
+
+for row in json.loads(sys.argv[1]):
+    if row.get("expose_public") is False:
+        continue
+    try:
+        port = int(row.get("remote_bind_port"))
+    except Exception:
+        continue
+    if port in seen:
+        continue
+    seen.add(port)
+    ports.append(port)
+print(json.dumps(ports, separators=(",", ":")))
+PY
+)"
   state_merge_json "$state_file" "{\
     \"public_ip\": \"${public_ip}\", \
     \"dashboard_port\": ${dashboard_port}, \
@@ -267,7 +382,8 @@ EOF
     \"rathole_config_path\": \"${config_file}\", \
     \"rathole_service_name\": \"${rathole_service}\", \
     \"service_ports\": ${service_ports_json}, \
-    \"exposed_ports\": [${db_remote_bind_port}, ${pos_http_remote_bind_port}, ${pos_worker_remote_bind_port}], \
+    \"db_sync_mode\": ${db_sync_mode_raw}, \
+    \"exposed_ports\": ${exposed_ports_json}, \
     \"updated_at\": \"${now}\"\
   }"
 

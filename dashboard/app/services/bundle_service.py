@@ -73,7 +73,7 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
 
     server_addr = str(state.get("public_ip", "127.0.0.1"))
     control_port = str(state.get("rathole_control_port", "2333"))
-    service_ports = normalize_service_ports(state.get("service_ports"))
+    service_ports = normalize_service_ports(state.get("service_ports"), state.get("db_sync_mode"))
     by_name = {str(row.get("name", "")).strip(): row for row in service_ports}
     db = by_name.get("db", {})
     pos_http = by_name.get("pos_http", {})
@@ -192,10 +192,12 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "   - Install PgBouncer (meningkatkan performa)",
                     "   - Uninstall Service IP Public",
                     "   - Kunci/Lepas Kunci pembuatan database baru",
-                    "4) Arsitektur DB forwarding terbaru:",
-                    "   - rathole DB local_addr: 127.0.0.1:5444",
-                    "   - PgBouncer (menu 2): listen 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445",
-                    "   - Windows Firewall: inbound TCP 5444 dibuka untuk semua sumber",
+                    "4) Arsitektur DB:",
+                    "   - Tanpa DB sync: rathole DB local_addr default 127.0.0.1:5444",
+                    "   - Dengan DB sync tanpa PgBouncer: rathole DB local_addr 127.0.0.1:5444",
+                    "   - Dengan DB sync + PgBouncer: rathole DB local_addr 127.0.0.1:5445",
+                    "   - PgBouncer (menu 2): app listen 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445",
+                    "   - Windows Firewall: inbound TCP 5444 dibuka saat PgBouncer dipasang",
                     "   dengan pool_mode=transaction dan auth_type=md5.",
                     "5) Saat Install Service, aplikasi otomatis membuat shortcut desktop",
                     "   'ipos5-rathole' untuk membuka GUI jendela utama dengan Run as Administrator (UAC prompt).",
@@ -281,9 +283,11 @@ def generate_windows7_bundle(state: dict[str, Any], token: str) -> Path:
                     "3) Paket Windows 7 ini fokus ke service tunnel dan kompatibilitas Win7.",
                     "4) Bundle ini tidak menyertakan GUI desktop (ipos5-rathole-gui.exe).",
                     "5) Installer/service Win7 harus berasal dari aset kompatibel di assets/windows7.",
-                    "6) Arsitektur DB forwarding terbaru:",
-                    "   - rathole DB local_addr: 127.0.0.1:5444",
-                    "   - PgBouncer (jika dipasang): listen 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445",
+                    "6) Arsitektur DB:",
+                    "   - Tanpa DB sync: rathole DB local_addr default 127.0.0.1:5444",
+                    "   - Dengan DB sync tanpa PgBouncer: rathole DB local_addr 127.0.0.1:5444",
+                    "   - Dengan DB sync + PgBouncer: rathole DB local_addr 127.0.0.1:5445",
+                    "   - PgBouncer (jika dipasang): app listen 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445",
                     "7) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
                     "8) Paket ini wajib utuh:",
                     "   setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + pgbouncer-databases.json + userlist.sample.txt",
