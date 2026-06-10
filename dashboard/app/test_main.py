@@ -241,6 +241,44 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         self.assertEqual(response.status_code, 303)
         self.assertIn("Finalisasi+DB+sync+gagal", response.headers["location"])
 
+    def test_db_sync_status_label_uses_database_registry_errors(self) -> None:
+        db_sync = {
+            "enabled": True,
+            "bucardo_configured": True,
+            "databases": [
+                {"name": "store_a", "status": "synced"},
+                {"name": "store_b", "status": "error", "last_error": "validate failed"},
+            ],
+        }
+
+        self.assertEqual(main.db_sync_status_label(db_sync), "error")
+        self.assertEqual(main.db_sync_summary(db_sync)["error"], 1)
+
+    def test_get_db_sync_debug_returns_registry(self) -> None:
+        save_state(
+            {
+                "db_sync_mode": {
+                    "enabled": True,
+                    "bucardo_configured": True,
+                    "last_discovery_at": "2026-06-10T00:00:00Z",
+                    "databases": [
+                        {
+                            "name": "store_a",
+                            "status": "synced",
+                            "sync_name": "ipos5_2way_store_a",
+                        }
+                    ],
+                }
+            },
+            self.state_path,
+        )
+
+        payload = main.get_db_sync_debug(_="admin")
+
+        self.assertEqual(payload["status"], "configured")
+        self.assertEqual(payload["summary"]["synced"], 1)
+        self.assertEqual(payload["databases"][0]["name"], "store_a")
+
     @patch("socket.create_connection")
     @patch("app.main.run_db_sync_finalize")
     def test_auto_finalize_callback_triggers_finalize_when_reachable(self, mock_finalize, mock_connect) -> None:

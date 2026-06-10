@@ -6,7 +6,7 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
 
 - Install server `rathole` + systemd service (`rathole`)
 - Port forward TCP server default (VPS): **5444**, **5480**, **5485**
-- Mode DB sync opsional: PostgreSQL VPS tersinkron publish di **0.0.0.0:5444**, sedangkan tunnel replikasi private memakai **127.0.0.1:5445** di VPS
+- Mode DB sync opsional: semua database user PostgreSQL di client dan VPS di-clone lalu disinkronkan 2-arah. PostgreSQL VPS tersinkron publish di **0.0.0.0:5444**, sedangkan tunnel replikasi private memakai **127.0.0.1:5445** di VPS
 - Installer dapat memasang PostgreSQL **9.5** di VPS via Docker agar versi database VPS sama dengan client.
 - PgBouncer client tetap opsional:
   - tanpa PgBouncer: PostgreSQL Windows tetap `127.0.0.1:5444`
@@ -66,9 +66,9 @@ Urutan default:
 5. Install rathole server + service `rathole`.
 6. Install dashboard + service `easy-rathole-dashboard`.
 7. Buka firewall untuk control port + port publik `5444/5480/5485` + port dashboard. Saat DB sync aktif, rathole DB tunnel `5445` hanya bind ke `127.0.0.1` dan tidak dibuka publik.
-8. Jika DB sync aktif, finalisasi clone awal DB client ke VPS dan Bucardo dilakukan dari tombol **Finalisasi DB Sync** di dashboard setelah client tunnel reachable.
+8. Jika DB sync aktif, finalisasi clone semua database user dan setup Bucardo dilakukan dari tombol **Finalisasi DB Sync** di dashboard setelah client tunnel reachable. Setelah itu dashboard juga menjalankan auto-discovery periodik untuk database/tabel/sequence baru.
 
-Jika `EASY_RATHOLE_INSTALL_DB_SYNC=1`, installer memasang PostgreSQL 9.5 VPS via Docker dan dashboard langsung bisa dipakai untuk download bundle client. Setelah service client aktif, buka dashboard lalu jalankan **Finalisasi DB Sync**. Jika client belum terkoneksi, state ditandai `waiting_for_client=true`; ulangi tombol finalisasi setelah client online.
+Jika `EASY_RATHOLE_INSTALL_DB_SYNC=1`, installer memasang PostgreSQL 9.5 VPS via Docker dan dashboard langsung bisa dipakai untuk download bundle client. Setelah service client aktif, buka dashboard lalu jalankan **Finalisasi DB Sync**. Jika client belum terkoneksi, state ditandai `waiting_for_client=true`; ulangi tombol finalisasi setelah client online. Database system `postgres`, `template0`, `template1`, dan `bucardo` dikecualikan secara default.
 
 ### Opsi environment (opsional)
 
@@ -96,6 +96,14 @@ sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh
 
 # bila hanya ingin install DB VPS tanpa Bucardo
 sudo EASY_RATHOLE_INSTALL_VPS_DB=1 bash install.sh
+
+# opsi DB sync multi-database
+sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 \
+  EASY_RATHOLE_DB_SYNC_DISCOVERY_INTERVAL_SEC=60 \
+  EASY_RATHOLE_DB_SYNC_EXCLUDE_DATABASES="postgres,template0,template1,bucardo" \
+  EASY_RATHOLE_DB_SYNC_CONFLICT_POLICY=client_wins \
+  EASY_RATHOLE_DB_SYNC_DROP_POLICY=mirror_drop \
+  bash install.sh
 ```
 
 > ⚠️ `EASY_RATHOLE_DISABLE_SSH_PASSWORD=1` hanya aman jika login SSH key-based sudah teruji. Script akan menolak jika `authorized_keys` tidak ditemukan.
@@ -134,6 +142,21 @@ Setelah install selesai, installer menampilkan:
         "vps_db_addr": "0.0.0.0:5444",
         "private_db_tunnel_addr": "127.0.0.1:5445",
         "private_db_backend_mode": "direct",
+        "database_scope": "user",
+        "initial_clone_source": "client",
+        "new_database_policy": "auto",
+        "ddl_policy": "auto_register",
+        "drop_policy": "mirror_drop",
+        "conflict_policy": "client_wins",
+        "exclude_databases": "postgres,template0,template1,bucardo",
+        "databases": [
+          {
+            "name": "contoh_db",
+            "status": "synced",
+            "sync_name": "ipos5_2way_contoh_db_...",
+            "last_synced_at": "2026-06-10T00:00:00Z"
+          }
+        ],
         "initial_clone_done": false,
         "bucardo_configured": false,
         "waiting_for_client": false

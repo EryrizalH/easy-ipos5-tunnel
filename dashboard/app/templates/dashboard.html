@@ -667,12 +667,14 @@
       <div class="metric-card">
         <span class="metric-title">Replikasi (Bucardo)</span>
         <div class="metric-val">
-          <span class="pulse {% if bucardo_configured %}active{% elif db_sync_waiting_for_client or db_sync_status_label == 'waiting-client' %}warning{% else %}inactive{% endif %}"></span>
+          <span class="pulse {% if db_sync_status_label == 'configured' %}active{% elif db_sync_waiting_for_client or db_sync_status_label in ['waiting-client', 'pending-finalization'] %}warning{% else %}inactive{% endif %}"></span>
           <span style="font-size: 18px;">
-            {% if bucardo_configured %}
+            {% if db_sync_status_label == 'configured' %}
               Configured
             {% elif db_sync_waiting_for_client %}
               Waiting Client
+            {% elif db_sync_status_label == 'error' %}
+              Error
             {% elif db_sync_enabled %}
               Pending Auto-Setup
             {% else %}
@@ -925,10 +927,22 @@
                 <div class="kv-item">
                   <span class="kv-key">Status Alur Sinkronisasi</span>
                   <span class="kv-val">
-                    <span class="badge-status {% if bucardo_configured %}active{% elif db_sync_waiting_for_client %}warning{% else %}inactive{% endif %}">
+                    <span class="badge-status {% if db_sync_status_label == 'configured' %}active{% elif db_sync_status_label in ['waiting-client', 'pending-finalization'] %}warning{% else %}inactive{% endif %}">
                       {{ db_sync_status_label }}
                     </span>
                   </span>
+                </div>
+                <div class="kv-item">
+                  <span class="kv-key">Database User Tersinkron</span>
+                  <span class="kv-val">{{ db_sync_counts.synced }} / {{ db_sync_counts.total }}</span>
+                </div>
+                <div class="kv-item">
+                  <span class="kv-key">Pending / Error / Dropped</span>
+                  <span class="kv-val">{{ db_sync_counts.pending }} / {{ db_sync_counts.error }} / {{ db_sync_counts.dropped }}</span>
+                </div>
+                <div class="kv-item">
+                  <span class="kv-key">Discovery Terakhir</span>
+                  <span class="kv-val">{{ db_sync_last_discovery_at or '-' }}</span>
                 </div>
                 <div class="kv-item">
                   <span class="kv-key">Initial Clone Status</span>
@@ -951,13 +965,46 @@
               {% if db_sync_finalize_available %}
                 <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
                   <h4 style="margin-bottom: 8px; font-size:15px; color:#fff;">⚙️ Kontrol Manual Finalisasi</h4>
-                  <p style="font-size:13.5px; color: var(--muted); margin-bottom: 12px;">Sistem akan melakukan finalisasi secara otomatis begitu mendeteksi client terhubung. Namun Anda tetap dapat memicu proses klon dan setup Bucardo secara manual jika diperlukan:</p>
+                  <p style="font-size:13.5px; color: var(--muted); margin-bottom: 12px;">Sistem akan melakukan discovery otomatis setiap interval. Tombol ini memicu clone semua database user, registrasi Bucardo, dan register tabel/sequence baru saat itu juga:</p>
                   
                   <form method="post" action="/db-sync/finalize">
                     <button class="btn warning" type="submit">Jalankan Finalisasi Manual</button>
                   </form>
                 </div>
               {% endif %}
+
+              <div class="table-responsive" style="margin-top: 16px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Database</th>
+                      <th>Status</th>
+                      <th>Sync</th>
+                      <th>Last Sync</th>
+                      <th>Info</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in db_sync_databases %}
+                      <tr>
+                        <td class="table-mono">{{ row.name }}</td>
+                        <td>
+                          <span class="badge-status {% if row.status == 'synced' %}active{% elif row.status.startswith('pending') %}warning{% else %}inactive{% endif %}">
+                            {{ row.status }}
+                          </span>
+                        </td>
+                        <td class="table-mono">{{ row.sync_name or '-' }}</td>
+                        <td class="table-mono">{{ row.last_synced_at or row.last_checked_at or '-' }}</td>
+                        <td style="font-size:12px; color: var(--muted);">{{ row.last_error or row.message or '-' }}</td>
+                      </tr>
+                    {% else %}
+                      <tr>
+                        <td colspan="5" style="color: var(--muted);">Belum ada database user yang terdaftar. Jalankan finalisasi setelah client tunnel aktif.</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             {% else %}
               <div style="text-align: center; padding: 40px 20px;">
                 <span style="font-size: 48px; display: block; margin-bottom: 15px;">⏭️</span>
@@ -1090,12 +1137,23 @@
 
       consoleElement.textContent = 'Mengambil status terbaru dari Bucardo engine...';
       try {
-        const response = await fetch('/api/debug/bucardo');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        const [bucardoResponse, dbSyncResponse] = await Promise.all([
+          fetch('/api/debug/bucardo'),
+          fetch('/api/debug/db-sync')
+        ]);
+        if (!bucardoResponse.ok) {
+          throw new Error(`HTTP error! status: ${bucardoResponse.status}`);
         }
-        const data = await response.json();
+        const data = await bucardoResponse.json();
+        const dbSync = dbSyncResponse.ok ? await dbSyncResponse.json() : null;
         let content = '';
+        if (dbSync) {
+          content += `=== DB SYNC REGISTRY ===\nStatus: ${dbSync.status}\nSummary: ${JSON.stringify(dbSync.summary)}\nLast discovery: ${dbSync.last_discovery_at || '-'}\n\n`;
+          for (const row of dbSync.databases || []) {
+            content += `${row.name} | ${row.status} | ${row.sync_name || '-'} | ${row.last_error || row.message || ''}\n`;
+          }
+          content += '\n';
+        }
         if (data.status) {
           content += `=== BUCARDO STATUS ===\n${data.status}\n`;
         }

@@ -38,6 +38,8 @@ app = FastAPI(title="IPOS5TunnelPublik Dashboard", version="0.2.0")
 security = HTTPBasic()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 postgres_monitor_worker = PostgresMonitorWorker()
+db_sync_discovery_stop_event = threading.Event()
+db_sync_discovery_thread: threading.Thread | None = None
 
 
 def classify_flash_message(message: str) -> str:
@@ -229,6 +231,12 @@ def build_client_tunnel_details(service_ports: list[dict[str, Any]]) -> list[dic
 def db_sync_status_label(db_sync_mode: Any) -> str:
     if not isinstance(db_sync_mode, dict) or db_sync_mode.get("enabled") is not True:
         return "disabled"
+    databases = db_sync_database_rows(db_sync_mode)
+    active_rows = [row for row in databases if row.get("status") != "dropped"]
+    if any(row.get("status") == "error" for row in active_rows):
+        return "error"
+    if any(str(row.get("status", "")).startswith("pending") for row in active_rows):
+        return "pending-finalization"
     if db_sync_mode.get("bucardo_configured") is True:
         return "configured"
     if db_sync_mode.get("waiting_for_client") is True:
@@ -236,6 +244,45 @@ def db_sync_status_label(db_sync_mode: Any) -> str:
     if db_sync_mode.get("initial_clone_done") is True:
         return "clone-done"
     return "pending-finalization"
+
+
+def db_sync_database_rows(db_sync_mode: Any) -> list[dict[str, Any]]:
+    if not isinstance(db_sync_mode, dict):
+        return []
+    rows = db_sync_mode.get("databases")
+    if not isinstance(rows, list):
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name", "")).strip()
+        if not name:
+            continue
+        normalized.append(
+            {
+                "name": name,
+                "status": str(row.get("status", "unknown")).strip() or "unknown",
+                "sync_name": str(row.get("sync_name", "")).strip(),
+                "last_synced_at": str(row.get("last_synced_at", "")).strip(),
+                "last_checked_at": str(row.get("last_checked_at", "")).strip(),
+                "last_error": str(row.get("last_error", "")).strip(),
+                "message": str(row.get("message", "")).strip(),
+            }
+        )
+    return sorted(normalized, key=lambda item: item["name"].lower())
+
+
+def db_sync_summary(db_sync_mode: Any) -> dict[str, int]:
+    rows = db_sync_database_rows(db_sync_mode)
+    return {
+        "total": len(rows),
+        "synced": sum(1 for row in rows if row["status"] == "synced"),
+        "pending": sum(1 for row in rows if row["status"].startswith("pending")),
+        "error": sum(1 for row in rows if row["status"] == "error"),
+        "dropped": sum(1 for row in rows if row["status"] == "dropped"),
+    }
 
 
 def finalize_script_path(state: dict[str, Any]) -> Path:
@@ -265,23 +312,23 @@ last_finalize_attempt = 0.0
 FINALIZE_COOLDOWN_SEC = 30.0
 
 
+def db_sync_discovery_interval_sec() -> int:
+    raw = os.environ.get("EASY_RATHOLE_DB_SYNC_DISCOVERY_INTERVAL_SEC", "60").strip()
+    try:
+        return max(5, int(raw))
+    except ValueError:
+        return 60
+
+
 def run_db_sync_finalize(state: dict[str, Any]) -> tuple[bool, str]:
     db_sync_mode = state.get("db_sync_mode")
     if not isinstance(db_sync_mode, dict) or db_sync_mode.get("enabled") is not True:
         return False, "DB sync belum aktif. Jalankan installer dengan EASY_RATHOLE_INSTALL_DB_SYNC=1."
-    if db_sync_mode.get("bucardo_configured") is True:
-        return True, "DB sync sudah selesai; Bucardo sudah configured."
 
     if not finalize_lock.acquire(blocking=False):
         return False, "Proses finalisasi DB sync sedang berjalan."
 
     try:
-        # Re-check in case it was updated while waiting for lock
-        current_state = load_state()
-        current_sync = current_state.get("db_sync_mode")
-        if isinstance(current_sync, dict) and current_sync.get("bucardo_configured") is True:
-            return True, "DB sync sudah selesai; Bucardo sudah configured."
-
         script_path = finalize_script_path(state)
         if not script_path.exists():
             return False, f"Script finalisasi DB sync tidak ditemukan: {script_path}"
@@ -313,7 +360,11 @@ def run_db_sync_finalize(state: dict[str, Any]) -> tuple[bool, str]:
         refreshed = load_state()
         refreshed_sync = refreshed.get("db_sync_mode")
         if isinstance(refreshed_sync, dict) and refreshed_sync.get("bucardo_configured") is True:
-            return True, "Finalisasi DB sync berhasil: initial clone selesai dan Bucardo aktif."
+            summary = db_sync_summary(refreshed_sync)
+            return True, (
+                "Finalisasi DB sync berhasil: "
+                f"{summary['synced']} database aktif tersinkron dan Bucardo aktif."
+            )
         if isinstance(refreshed_sync, dict) and refreshed_sync.get("waiting_for_client") is True:
             return True, "Finalisasi DB sync menunggu client: private DB belum reachable via tunnel."
         return True, "Finalisasi DB sync selesai dijalankan."
@@ -324,12 +375,13 @@ def run_db_sync_finalize(state: dict[str, Any]) -> tuple[bool, str]:
 def auto_finalize_callback() -> None:
     global last_finalize_attempt
     now = time.time()
-    if now - last_finalize_attempt < FINALIZE_COOLDOWN_SEC:
+    cooldown = max(FINALIZE_COOLDOWN_SEC, float(db_sync_discovery_interval_sec()))
+    if now - last_finalize_attempt < cooldown:
         return
 
     state = load_state()
     db_sync = state.get("db_sync_mode")
-    if isinstance(db_sync, dict) and db_sync.get("enabled") is True and not db_sync.get("bucardo_configured"):
+    if isinstance(db_sync, dict) and db_sync.get("enabled") is True:
         tunnel_addr = db_sync.get("private_db_tunnel_addr", "127.0.0.1:5444")
         if ":" in tunnel_addr:
             host, port_str = tunnel_addr.rsplit(":", 1)
@@ -341,6 +393,36 @@ def auto_finalize_callback() -> None:
                         run_db_sync_finalize(state)
                 except OSError:
                     pass
+
+
+def db_sync_discovery_loop() -> None:
+    while not db_sync_discovery_stop_event.is_set():
+        try:
+            auto_finalize_callback()
+        except Exception:
+            pass
+        db_sync_discovery_stop_event.wait(db_sync_discovery_interval_sec())
+
+
+def start_db_sync_discovery_worker() -> None:
+    global db_sync_discovery_thread
+    if os.environ.get("EASY_RATHOLE_DB_SYNC_DISCOVERY_ENABLED", "1") != "1":
+        return
+    if db_sync_discovery_thread and db_sync_discovery_thread.is_alive():
+        return
+    db_sync_discovery_stop_event.clear()
+    db_sync_discovery_thread = threading.Thread(
+        target=db_sync_discovery_loop,
+        name="db-sync-discovery-worker",
+        daemon=True,
+    )
+    db_sync_discovery_thread.start()
+
+
+def stop_db_sync_discovery_worker() -> None:
+    db_sync_discovery_stop_event.set()
+    if db_sync_discovery_thread and db_sync_discovery_thread.is_alive():
+        db_sync_discovery_thread.join(timeout=2)
 
 
 @app.get("/health")
@@ -387,17 +469,31 @@ def get_bucardo_status(_: str = Depends(require_auth)) -> dict[str, str]:
         return {"status": f"Bucardo tidak terdeteksi atau gagal dihubungi: {exc}", "sync": ""}
 
 
+@app.get("/api/debug/db-sync")
+def get_db_sync_debug(_: str = Depends(require_auth)) -> dict[str, Any]:
+    state = load_state()
+    db_sync = state.get("db_sync_mode", {})
+    return {
+        "status": db_sync_status_label(db_sync),
+        "summary": db_sync_summary(db_sync),
+        "databases": db_sync_database_rows(db_sync),
+        "last_discovery_at": db_sync.get("last_discovery_at", "") if isinstance(db_sync, dict) else "",
+        "last_error": db_sync.get("last_error", "") if isinstance(db_sync, dict) else "",
+    }
+
+
 @app.on_event("startup")
 def startup() -> None:
     with connect() as conn:
         ensure_postgres_monitor_table(conn)
-    postgres_monitor_worker.set_auto_finalize_callback(auto_finalize_callback)
     postgres_monitor_worker.start()
+    start_db_sync_discovery_worker()
 
 
 @app.on_event("shutdown")
 def shutdown() -> None:
     postgres_monitor_worker.stop()
+    stop_db_sync_discovery_worker()
 
 
 @app.get("/")
@@ -419,6 +515,8 @@ def dashboard(
     db_backend_local_addr = str(db_port_mapping.get("client_local_addr", "127.0.0.1:5444"))
     exposed_ports = exposed_ports_from_service_ports(service_ports, db_sync_mode)
     db_sync_enabled = isinstance(db_sync_mode, dict) and db_sync_mode.get("enabled") is True
+    db_sync_databases = db_sync_database_rows(db_sync_mode)
+    db_sync_counts = db_sync_summary(db_sync_mode)
     private_sync_tunnel_addr = (
         str(db_sync_mode.get("private_db_tunnel_addr", "127.0.0.1:5444")) if db_sync_enabled else ""
     )
@@ -463,8 +561,12 @@ def dashboard(
         if isinstance(db_sync_mode, dict)
         else False,
         "db_sync_status_label": db_sync_status_label(db_sync_mode),
-        "db_sync_finalize_available": db_sync_enabled
-        and not (isinstance(db_sync_mode, dict) and db_sync_mode.get("bucardo_configured") is True),
+        "db_sync_databases": db_sync_databases,
+        "db_sync_counts": db_sync_counts,
+        "db_sync_last_discovery_at": str(db_sync_mode.get("last_discovery_at", ""))
+        if isinstance(db_sync_mode, dict)
+        else "",
+        "db_sync_finalize_available": db_sync_enabled,
         "supported_clients": build_supported_clients(public_ip, control_port),
         "client_tunnel_details": build_client_tunnel_details(service_ports),
         "updated_at": state.get("updated_at", "-"),

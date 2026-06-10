@@ -114,8 +114,11 @@ initialize_db_sync_mode() {
   local dbname="${EASY_RATHOLE_VPS_DB_NAME:-postgres}"
   local dbuser="${EASY_RATHOLE_VPS_DB_USER:-sysi5adm}"
   local dbpass="${EASY_RATHOLE_VPS_DB_PASSWORD:-u&aV23cc.o82dtr1x89c}"
+  local exclude_databases="${EASY_RATHOLE_DB_SYNC_EXCLUDE_DATABASES:-postgres,template0,template1,bucardo}"
+  local drop_policy="${EASY_RATHOLE_DB_SYNC_DROP_POLICY:-mirror_drop}"
+  local conflict_policy="${EASY_RATHOLE_DB_SYNC_CONFLICT_POLICY:-client_wins}"
 
-  python3 - "$state_file" "$vps_bind_host" "$vps_bind_port" "$private_addr" "$backend_mode" "$dbname" "$dbuser" "$dbpass" <<'PY'
+  python3 - "$state_file" "$vps_bind_host" "$vps_bind_port" "$private_addr" "$backend_mode" "$dbname" "$dbuser" "$dbpass" "$exclude_databases" "$drop_policy" "$conflict_policy" <<'PY'
 import json
 import pathlib
 import sys
@@ -128,6 +131,9 @@ backend_mode = sys.argv[5]
 dbname = sys.argv[6]
 dbuser = sys.argv[7]
 dbpass = sys.argv[8]
+exclude_databases = sys.argv[9]
+drop_policy = sys.argv[10]
+conflict_policy = sys.argv[11]
 
 try:
     data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
@@ -153,6 +159,14 @@ existing.update(
         "vps_db_password": existing.get("vps_db_password") or dbpass,
         "private_db_user": existing.get("private_db_user") or dbuser,
         "private_db_password": existing.get("private_db_password") or dbpass,
+        "database_scope": existing.get("database_scope") or "user",
+        "initial_clone_source": existing.get("initial_clone_source") or "client",
+        "new_database_policy": existing.get("new_database_policy") or "auto",
+        "ddl_policy": existing.get("ddl_policy") or "auto_register",
+        "drop_policy": existing.get("drop_policy") or drop_policy,
+        "conflict_policy": existing.get("conflict_policy") or conflict_policy,
+        "exclude_databases": existing.get("exclude_databases") or exclude_databases,
+        "databases": existing.get("databases") if isinstance(existing.get("databases"), list) else [],
         "initial_clone_done": bool(existing.get("initial_clone_done", False)),
         "bucardo_configured": bool(existing.get("bucardo_configured", False)),
         "waiting_for_client": bool(existing.get("waiting_for_client", False)),
