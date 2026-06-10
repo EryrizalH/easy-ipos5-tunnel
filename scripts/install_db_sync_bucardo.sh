@@ -150,14 +150,17 @@ update_db_record() {
   local status="$3"
   local sync_name="$4"
   local message="$5"
-  python3 - "$state_file" "$dbname" "$status" "$sync_name" "$message" <<'PY'
+  local phase="${6:-$status}"
+  local detail="${7:-}"
+  local unsupported_tables="${8:-[]}"
+  python3 - "$state_file" "$dbname" "$status" "$sync_name" "$message" "$phase" "$detail" "$unsupported_tables" <<'PY'
 import json
 import pathlib
 import sys
 from datetime import UTC, datetime
 
 path = pathlib.Path(sys.argv[1])
-dbname, status, sync_name, message = sys.argv[2:6]
+dbname, status, sync_name, message, phase, detail, unsupported_raw = sys.argv[2:9]
 now = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 try:
@@ -180,19 +183,42 @@ row.update(
         "name": dbname,
         "status": status,
         "sync_name": sync_name,
+        "phase": phase or status,
         "last_checked_at": now,
     }
 )
 if status == "synced":
     row["last_synced_at"] = now
     row["last_error"] = ""
+    row["last_error_detail"] = ""
+    row["unsupported_tables"] = []
+    row["message"] = ""
 elif status == "dropped":
     row["dropped_at"] = now
     row["last_error"] = ""
+    row["last_error_detail"] = ""
+    row["unsupported_tables"] = []
+    row["message"] = ""
+elif status.startswith("pending"):
+    row["last_error"] = message
+    row["last_error_detail"] = detail
+    row["unsupported_tables"] = []
+    row["message"] = message
 else:
     row["last_error"] = message
-if message:
+    row["last_error_detail"] = detail
     row["message"] = message
+
+try:
+    unsupported = json.loads(unsupported_raw)
+except Exception:
+    unsupported = []
+if not isinstance(unsupported, list):
+    unsupported = []
+if unsupported:
+    row["unsupported_tables"] = [str(item) for item in unsupported]
+elif status not in {"synced", "dropped"} and not status.startswith("pending"):
+    row.setdefault("unsupported_tables", [])
 
 by_name[dbname] = row
 sync["databases"] = [by_name[key] for key in sorted(by_name)]
@@ -251,6 +277,22 @@ psql_scalar() {
   PGPASSWORD="$password" psql -At -v ON_ERROR_STOP=1 \
     "host=${host} port=${port} dbname=${dbname} user=${user}" \
     -c "$sql"
+}
+
+psql_exec_detail() {
+  local host="$1"
+  local port="$2"
+  local dbname="$3"
+  local user="$4"
+  local password="$5"
+  local sql="$6"
+  local output
+  if ! output="$(PGPASSWORD="$password" psql -v ON_ERROR_STOP=1 \
+    "host=${host} port=${port} dbname=${dbname} user=${user}" \
+    -c "$sql" 2>&1 >/dev/null)"; then
+    printf '%s\n' "$output"
+    return 1
+  fi
 }
 
 dump_roles_best_effort() {
@@ -322,7 +364,91 @@ user_object_count() {
   local user="$4"
   local password="$5"
   psql_scalar "$host" "$port" "$dbname" "$user" "$password" \
-    "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema','bucardo') AND n.nspname NOT LIKE 'pg_toast%' AND c.relkind IN ('r','p','v','m','S','f');"
+    "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema','bucardo') AND n.nspname NOT LIKE 'pg_toast%' AND c.relkind IN ('r','p','S');"
+}
+
+unsupported_tables_json() {
+  local host="$1"
+  local port="$2"
+  local dbname="$3"
+  local user="$4"
+  local password="$5"
+  local rows
+  rows="$(psql_scalar "$host" "$port" "$dbname" "$user" "$password" \
+    "SELECT quote_ident(n.nspname) || '.' || quote_ident(c.relname)
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname NOT IN ('pg_catalog','information_schema','bucardo')
+        AND n.nspname NOT LIKE 'pg_toast%'
+        AND c.relkind IN ('r','p')
+        AND NOT EXISTS (
+          SELECT 1
+            FROM pg_index i
+           WHERE i.indrelid = c.oid
+             AND i.indisvalid
+             AND (i.indisprimary OR i.indisunique)
+        )
+      ORDER BY 1;")" || return 1
+  python3 - "$rows" <<'PY'
+import json
+import sys
+
+items = [line.strip() for line in sys.argv[1].splitlines() if line.strip()]
+print(json.dumps(items, separators=(",", ":")))
+PY
+}
+
+preflight_database() {
+  local label="$1"
+  local host="$2"
+  local port="$3"
+  local dbname="$4"
+  local user="$5"
+  local password="$6"
+  local auto_grant="${7:-1}"
+
+  log INFO "Preflight DB sync ${label}/${dbname}: koneksi dan privilege Bucardo"
+  psql_exec_detail "$host" "$port" "$dbname" "$user" "$password" "SELECT 1;" || return 1
+
+  local output
+  if ! output="$(PGPASSWORD="$password" psql -v ON_ERROR_STOP=1 \
+    "host=${host} port=${port} dbname=${dbname} user=${user}" <<SQL 2>&1
+CREATE SCHEMA IF NOT EXISTS bucardo;
+
+CREATE TABLE IF NOT EXISTS bucardo.bucardo_preflight_capability (
+  id integer PRIMARY KEY
+);
+
+CREATE OR REPLACE FUNCTION bucardo.bucardo_preflight_trigger_fn()
+RETURNS trigger
+LANGUAGE plpgsql
+AS \$\$
+BEGIN
+  RETURN NEW;
+END;
+\$\$;
+
+DROP TRIGGER IF EXISTS bucardo_preflight_trigger ON bucardo.bucardo_preflight_capability;
+CREATE TRIGGER bucardo_preflight_trigger
+  BEFORE INSERT OR UPDATE OR DELETE ON bucardo.bucardo_preflight_capability
+  FOR EACH ROW EXECUTE PROCEDURE bucardo.bucardo_preflight_trigger_fn();
+
+DROP TRIGGER IF EXISTS bucardo_preflight_trigger ON bucardo.bucardo_preflight_capability;
+DROP FUNCTION IF EXISTS bucardo.bucardo_preflight_trigger_fn();
+DROP TABLE IF EXISTS bucardo.bucardo_preflight_capability;
+
+DO \$\$
+BEGIN
+  IF ${auto_grant} = 1 THEN
+    EXECUTE format('GRANT USAGE, CREATE ON SCHEMA bucardo TO %I', current_user);
+  END IF;
+END
+\$\$;
+SQL
+)"; then
+    printf '%s\n' "$output"
+    return 1
+  fi
 }
 
 union_database_names() {
@@ -395,12 +521,15 @@ clone_database() {
   dump_file="${backup_dir}/${safe}-${source_label}-to-${target_label}-${stamp}.dump"
 
   log INFO "Clone DB ${dbname}: ${source_label} ${source_host}:${source_port} -> ${target_label} ${target_host}:${target_port}"
-  PGPASSWORD="$source_pass" pg_dump -Fc \
+  if ! PGPASSWORD="$source_pass" pg_dump -Fc \
     -h "$source_host" \
     -p "$source_port" \
     -U "$source_user" \
     -d "$dbname" \
-    -f "$dump_file"
+    -f "$dump_file"; then
+    log ERROR "pg_dump ${dbname} dari ${source_label} gagal."
+    return 1
+  fi
 
   local restore_status=0
   PGPASSWORD="$target_pass" pg_restore --clean --if-exists \
@@ -411,7 +540,8 @@ clone_database() {
     "$dump_file" || restore_status=$?
 
   if (( restore_status > 1 )); then
-    fail "pg_restore ${dbname} gagal total dengan exit code ${restore_status}."
+    log ERROR "pg_restore ${dbname} gagal total dengan exit code ${restore_status}."
+    return "$restore_status"
   elif (( restore_status == 1 )); then
     log WARN "pg_restore ${dbname} selesai dengan beberapa peringatan/error non-fatal."
   fi
@@ -498,8 +628,9 @@ ensure_bucardo_remote_truncate_tables() {
   local label="$6"
 
   log INFO "Memastikan metadata truncate Bucardo tersedia di ${label}/${dbname}"
-  PGPASSWORD="$password" psql -v ON_ERROR_STOP=1 \
-    "host=${host} port=${port} dbname=${dbname} user=${user}" <<'SQL'
+  local output
+  if ! output="$(PGPASSWORD="$password" psql -v ON_ERROR_STOP=1 \
+    "host=${host} port=${port} dbname=${dbname} user=${user}" <<'SQL' 2>&1
 CREATE SCHEMA IF NOT EXISTS bucardo;
 
 CREATE TABLE IF NOT EXISTS bucardo.bucardo_truncate_trigger (
@@ -525,6 +656,10 @@ CREATE TABLE IF NOT EXISTS bucardo.bucardo_truncate_trigger_log (
   cdate       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 SQL
+)"; then
+    printf '%s\n' "$output"
+    return 1
+  fi
 }
 
 ensure_bucardo_sync_metadata() {
@@ -539,9 +674,11 @@ ensure_bucardo_sync_metadata() {
   local private_user="$9"
   local private_pass="${10}"
 
-  ensure_bucardo_remote_truncate_tables "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" "vps"
-  ensure_bucardo_remote_truncate_tables "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" "private"
-  bucardo validate sync "$sync_name"
+  ensure_bucardo_remote_truncate_tables "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" "vps" || return 1
+  ensure_bucardo_remote_truncate_tables "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" "private" || return 1
+  bucardo validate sync "$sync_name" || return 1
+  ensure_bucardo_remote_truncate_tables "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" "vps" || return 1
+  ensure_bucardo_remote_truncate_tables "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" "private" || return 1
 }
 
 ensure_bucardo_control() {
@@ -597,6 +734,23 @@ remove_bucardo_objects() {
   bucardo remove db "private_${slug}" --force >/dev/null 2>&1 || true
 }
 
+cleanup_legacy_bucardo_objects() {
+  [[ "${EASY_RATHOLE_DB_SYNC_LEGACY_CLEANUP:-1}" == "1" ]] || return 0
+
+  if ! bucardo list sync 2>/dev/null | grep -Eq '(^|[[:space:]])Sync "ipos5_2way"($|[[:space:]])|^[[:space:]]*ipos5_2way[[:space:]]'; then
+    return 0
+  fi
+
+  log WARN "Membersihkan sync Bucardo legacy ipos5_2way yang tidak dipakai registry multi-database."
+  bucardo stop >/dev/null 2>&1 || true
+  bucardo remove sync "ipos5_2way" --force >/dev/null 2>&1 || true
+  bucardo remove dbgroup "ipos5_2way_dbs" --force >/dev/null 2>&1 || true
+  bucardo remove relgroup "ipos5_2way_82" --force >/dev/null 2>&1 || true
+  bucardo remove relgroup "ipos5_2way_rel" --force >/dev/null 2>&1 || true
+  bucardo remove db "private_remote" --force >/dev/null 2>&1 || true
+  bucardo remove db "vps_local" --force >/dev/null 2>&1 || true
+}
+
 register_bucardo_sync() {
   local dbname="$1"
   local vps_host="$2"
@@ -624,7 +778,6 @@ register_bucardo_sync() {
   bucardo add all tables db="$vps_db" relgroup="$relgroup"
   bucardo add all sequences db="$vps_db" relgroup="$relgroup"
   bucardo add sync "$sync_name" relgroup="$relgroup" dbs="$dbgroup" conflict_strategy=bucardo_latest
-  bucardo validate sync "$sync_name"
   echo "$sync_name"
 }
 
@@ -638,7 +791,6 @@ sync_registered_objects() {
   bucardo add all tables db="$vps_db" relgroup="$relgroup" >/dev/null 2>&1 || true
   bucardo add all sequences db="$vps_db" relgroup="$relgroup" >/dev/null 2>&1 || true
   bucardo update sync "$sync_name" onetimecopy=2 >/dev/null 2>&1 || true
-  bucardo validate sync "$sync_name"
 }
 
 finalize_aggregate_state() {
@@ -709,6 +861,8 @@ main() {
   local exclude_csv="${EASY_RATHOLE_DB_SYNC_EXCLUDE_DATABASES:-$(json_get "$state_file" "db_sync_mode.exclude_databases" "postgres,template0,template1,bucardo")}"
   local conflict_policy="${EASY_RATHOLE_DB_SYNC_CONFLICT_POLICY:-$(json_get "$state_file" "db_sync_mode.conflict_policy" "client_wins")}"
   local drop_policy="${EASY_RATHOLE_DB_SYNC_DROP_POLICY:-$(json_get "$state_file" "db_sync_mode.drop_policy" "mirror_drop")}"
+  local auto_grant="${EASY_RATHOLE_DB_SYNC_AUTO_GRANT:-1}"
+  [[ "$auto_grant" == "1" ]] || auto_grant="0"
   local legacy_db="${EASY_RATHOLE_SYNC_DBNAME:-}"
 
   update_sync_state "$state_file" "{\"database_scope\":\"user\",\"initial_clone_source\":\"client\",\"new_database_policy\":\"auto\",\"ddl_policy\":\"auto_register\",\"drop_policy\":\"${drop_policy}\",\"conflict_policy\":\"${conflict_policy}\",\"exclude_databases\":\"${exclude_csv}\",\"private_db_tunnel_addr\":\"${private_host}:${private_port}\",\"vps_db_addr\":\"${vps_bind_host}:${vps_port}\"}"
@@ -747,6 +901,7 @@ main() {
   restore_roles_best_effort "$private_host" "$private_port" "$private_user" "$private_pass" "$vps_roles_file"
 
   ensure_bucardo_control
+  cleanup_legacy_bucardo_objects
 
   local vps_dbs private_dbs registered db_names
   vps_dbs="$(list_user_databases "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$exclude_csv")"
@@ -785,38 +940,47 @@ main() {
         if [[ "$exists_private" == "1" ]]; then
           drop_database "$private_host" "$private_port" "$private_user" "$private_pass" "$dbname"
         fi
-        update_db_record "$state_file" "$dbname" "dropped" "$sync_name" "Database dihapus di salah satu sisi; mirror_drop diterapkan."
+        update_db_record "$state_file" "$dbname" "dropped" "$sync_name" "Database dihapus di salah satu sisi; mirror_drop diterapkan." "drop_database"
         continue
       fi
-      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Database hilang di salah satu sisi."
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Database hilang di salah satu sisi." "drop_database"
       had_error=1
       continue
     fi
 
-    update_db_record "$state_file" "$dbname" "pending_clone" "$sync_name" ""
+    update_db_record "$state_file" "$dbname" "pending_clone" "$sync_name" "" "clone_database"
+    local detail
     if [[ "$exists_vps" == "0" && "$exists_private" == "1" ]]; then
-      create_database "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$dbname"
-      clone_database "$backup_dir" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$dbname" || {
-        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Clone private ke VPS gagal."
+      if ! detail="$(create_database "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$dbname" 2>&1)"; then
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Create database VPS gagal." "create_database" "$detail"
         had_error=1
         continue
-      }
+      fi
+      if ! detail="$(clone_database "$backup_dir" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$dbname" 2>&1)"; then
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Clone private ke VPS gagal." "clone_database" "$detail"
+        had_error=1
+        continue
+      fi
     elif [[ "$exists_vps" == "1" && "$exists_private" == "0" ]]; then
-      create_database "$private_host" "$private_port" "$private_user" "$private_pass" "$dbname"
-      clone_database "$backup_dir" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "$dbname" || {
-        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Clone VPS ke private gagal."
+      if ! detail="$(create_database "$private_host" "$private_port" "$private_user" "$private_pass" "$dbname" 2>&1)"; then
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Create database private gagal." "create_database" "$detail"
         had_error=1
         continue
-      }
+      fi
+      if ! detail="$(clone_database "$backup_dir" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "$dbname" 2>&1)"; then
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Clone VPS ke private gagal." "clone_database" "$detail"
+        had_error=1
+        continue
+      fi
     elif [[ "$registered_contains" != "true" && "$exists_vps" == "1" && "$exists_private" == "1" ]]; then
       if [[ "$conflict_policy" == "client_wins" ]]; then
-        clone_database "$backup_dir" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$dbname" || {
-          update_db_record "$state_file" "$dbname" "error" "$sync_name" "Initial conflict client_wins gagal overwrite VPS."
+        if ! detail="$(clone_database "$backup_dir" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$dbname" 2>&1)"; then
+          update_db_record "$state_file" "$dbname" "error" "$sync_name" "Initial conflict client_wins gagal overwrite VPS." "clone_database" "$detail"
           had_error=1
           continue
-        }
+        fi
       else
-        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Conflict policy tidak didukung: ${conflict_policy}"
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Conflict policy tidak didukung: ${conflict_policy}" "clone_database"
         had_error=1
         continue
       fi
@@ -825,47 +989,98 @@ main() {
     sync_schema_best_effort "$backup_dir" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$dbname"
     sync_schema_best_effort "$backup_dir" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "$dbname"
 
-    update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" ""
+    update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "" "preflight_database"
+    if ! detail="$(preflight_database "vps" "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" "$auto_grant" 2>&1)"; then
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Preflight Bucardo VPS gagal. Pastikan user DB punya hak CREATE schema/table/function/trigger." "preflight_database" "$detail"
+      had_error=1
+      continue
+    fi
+    if ! detail="$(preflight_database "private" "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" "$auto_grant" 2>&1)"; then
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Preflight Bucardo private gagal. Pastikan user DB punya hak CREATE schema/table/function/trigger." "preflight_database" "$detail"
+      had_error=1
+      continue
+    fi
+
     local object_count
-    object_count="$(user_object_count "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" || echo "0")"
+    if ! object_count="$(user_object_count "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" 2>&1)"; then
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Hitung objek user gagal." "preflight_database" "$object_count"
+      had_error=1
+      continue
+    fi
     if [[ "$object_count" == "0" ]]; then
       remove_bucardo_objects "$dbname"
-      update_db_record "$state_file" "$dbname" "pending_register" "" "Database sudah ada di dua sisi, tetapi belum ada tabel/sequence user untuk didaftarkan ke Bucardo."
+      update_db_record "$state_file" "$dbname" "error" "" "Database tidak punya tabel/sequence user yang layak didaftarkan ke Bucardo." "preflight_database"
+      had_error=1
+      continue
+    fi
+
+    local unsupported_vps unsupported_private unsupported_tables
+    if ! unsupported_vps="$(unsupported_tables_json "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" 2>&1)"; then
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Cek tabel unsupported di VPS gagal." "preflight_database" "$unsupported_vps"
+      had_error=1
+      continue
+    fi
+    if ! unsupported_private="$(unsupported_tables_json "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" 2>&1)"; then
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Cek tabel unsupported di private gagal." "preflight_database" "$unsupported_private"
+      had_error=1
+      continue
+    fi
+    unsupported_tables="$(python3 - "$unsupported_vps" "$unsupported_private" <<'PY'
+import json
+import sys
+
+out = []
+for label, raw in (("vps", sys.argv[1]), ("private", sys.argv[2])):
+    try:
+        rows = json.loads(raw)
+    except Exception:
+        rows = []
+    for row in rows:
+        out.append(f"{label}:{row}")
+print(json.dumps(sorted(set(out)), separators=(",", ":")))
+PY
+)"
+    if [[ "$unsupported_tables" != "[]" ]]; then
+      remove_bucardo_objects "$dbname"
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Tabel tanpa primary/unique key tidak bisa direplikasi 2-way oleh Bucardo." "preflight_database" "" "$unsupported_tables"
+      had_error=1
       continue
     fi
 
     if ! apply_sequence_policy "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" 1; then
-      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Sequence policy VPS gagal."
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Sequence policy VPS gagal." "sequence_policy"
       had_error=1
       continue
     fi
     if ! apply_sequence_policy "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" 2; then
-      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Sequence policy private gagal."
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Sequence policy private gagal." "sequence_policy"
       had_error=1
       continue
     fi
 
+    update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "" "register_bucardo"
     if [[ "$registered_contains" == "true" ]]; then
-      if ! sync_registered_objects "$dbname" "$sync_name"; then
-        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Auto-register tabel/sequence baru atau validate sync gagal."
+      if ! detail="$(sync_registered_objects "$dbname" "$sync_name" 2>&1)"; then
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Auto-register tabel/sequence baru gagal." "register_bucardo" "$detail"
         had_error=1
         continue
       fi
     else
-      if ! register_bucardo_sync "$dbname" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass"; then
-        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Registrasi Bucardo gagal. Periksa tabel tanpa primary key atau schema mismatch."
+      if ! detail="$(register_bucardo_sync "$dbname" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass" 2>&1)"; then
+        update_db_record "$state_file" "$dbname" "error" "$sync_name" "Registrasi Bucardo gagal. Periksa schema mismatch atau kredensial DB." "register_bucardo" "$detail"
         had_error=1
         continue
       fi
     fi
 
-    if ! ensure_bucardo_sync_metadata "$dbname" "$sync_name" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass"; then
-      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Repair metadata Bucardo remote gagal. Pastikan user DB punya hak CREATE schema/table di kedua sisi."
+    update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "" "repair_metadata"
+    if ! detail="$(ensure_bucardo_sync_metadata "$dbname" "$sync_name" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$private_host" "$private_port" "$private_user" "$private_pass" 2>&1)"; then
+      update_db_record "$state_file" "$dbname" "error" "$sync_name" "Repair metadata Bucardo remote atau validate sync gagal." "repair_metadata" "$detail"
       had_error=1
       continue
     fi
 
-    update_db_record "$state_file" "$dbname" "synced" "$sync_name" ""
+    update_db_record "$state_file" "$dbname" "synced" "$sync_name" "" "synced"
   done <<<"$db_names"
 
   log INFO "Restart Bucardo"

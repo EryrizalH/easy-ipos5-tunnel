@@ -247,12 +247,23 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
             "bucardo_configured": True,
             "databases": [
                 {"name": "store_a", "status": "synced"},
-                {"name": "store_b", "status": "error", "last_error": "validate failed"},
+                {
+                    "name": "store_b",
+                    "status": "error",
+                    "phase": "repair_metadata",
+                    "last_error": "validate failed",
+                    "last_error_detail": "relation bucardo.bucardo_truncate_trigger does not exist",
+                    "unsupported_tables": ["vps:public.sales"],
+                },
             ],
         }
 
         self.assertEqual(main.db_sync_status_label(db_sync), "error")
         self.assertEqual(main.db_sync_summary(db_sync)["error"], 1)
+        rows = main.db_sync_database_rows(db_sync)
+        self.assertEqual(rows[1]["phase"], "repair_metadata")
+        self.assertIn("truncate_trigger", rows[1]["last_error_detail"])
+        self.assertEqual(rows[1]["unsupported_tables"], ["vps:public.sales"])
 
     def test_get_db_sync_debug_returns_registry(self) -> None:
         save_state(
@@ -264,8 +275,12 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
                     "databases": [
                         {
                             "name": "store_a",
-                            "status": "synced",
+                            "status": "error",
+                            "phase": "preflight_database",
                             "sync_name": "ipos5_2way_store_a",
+                            "last_error": "unsupported table",
+                            "last_error_detail": "missing primary key",
+                            "unsupported_tables": ["private:public.items"],
                         }
                     ],
                 }
@@ -275,9 +290,12 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
 
         payload = main.get_db_sync_debug(_="admin")
 
-        self.assertEqual(payload["status"], "configured")
-        self.assertEqual(payload["summary"]["synced"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["summary"]["error"], 1)
         self.assertEqual(payload["databases"][0]["name"], "store_a")
+        self.assertEqual(payload["databases"][0]["phase"], "preflight_database")
+        self.assertEqual(payload["databases"][0]["last_error_detail"], "missing primary key")
+        self.assertEqual(payload["databases"][0]["unsupported_tables"], ["private:public.items"])
 
     @patch("socket.create_connection")
     @patch("app.main.run_db_sync_finalize")
@@ -288,7 +306,6 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
                     "enabled": True,
                     "initial_clone_done": False,
                     "bucardo_configured": False,
-                    "private_db_tunnel_addr": "127.0.0.1:5444",
                 }
             },
             self.state_path,
@@ -297,7 +314,7 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         
         main.auto_finalize_callback()
         
-        mock_connect.assert_called_once_with(("127.0.0.1", 5444), timeout=0.5)
+        mock_connect.assert_called_once_with(("127.0.0.1", 5445), timeout=0.5)
         mock_finalize.assert_called_once()
 
     @patch("socket.create_connection")

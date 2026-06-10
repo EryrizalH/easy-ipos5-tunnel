@@ -260,15 +260,21 @@ def db_sync_database_rows(db_sync_mode: Any) -> list[dict[str, Any]]:
         name = str(row.get("name", "")).strip()
         if not name:
             continue
+        unsupported_tables = row.get("unsupported_tables")
+        if not isinstance(unsupported_tables, list):
+            unsupported_tables = []
         normalized.append(
             {
                 "name": name,
                 "status": str(row.get("status", "unknown")).strip() or "unknown",
+                "phase": str(row.get("phase", "")).strip(),
                 "sync_name": str(row.get("sync_name", "")).strip(),
                 "last_synced_at": str(row.get("last_synced_at", "")).strip(),
                 "last_checked_at": str(row.get("last_checked_at", "")).strip(),
                 "last_error": str(row.get("last_error", "")).strip(),
+                "last_error_detail": str(row.get("last_error_detail", "")).strip(),
                 "message": str(row.get("message", "")).strip(),
+                "unsupported_tables": [str(item) for item in unsupported_tables],
             }
         )
     return sorted(normalized, key=lambda item: item["name"].lower())
@@ -382,7 +388,7 @@ def auto_finalize_callback() -> None:
     state = load_state()
     db_sync = state.get("db_sync_mode")
     if isinstance(db_sync, dict) and db_sync.get("enabled") is True:
-        tunnel_addr = db_sync.get("private_db_tunnel_addr", "127.0.0.1:5444")
+        tunnel_addr = db_sync.get("private_db_tunnel_addr", "127.0.0.1:5445")
         if ":" in tunnel_addr:
             host, port_str = tunnel_addr.rsplit(":", 1)
             if port_str.isdigit():
@@ -518,7 +524,7 @@ def dashboard(
     db_sync_databases = db_sync_database_rows(db_sync_mode)
     db_sync_counts = db_sync_summary(db_sync_mode)
     private_sync_tunnel_addr = (
-        str(db_sync_mode.get("private_db_tunnel_addr", "127.0.0.1:5444")) if db_sync_enabled else ""
+        str(db_sync_mode.get("private_db_tunnel_addr", "127.0.0.1:5445")) if db_sync_enabled else ""
     )
     public_ip = str(state.get("public_ip", "<unknown>"))
     public_db_bind_addr = str(db_sync_mode.get("vps_db_addr", "0.0.0.0:5444")) if db_sync_enabled else ""
