@@ -20,12 +20,6 @@ from .db import connect, ensure_postgres_monitor_table, get_postgres_monitor_lat
 from .services.bundle_service import (
     LINUX_SERVICE_NAME,
     WINDOWS_GUI_BINARY_NAME,
-    WINDOWS_PGBOUNCER_BINARY_NAME,
-    WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
-    WINDOWS_PGBOUNCER_LIBEVENT_NAME,
-    WINDOWS_PGBOUNCER_LIBSSL_NAME,
-    WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
-    WINDOWS_PGBOUNCER_USERLIST_NAME,
     WINDOWS_RATHOLE_BINARY_NAME,
     WINDOWS_SERVICE_WRAPPER_NAME,
     WINDOWS_UNIFIED_NAME,
@@ -187,7 +181,7 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
+            "delivery": "Paket ZIP (setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml)",
             "binary_source": (
                 "Bundled dari aset lokal dashboard: "
                 f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_SERVICE_WRAPPER_NAME} + {WINDOWS_RATHOLE_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
@@ -199,7 +193,7 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows 7",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
+            "delivery": "Paket ZIP (setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + nssm.exe + client.toml)",
             "binary_source": (
                 "Bundled dari aset lokal dashboard versi Win7: "
                 f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_SERVICE_WRAPPER_NAME} + {WINDOWS_RATHOLE_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
@@ -336,7 +330,7 @@ def auto_finalize_callback() -> None:
     state = load_state()
     db_sync = state.get("db_sync_mode")
     if isinstance(db_sync, dict) and db_sync.get("enabled") is True and not db_sync.get("bucardo_configured"):
-        tunnel_addr = db_sync.get("private_db_tunnel_addr", "127.0.0.1:5445")
+        tunnel_addr = db_sync.get("private_db_tunnel_addr", "127.0.0.1:5444")
         if ":" in tunnel_addr:
             host, port_str = tunnel_addr.rsplit(":", 1)
             if port_str.isdigit():
@@ -426,7 +420,7 @@ def dashboard(
     exposed_ports = exposed_ports_from_service_ports(service_ports, db_sync_mode)
     db_sync_enabled = isinstance(db_sync_mode, dict) and db_sync_mode.get("enabled") is True
     private_sync_tunnel_addr = (
-        str(db_sync_mode.get("private_db_tunnel_addr", "127.0.0.1:5445")) if db_sync_enabled else ""
+        str(db_sync_mode.get("private_db_tunnel_addr", "127.0.0.1:5444")) if db_sync_enabled else ""
     )
     public_ip = str(state.get("public_ip", "<unknown>"))
     public_db_bind_addr = str(db_sync_mode.get("vps_db_addr", "0.0.0.0:5444")) if db_sync_enabled else ""
@@ -573,13 +567,6 @@ def download_windows(
                     WINDOWS_RATHOLE_BINARY_NAME,
                     WINDOWS_GUI_BINARY_NAME,
                     WINDOWS_NSSM_NAME,
-                    WINDOWS_PGBOUNCER_BINARY_NAME,
-                    WINDOWS_PGBOUNCER_LIBEVENT_NAME,
-                    WINDOWS_PGBOUNCER_LIBSSL_NAME,
-                    WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
-                    WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
-                    "pgbouncer.ini.tpl",
-                    WINDOWS_PGBOUNCER_USERLIST_NAME,
                 ],
                 exc,
                 includes_gui=True,
@@ -616,13 +603,6 @@ def download_windows7(
                     WINDOWS_SERVICE_WRAPPER_NAME,
                     WINDOWS_RATHOLE_BINARY_NAME,
                     WINDOWS_NSSM_NAME,
-                    WINDOWS_PGBOUNCER_BINARY_NAME,
-                    WINDOWS_PGBOUNCER_LIBEVENT_NAME,
-                    WINDOWS_PGBOUNCER_LIBSSL_NAME,
-                    WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
-                    WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
-                    "pgbouncer.ini.tpl",
-                    WINDOWS_PGBOUNCER_USERLIST_NAME,
                 ],
                 exc,
                 includes_gui=False,

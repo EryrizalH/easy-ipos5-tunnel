@@ -68,11 +68,10 @@ func RenderMainMenu(styles *Styles, canCreateDB bool, selectedOption int) string
 		details  string
 		selected bool
 	}{
-		{number: 1, label: "Install IP Public", details: "(EasyRatholeClient, tanpa PgBouncer)", selected: selectedOption == 1},
-		{number: 2, label: "Install PgBouncer", details: "(Meningkatkan performa)", selected: selectedOption == 2},
-		{number: 3, label: "Uninstall Service IP Public", details: "(EasyRatholeClient + PgBouncer)", selected: selectedOption == 3},
-		{number: 4, label: "Kunci Pembuatan Database Baru", details: "(NOCREATEDB)", selected: selectedOption == 4},
-		{number: 5, label: "Lepas Kunci Database Baru", details: "(CREATEDB)", selected: selectedOption == 5},
+		{number: 1, label: "Install IP Public", details: "(EasyRatholeClient)", selected: selectedOption == 1},
+		{number: 2, label: "Uninstall Service IP Public", details: "(EasyRatholeClient)", selected: selectedOption == 2},
+		{number: 3, label: "Kunci Pembuatan Database Baru", details: "(NOCREATEDB)", selected: selectedOption == 3},
+		{number: 4, label: "Lepas Kunci Database Baru", details: "(CREATEDB)", selected: selectedOption == 4},
 	}
 
 	var menuText strings.Builder
@@ -109,7 +108,7 @@ func RenderMainMenu(styles *Styles, canCreateDB bool, selectedOption int) string
 	}
 
 	menuText.WriteString("\n\n")
-	menuText.WriteString(styles.HelpText.Render("[↑/↓] Pilih  [1..5] Pilih  [Enter] Konfirmasi  [Q] Keluar"))
+	menuText.WriteString(styles.HelpText.Render("[↑/↓] Pilih  [1..4] Pilih  [Enter] Konfirmasi  [Q] Keluar"))
 
 	b.WriteString(styles.Box.Render(
 		styles.Title.Render("IPOS5 Unified Tools") +
@@ -130,7 +129,7 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 	switch option {
 	case 1:
 		actionTitle = "Install IP Public"
-		actionDesc = "Anda akan menginstall/update service tunnel publik tanpa install ulang PgBouncer."
+		actionDesc = "Anda akan menginstall/update service tunnel publik."
 		consequence = "Installer akan memastikan DB forwarding local_addr=127.0.0.1:5444 lalu membuat service tunnel."
 		detailLines = []string{
 			"Service Name: " + serviceName,
@@ -139,27 +138,18 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 			"Opsional   : ipos5-rathole-gui.exe (jika ingin shortcut GUI desktop)",
 		}
 	case 2:
-		actionTitle = "Install PgBouncer"
-		actionDesc = "Anda akan install/update service PgBouncer untuk meningkatkan performa koneksi PostgreSQL."
-		consequence = "Installer akan migrasi PostgreSQL ke 127.0.0.1:5445, lalu PgBouncer listen di 0.0.0.0:5444 dan membuka firewall TCP 5444 untuk semua sumber."
-		detailLines = []string{
-			"Service Name: PgBouncer",
-			"Bundle Dir : " + bundleDir,
-			"Wajib ada  : pgbouncer.exe, libevent-7.dll, libssl-3-x64.dll, libcrypto-3-x64.dll, libwinpthread-1.dll, psql.exe",
-		}
-	case 3:
 		actionTitle = "Uninstall Service IP Public"
 		actionDesc = "Anda akan menghapus service tunnel publik."
 		consequence = "Service EasyRatholeClient dan PgBouncer akan dihentikan lalu dihapus dari Windows Service, kemudian PostgreSQL dikembalikan ke port 127.0.0.1:5444."
 		detailLines = []string{
 			"Service Name: " + serviceName,
 		}
-	case 4:
+	case 3:
 		actionTitle = "Kunci Pembuatan Database"
 		actionDesc = "Anda akan MENGLOCK permission pembuatan database."
 		consequence = "User tidak akan bisa membuat database baru."
 		detailLines = []string{db.GetSQLCommandForPreview(false)}
-	case 5:
+	case 4:
 		actionTitle = "Lepas Kunci Database"
 		actionDesc = "Anda akan membuka lock permission pembuatan database."
 		consequence = "User akan bisa membuat database baru lagi."
@@ -285,7 +275,7 @@ func RenderResult(styles *Styles, success bool, canCreateDB bool, action int, re
 		}
 	}
 
-	if action == 4 || action == 5 {
+	if action == 3 || action == 4 {
 		content.WriteString("\n\n")
 		content.WriteString(styles.StatusLabel.Render("Status DB: "))
 		if canCreateDB {

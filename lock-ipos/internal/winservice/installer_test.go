@@ -2,14 +2,10 @@ package winservice
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/lock-ipos/lock-ipos/internal/progress"
 )
 
 func TestResolveBundlePaths_Success(t *testing.T) {
@@ -17,11 +13,6 @@ func TestResolveBundlePaths_Success(t *testing.T) {
 	mustWrite(t, filepath.Join(tmp, "nssm.exe"))
 	mustWrite(t, filepath.Join(tmp, serviceWrapperBinary))
 	mustWrite(t, filepath.Join(tmp, ratholeBinary))
-	mustWrite(t, filepath.Join(tmp, "pgbouncer.exe"))
-	mustWrite(t, filepath.Join(tmp, "libevent-7.dll"))
-	mustWrite(t, filepath.Join(tmp, "libssl-3-x64.dll"))
-	mustWrite(t, filepath.Join(tmp, "libcrypto-3-x64.dll"))
-	mustWrite(t, filepath.Join(tmp, "libwinpthread-1.dll"))
 	mustWrite(t, filepath.Join(tmp, "client.toml"))
 	mustWrite(t, filepath.Join(tmp, guiBinaryName))
 
@@ -45,12 +36,6 @@ func TestResolveBundlePaths_Success(t *testing.T) {
 	if !strings.HasSuffix(strings.ToLower(paths.GUIPath), guiBinaryName) {
 		t.Fatalf("GUIPath unexpected: %s", paths.GUIPath)
 	}
-	if !strings.HasSuffix(strings.ToLower(paths.PgBouncerPath), "pgbouncer.exe") {
-		t.Fatalf("PgBouncerPath unexpected: %s", paths.PgBouncerPath)
-	}
-	if !strings.HasSuffix(strings.ToLower(paths.PgBouncerDBsPath), strings.ToLower(pgBouncerDBsName)) {
-		t.Fatalf("PgBouncerDBsPath unexpected: %s", paths.PgBouncerDBsPath)
-	}
 }
 
 func TestResolveBundlePaths_MissingFiles(t *testing.T) {
@@ -71,15 +56,6 @@ func TestResolveBundlePaths_MissingFiles(t *testing.T) {
 	}
 	if !strings.Contains(msg, ratholeBinary) {
 		t.Fatalf("error should mention rathole binary, got: %v", err)
-	}
-	if !strings.Contains(msg, "pgbouncer.exe") {
-		t.Fatalf("error should mention pgbouncer.exe, got: %v", err)
-	}
-	if !strings.Contains(msg, "libevent-7.dll") {
-		t.Fatalf("error should mention libevent-7.dll, got: %v", err)
-	}
-	if !strings.Contains(msg, "libwinpthread-1.dll") {
-		t.Fatalf("error should mention libwinpthread-1.dll, got: %v", err)
 	}
 }
 
@@ -160,45 +136,7 @@ func TestBuildPgBouncerFirewallCommands(t *testing.T) {
 	}
 }
 
-func TestExecuteInstallModeWithHandlers_IPPublicOnlySkipsPgBouncerFlow(t *testing.T) {
-	tunnelCalls := 0
-	pgBouncerCalls := 0
-	healthCalls := 0
 
-	err := executeInstallModeWithHandlers(
-		Config{InstallMode: InstallModeIPPublicOnly},
-		BundlePaths{},
-		`C:\ProgramData\easy-rathole-client\logs`,
-		progress.NopReporter(),
-		commandRunner{},
-		installModeHandlers{
-			installTunnelService: func(Config, BundlePaths, string, progress.Reporter, commandRunner) error {
-				tunnelCalls++
-				return nil
-			},
-			installPgBouncer: func(Config, BundlePaths, string, progress.Reporter, commandRunner) error {
-				pgBouncerCalls++
-				return errors.New("pgbouncer flow should not run for IP public install")
-			},
-			waitPgBouncerHealth: func(string, time.Duration, progress.Reporter) error {
-				healthCalls++
-				return errors.New("pgbouncer health check should not run for IP public install")
-			},
-		},
-	)
-	if err != nil {
-		t.Fatalf("executeInstallModeWithHandlers() unexpected error = %v", err)
-	}
-	if tunnelCalls != 1 {
-		t.Fatalf("expected tunnel installer to run once, got %d", tunnelCalls)
-	}
-	if pgBouncerCalls != 0 {
-		t.Fatalf("expected PgBouncer installer to be skipped, got %d calls", pgBouncerCalls)
-	}
-	if healthCalls != 0 {
-		t.Fatalf("expected PgBouncer health check to be skipped, got %d calls", healthCalls)
-	}
-}
 
 func TestBuildPgBouncerIni_DefaultFallback(t *testing.T) {
 	got := buildPgBouncerIni(nil)

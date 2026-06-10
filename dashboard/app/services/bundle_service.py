@@ -16,14 +16,6 @@ WINDOWS_RATHOLE_BINARY_NAME = "ipos5-rathole.exe"
 WINDOWS_GUI_BINARY_NAME = "ipos5-rathole-gui.exe"
 WINDOWS_UNIFIED_NAME = "setup.exe"
 WINDOWS_NSSM_NAME = "nssm.exe"
-WINDOWS_PGBOUNCER_BINARY_NAME = "pgbouncer.exe"
-WINDOWS_PGBOUNCER_LIBEVENT_NAME = "libevent-7.dll"
-WINDOWS_PGBOUNCER_LIBSSL_NAME = "libssl-3-x64.dll"
-WINDOWS_PGBOUNCER_LIBCRYPTO_NAME = "libcrypto-3-x64.dll"
-WINDOWS_PGBOUNCER_LIBWINPTH_NAME = "libwinpthread-1.dll"
-WINDOWS_PGBOUNCER_INI_NAME = "pgbouncer.ini"
-WINDOWS_PGBOUNCER_DATABASES_NAME = "pgbouncer-databases.json"
-WINDOWS_PGBOUNCER_USERLIST_NAME = "userlist.sample.txt"
 LINUX_SERVICE_NAME = "easy-rathole-client"
 WINDOWS_SERVICE_NAME = "EasyRatholeClient"
 WINDOWS_ASSET_DIRNAME = "windows"
@@ -95,67 +87,17 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
     )
 
 
-def normalize_pgbouncer_databases(raw: Any) -> list[dict[str, str]]:
-    default_entry = [{"name": "postgres", "backend_dbname": "postgres"}]
-    if raw is None:
-        return default_entry
-    if not isinstance(raw, list):
-        return default_entry
-
-    normalized: list[dict[str, str]] = []
-    seen: set[str] = set()
-    for item in raw:
-        if isinstance(item, str):
-            name = item.strip()
-            backend_dbname = name
-        elif isinstance(item, dict):
-            name = str(item.get("name", "")).strip()
-            backend_dbname = str(item.get("backend_dbname", "")).strip() or name
-        else:
-            continue
-
-        if not name:
-            continue
-
-        dedupe_key = name.lower()
-        if dedupe_key in seen:
-            continue
-        seen.add(dedupe_key)
-        normalized.append({"name": name, "backend_dbname": backend_dbname})
-
-    return normalized or default_entry
-
-
-def render_pgbouncer_databases_json(state: dict[str, Any]) -> str:
-    payload = {"databases": normalize_pgbouncer_databases(state.get("pgbouncer_databases"))}
-    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
-
-
 def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     windows_wrapper_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_SERVICE_WRAPPER_NAME)
     windows_rathole_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_RATHOLE_BINARY_NAME)
     windows_gui_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_GUI_BINARY_NAME)
     windows_unified_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_UNIFIED_NAME)
     nssm_exe = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_NSSM_NAME)
-    pgbouncer_exe = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_BINARY_NAME)
-    pgbouncer_libevent = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-    pgbouncer_libssl = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBSSL_NAME)
-    pgbouncer_libcrypto = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-    pgbouncer_libwinpth = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-    pgbouncer_ini_tpl = windows_asset_path(WINDOWS_ASSET_DIRNAME, "pgbouncer.ini.tpl")
-    pgbouncer_userlist_sample = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_USERLIST_NAME)
     require_file(windows_wrapper_bin, WINDOWS_SERVICE_WRAPPER_NAME)
     require_file(windows_rathole_bin, WINDOWS_RATHOLE_BINARY_NAME)
     require_file(windows_gui_bin, WINDOWS_GUI_BINARY_NAME)
     require_file(windows_unified_bin, WINDOWS_UNIFIED_NAME)
     require_file(nssm_exe, WINDOWS_NSSM_NAME)
-    require_file(pgbouncer_exe, WINDOWS_PGBOUNCER_BINARY_NAME)
-    require_file(pgbouncer_libevent, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-    require_file(pgbouncer_libssl, WINDOWS_PGBOUNCER_LIBSSL_NAME)
-    require_file(pgbouncer_libcrypto, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-    require_file(pgbouncer_libwinpth, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-    require_file(pgbouncer_ini_tpl, "pgbouncer.ini.tpl")
-    require_file(pgbouncer_userlist_sample, WINDOWS_PGBOUNCER_USERLIST_NAME)
 
     bundle_name = f"windows-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
@@ -167,18 +109,8 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         shutil.copy2(windows_gui_bin, temp_dir / WINDOWS_GUI_BINARY_NAME)
         shutil.copy2(windows_unified_bin, temp_dir / WINDOWS_UNIFIED_NAME)
         shutil.copy2(nssm_exe, temp_dir / WINDOWS_NSSM_NAME)
-        shutil.copy2(pgbouncer_exe, temp_dir / WINDOWS_PGBOUNCER_BINARY_NAME)
-        shutil.copy2(pgbouncer_libevent, temp_dir / WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-        shutil.copy2(pgbouncer_libssl, temp_dir / WINDOWS_PGBOUNCER_LIBSSL_NAME)
-        shutil.copy2(pgbouncer_libcrypto, temp_dir / WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
-        shutil.copy2(pgbouncer_userlist_sample, temp_dir / WINDOWS_PGBOUNCER_USERLIST_NAME)
 
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
-        (temp_dir / WINDOWS_PGBOUNCER_DATABASES_NAME).write_text(
-            render_pgbouncer_databases_json(state), encoding="utf-8"
-        )
 
         (temp_dir / "README.txt").write_text(
             "\n".join(
@@ -188,17 +120,12 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "1) Ekstrak file ZIP ini.",
                     "2) Jalankan setup.exe sebagai Administrator.",
                     "3) Gunakan menu aplikasi untuk:",
-                    "   - Install IP Public (tanpa PgBouncer)",
-                    "   - Install PgBouncer (meningkatkan performa)",
+                    "   - Install IP Public",
                     "   - Uninstall Service IP Public",
                     "   - Kunci/Lepas Kunci pembuatan database baru",
                     "4) Arsitektur DB:",
                     "   - Tanpa DB sync: rathole DB local_addr default 127.0.0.1:5444",
-                    "   - Dengan DB sync tanpa PgBouncer: rathole DB local_addr 127.0.0.1:5444",
-                    "   - Dengan DB sync + PgBouncer: rathole DB local_addr 127.0.0.1:5445",
-                    "   - PgBouncer (menu 2): app listen 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445",
-                    "   - Windows Firewall: inbound TCP 5444 dibuka saat PgBouncer dipasang",
-                    "   dengan pool_mode=transaction dan auth_type=md5.",
+                    "   - Dengan DB sync: rathole DB local_addr default 127.0.0.1:5444",
                     "5) Saat Install Service, aplikasi otomatis membuat shortcut desktop",
                     "   'ipos5-rathole' untuk membuka GUI jendela utama dengan Run as Administrator (UAC prompt).",
                     "6) GUI tidak autostart saat login Windows; buka manual via shortcut desktop.",
@@ -207,11 +134,8 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
                     "9) setup.exe adalah installer interaktif; service Windows tidak menjalankan setup.exe.",
                     f"10) Service wrapper {WINDOWS_SERVICE_WRAPPER_NAME} akan menjalankan {WINDOWS_RATHOLE_BINARY_NAME} dengan client.toml.",
                     "11) Script template lama (setup-client.cmd/install-service.cmd) bukan jalur utama bundle dashboard.",
-                    "12) Jika install PgBouncer (menu 2) gagal, proses dibatalkan (fail-fast).",
-                    "13) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
-                    "    Daftar database PgBouncer dibaca dari pgbouncer-databases.json bila tersedia.",
-                    "14) Paket ini wajib utuh:",
-                    "   setup.exe + ipos5-rathole-service.exe + rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + pgbouncer-databases.json + userlist.sample.txt",
+                    "12) Paket ini wajib utuh:",
+                    "   setup.exe + ipos5-rathole-service.exe + rathole.exe + ipos5-rathole-gui.exe + nssm.exe + client.toml",
                 ]
             )
             + "\n",
@@ -232,24 +156,10 @@ def generate_windows7_bundle(state: dict[str, Any], token: str) -> Path:
     windows_rathole_bin = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_RATHOLE_BINARY_NAME)
     windows_unified_bin = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_UNIFIED_NAME)
     nssm_exe = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_NSSM_NAME)
-    pgbouncer_exe = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_BINARY_NAME)
-    pgbouncer_libevent = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-    pgbouncer_libssl = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBSSL_NAME)
-    pgbouncer_libcrypto = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-    pgbouncer_libwinpth = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-    pgbouncer_ini_tpl = windows_asset_path(WINDOWS7_ASSET_DIRNAME, "pgbouncer.ini.tpl")
-    pgbouncer_userlist_sample = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_USERLIST_NAME)
     require_file(windows_wrapper_bin, WINDOWS_SERVICE_WRAPPER_NAME)
     require_file(windows_rathole_bin, WINDOWS_RATHOLE_BINARY_NAME)
     require_file(windows_unified_bin, WINDOWS_UNIFIED_NAME)
     require_file(nssm_exe, WINDOWS_NSSM_NAME)
-    require_file(pgbouncer_exe, WINDOWS_PGBOUNCER_BINARY_NAME)
-    require_file(pgbouncer_libevent, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-    require_file(pgbouncer_libssl, WINDOWS_PGBOUNCER_LIBSSL_NAME)
-    require_file(pgbouncer_libcrypto, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-    require_file(pgbouncer_libwinpth, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-    require_file(pgbouncer_ini_tpl, "pgbouncer.ini.tpl")
-    require_file(pgbouncer_userlist_sample, WINDOWS_PGBOUNCER_USERLIST_NAME)
 
     bundle_name = f"windows7-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
@@ -260,18 +170,8 @@ def generate_windows7_bundle(state: dict[str, Any], token: str) -> Path:
         shutil.copy2(windows_rathole_bin, temp_dir / WINDOWS_RATHOLE_BINARY_NAME)
         shutil.copy2(windows_unified_bin, temp_dir / WINDOWS_UNIFIED_NAME)
         shutil.copy2(nssm_exe, temp_dir / WINDOWS_NSSM_NAME)
-        shutil.copy2(pgbouncer_exe, temp_dir / WINDOWS_PGBOUNCER_BINARY_NAME)
-        shutil.copy2(pgbouncer_libevent, temp_dir / WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-        shutil.copy2(pgbouncer_libssl, temp_dir / WINDOWS_PGBOUNCER_LIBSSL_NAME)
-        shutil.copy2(pgbouncer_libcrypto, temp_dir / WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
-        shutil.copy2(pgbouncer_userlist_sample, temp_dir / WINDOWS_PGBOUNCER_USERLIST_NAME)
 
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
-        (temp_dir / WINDOWS_PGBOUNCER_DATABASES_NAME).write_text(
-            render_pgbouncer_databases_json(state), encoding="utf-8"
-        )
 
         (temp_dir / "README.txt").write_text(
             "\n".join(
@@ -285,12 +185,9 @@ def generate_windows7_bundle(state: dict[str, Any], token: str) -> Path:
                     "5) Installer/service Win7 harus berasal dari aset kompatibel di assets/windows7.",
                     "6) Arsitektur DB:",
                     "   - Tanpa DB sync: rathole DB local_addr default 127.0.0.1:5444",
-                    "   - Dengan DB sync tanpa PgBouncer: rathole DB local_addr 127.0.0.1:5444",
-                    "   - Dengan DB sync + PgBouncer: rathole DB local_addr 127.0.0.1:5445",
-                    "   - PgBouncer (jika dipasang): app listen 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445",
-                    "7) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
-                    "8) Paket ini wajib utuh:",
-                    "   setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + pgbouncer-databases.json + userlist.sample.txt",
+                    "   - Dengan DB sync: rathole DB local_addr default 127.0.0.1:5444",
+                    "7) Paket ini wajib utuh:",
+                    "   setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + nssm.exe + client.toml",
                 ]
             )
             + "\n",

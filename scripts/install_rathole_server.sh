@@ -140,8 +140,7 @@ except Exception:
 
 sync_enabled = isinstance(db_sync, dict) and db_sync.get("enabled") is True
 if sync_enabled:
-    backend_mode = str(db_sync.get("private_db_backend_mode", "direct")).strip().lower()
-    private_local_addr = "127.0.0.1:5445" if backend_mode == "pgbouncer_backend" else "127.0.0.1:5444"
+    private_local_addr = "127.0.0.1:5444"
     for row in defaults:
         if row["name"] != "db":
             continue

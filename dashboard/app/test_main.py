@@ -68,15 +68,8 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
             bundle_service.WINDOWS_RATHOLE_BINARY_NAME,
             bundle_service.WINDOWS_UNIFIED_NAME,
             bundle_service.WINDOWS_NSSM_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_BINARY_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_LIBEVENT_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_LIBSSL_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_USERLIST_NAME,
         ):
             (assets / name).write_bytes(b"x")
-        (assets / "pgbouncer.ini.tpl").write_text("[databases]\n", encoding="utf-8")
 
     def write_state_and_db(self, *, token: str) -> None:
         init_db(str(self.db_path), "admin", "secret123", token)
@@ -257,7 +250,7 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
                     "enabled": True,
                     "initial_clone_done": False,
                     "bucardo_configured": False,
-                    "private_db_tunnel_addr": "127.0.0.1:5445",
+                    "private_db_tunnel_addr": "127.0.0.1:5444",
                 }
             },
             self.state_path,
@@ -266,7 +259,7 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         
         main.auto_finalize_callback()
         
-        mock_connect.assert_called_once_with(("127.0.0.1", 5445), timeout=0.5)
+        mock_connect.assert_called_once_with(("127.0.0.1", 5444), timeout=0.5)
         mock_finalize.assert_called_once()
 
     @patch("socket.create_connection")
@@ -278,7 +271,7 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
                     "enabled": True,
                     "initial_clone_done": False,
                     "bucardo_configured": False,
-                    "private_db_tunnel_addr": "127.0.0.1:5445",
+                    "private_db_tunnel_addr": "127.0.0.1:5444",
                 }
             },
             self.state_path,

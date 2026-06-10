@@ -31,10 +31,9 @@ const (
 
 const (
 	optionInstallIPPublic  = 1
-	optionInstallPgBouncer = 2
-	optionUninstallService = 3
-	optionLockDB           = 4
-	optionUnlockDB         = 5
+	optionUninstallService = 2
+	optionLockDB           = 3
+	optionUnlockDB         = 4
 )
 
 // Messages
@@ -264,15 +263,6 @@ func (m *model) installServiceCmd() tea.Cmd {
 	}
 }
 
-func (m *model) installPgBouncerCmd() tea.Cmd {
-	return func() tea.Msg {
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModePgBouncerOnly}
-		if err := winservice.InstallService(cfg); err != nil {
-			return serviceActionCompletedMsg{success: false, err: err}
-		}
-		return serviceActionCompletedMsg{success: true, message: "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445, PgBouncer listen di 0.0.0.0:5444, dan firewall inbound TCP 5444 dibuka untuk semua sumber. Service EasyRatholeClient tidak di-install ulang."}
-	}
-}
 
 func (m *model) uninstallServiceCmd() tea.Cmd {
 	return func() tea.Msg {
@@ -379,18 +369,14 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if keyString(msg) == "2" {
-			m.selectedOption = optionInstallPgBouncer
-			return m, nil
-		}
-		if keyString(msg) == "3" {
 			m.selectedOption = optionUninstallService
 			return m, nil
 		}
-		if keyString(msg) == "4" {
+		if keyString(msg) == "3" {
 			m.selectedOption = optionLockDB
 			return m, nil
 		}
-		if keyString(msg) == "5" {
+		if keyString(msg) == "4" {
 			m.selectedOption = optionUnlockDB
 			return m, nil
 		}
@@ -545,15 +531,7 @@ func (m *model) runProgressWorkflow(option int, ch chan any) {
 		summary := installIPPublicSuccessMessage(m.bundleDir)
 		reporter.Summary(summary)
 		sendServiceResult(true, summary, nil)
-	case optionInstallPgBouncer:
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModePgBouncerOnly}
-		if err := winservice.InstallServiceWithProgress(cfg, reporter); err != nil {
-			sendServiceResult(false, "", err)
-			return
-		}
-		summary := "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445, PgBouncer listen di 0.0.0.0:5444, dan firewall inbound TCP 5444 dibuka untuk semua sumber. Service EasyRatholeClient tidak di-install ulang."
-		reporter.Summary(summary)
-		sendServiceResult(true, summary, nil)
+
 	case optionUninstallService:
 		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath}
 		if err := winservice.UninstallServiceWithProgress(cfg, reporter); err != nil {
@@ -598,20 +576,7 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 			{ID: "wait-tunnel-running", Label: "Menunggu service RUNNING"},
 			{ID: "setup-gui-shortcut", Label: "Menyiapkan shortcut GUI"},
 		}
-	case optionInstallPgBouncer:
-		return "Install PgBouncer", []progress.StepDefinition{
-			{ID: "validate-admin", Label: "Validasi hak Administrator"},
-			{ID: "resolve-bundle", Label: "Validasi bundle PgBouncer"},
-			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
-			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
-			{ID: "migrate-postgres-port", Label: "Migrasi port PostgreSQL ke 5445"},
-			{ID: "preflight-pgbouncer", Label: "Preflight dependency PgBouncer"},
-			{ID: "prepare-pgbouncer-runtime", Label: "Menyiapkan file runtime PgBouncer"},
-			{ID: "install-pgbouncer-service", Label: "Install/update service PgBouncer"},
-			{ID: "wait-pgbouncer-running", Label: "Menunggu service PgBouncer RUNNING"},
-			{ID: "configure-pgbouncer-firewall", Label: "Membuka firewall LAN TCP 5444"},
-			{ID: "health-check-pgbouncer", Label: "Health check PgBouncer"},
-		}
+
 	case optionUninstallService:
 		return "Uninstall Service", []progress.StepDefinition{
 			{ID: "validate-admin", Label: "Validasi hak Administrator"},

@@ -45,21 +45,11 @@ def db_sync_enabled(raw: Any) -> bool:
     return isinstance(raw, dict) and raw.get("enabled") is True
 
 
-def private_db_backend_mode(raw: Any) -> str:
-    if not isinstance(raw, dict):
-        return "direct"
-    value = str(raw.get("private_db_backend_mode", "direct")).strip().lower()
-    if value == "pgbouncer_backend":
-        return value
-    return "direct"
-
-
 def apply_db_sync_mode(defaults: list[dict[str, Any]], db_sync_mode: Any) -> list[dict[str, Any]]:
     if not db_sync_enabled(db_sync_mode):
         return defaults
 
-    backend_mode = private_db_backend_mode(db_sync_mode)
-    private_local_addr = "127.0.0.1:5445" if backend_mode == "pgbouncer_backend" else "127.0.0.1:5444"
+    private_local_addr = "127.0.0.1:5444"
 
     out = deepcopy(defaults)
     for row in out:
@@ -87,6 +77,7 @@ def apply_db_sync_mode(defaults: list[dict[str, Any]], db_sync_mode: Any) -> lis
                 row["vps_db_addr"] = vps_addr
         break
     return out
+
 
 
 def normalize_service_ports(raw: Any, db_sync_mode: Any = None) -> list[dict[str, Any]]:

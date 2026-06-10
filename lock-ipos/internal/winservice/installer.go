@@ -138,7 +138,7 @@ func (r commandRunner) run(name string, args ...string) (string, error) {
 
 // ResolveBundlePaths validates required sidecar files in bundle directory.
 func ResolveBundlePaths(bundleDir string) (BundlePaths, error) {
-	return resolveBundlePaths(bundleDir, true)
+	return resolveBundlePaths(bundleDir, false)
 }
 
 func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, error) {
@@ -337,43 +337,7 @@ func InstallServiceWithProgress(cfg Config, reporter progress.Reporter) error {
 	}
 	reporter.FinishStep("sync-client-config", true, "DB diarahkan ke 127.0.0.1:5444")
 
-	return executeInstallModeWithHandlers(cfg, paths, logRoot, reporter, runner, installModeHandlers{
-		installTunnelService: installOrUpdateTunnelServiceWithProgress,
-		installPgBouncer:     installOrUpdatePgBouncerWithProgress,
-		waitPgBouncerHealth:  waitPgBouncerHealthyWithProgress,
-	})
-}
-
-type installModeHandlers struct {
-	installTunnelService func(Config, BundlePaths, string, progress.Reporter, commandRunner) error
-	installPgBouncer     func(Config, BundlePaths, string, progress.Reporter, commandRunner) error
-	waitPgBouncerHealth  func(string, time.Duration, progress.Reporter) error
-}
-
-func executeInstallModeWithHandlers(cfg Config, paths BundlePaths, logRoot string, reporter progress.Reporter, runner commandRunner, handlers installModeHandlers) error {
-	switch cfg.InstallMode {
-	case InstallModePgBouncerOnly:
-		reporter.StartStep("migrate-postgres-port", "Migrasi port PostgreSQL ke 5445")
-		reporter.Log("Menjalankan migrasi PostgreSQL ke 127.0.0.1:5445")
-		if err := migratePostgresPort(cfg.PGBinPath); err != nil {
-			reporter.FinishStep("migrate-postgres-port", false, err.Error())
-			return err
-		}
-		reporter.FinishStep("migrate-postgres-port", true, "PostgreSQL siap di port 5445")
-		if err := handlers.installPgBouncer(cfg, paths, logRoot, reporter, runner); err != nil {
-			return err
-		}
-		pgBouncerStderrLog := filepath.Join(logRoot, pgBouncerService+".stderr.log")
-		reporter.StartStep("health-check-pgbouncer", "Health check PgBouncer")
-		if err := handlers.waitPgBouncerHealth(cfg.PGBinPath, pgBouncerHealthWait, reporter); err != nil {
-			reporter.FinishStep("health-check-pgbouncer", false, err.Error())
-			return fmt.Errorf("health check PgBouncer gagal: %w (cek log: %s)", err, pgBouncerStderrLog)
-		}
-		reporter.FinishStep("health-check-pgbouncer", true, "PgBouncer menerima koneksi dengan normal")
-		return nil
-	default:
-		return handlers.installTunnelService(cfg, paths, logRoot, reporter, runner)
-	}
+	return installOrUpdateTunnelServiceWithProgress(cfg, paths, logRoot, reporter, runner)
 }
 
 func installOrUpdateTunnelService(cfg Config, paths BundlePaths, logRoot string) error {

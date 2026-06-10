@@ -11,28 +11,7 @@ from app.services import bundle_service
 
 
 class BundleServiceTest(unittest.TestCase):
-    def test_normalize_pgbouncer_databases_defaults(self) -> None:
-        rows = bundle_service.normalize_pgbouncer_databases(None)
-        self.assertEqual(rows, [{"name": "postgres", "backend_dbname": "postgres"}])
-
-    def test_normalize_pgbouncer_databases_dedupes_and_trims(self) -> None:
-        rows = bundle_service.normalize_pgbouncer_databases(
-            [
-                "iposdb",
-                {"name": " masterdb ", "backend_dbname": " backend_a "},
-                {"name": "iposdb"},
-                {"name": ""},
-            ]
-        )
-        self.assertEqual(
-            rows,
-            [
-                {"name": "iposdb", "backend_dbname": "iposdb"},
-                {"name": "masterdb", "backend_dbname": "backend_a"},
-            ],
-        )
-
-    def test_generate_windows_bundle_includes_database_metadata(self) -> None:
+    def test_generate_windows_bundle_includes_correct_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             resources = root / "resources"
@@ -49,16 +28,9 @@ class BundleServiceTest(unittest.TestCase):
                 bundle_service.WINDOWS_GUI_BINARY_NAME,
                 bundle_service.WINDOWS_UNIFIED_NAME,
                 bundle_service.WINDOWS_NSSM_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_BINARY_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_LIBEVENT_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_LIBSSL_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_USERLIST_NAME,
             ):
                 (assets / name).write_bytes(b"x")
 
-            (assets / "pgbouncer.ini.tpl").write_text("[databases]\n", encoding="utf-8")
             (templates / "client.toml.tpl").write_text(
                 "remote_addr={{SERVER_ADDR}}:{{RATHOLE_CONTROL_PORT}}\n"
                 "db={{DB_SERVICE_KEY}} {{DB_CLIENT_LOCAL_ADDR}}\n",
@@ -74,10 +46,6 @@ class BundleServiceTest(unittest.TestCase):
                     {
                         "public_ip": "10.10.10.10",
                         "rathole_control_port": 2333,
-                        "pgbouncer_databases": [
-                            {"name": "iposdb"},
-                            {"name": "masterdb", "backend_dbname": "backend_master"},
-                        ],
                     },
                     token="demo-token",
                 )
@@ -96,22 +64,15 @@ class BundleServiceTest(unittest.TestCase):
                 names = set(zf.namelist())
                 self.assertIn(bundle_service.WINDOWS_SERVICE_WRAPPER_NAME, names)
                 self.assertIn(bundle_service.WINDOWS_RATHOLE_BINARY_NAME, names)
-                self.assertIn(bundle_service.WINDOWS_PGBOUNCER_DATABASES_NAME, names)
-                payload = json.loads(zf.read(bundle_service.WINDOWS_PGBOUNCER_DATABASES_NAME).decode("utf-8"))
+                self.assertIn(bundle_service.WINDOWS_GUI_BINARY_NAME, names)
+                self.assertIn(bundle_service.WINDOWS_UNIFIED_NAME, names)
+                self.assertIn(bundle_service.WINDOWS_NSSM_NAME, names)
+                self.assertIn("client.toml", names)
                 client_toml = zf.read("client.toml").decode("utf-8")
 
-            self.assertEqual(
-                payload,
-                {
-                    "databases": [
-                        {"backend_dbname": "iposdb", "name": "iposdb"},
-                        {"backend_dbname": "backend_master", "name": "masterdb"},
-                    ]
-                },
-            )
             self.assertIn("127.0.0.1:5444", client_toml)
 
-    def test_render_client_toml_db_sync_pgbouncer_backend_targets_5445(self) -> None:
+    def test_render_client_toml_db_sync_targets_5444(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             resources = root / "resources"
@@ -133,8 +94,7 @@ class BundleServiceTest(unittest.TestCase):
                         "rathole_control_port": 2333,
                         "db_sync_mode": {
                             "enabled": True,
-                            "private_db_tunnel_addr": "127.0.0.1:5445",
-                            "private_db_backend_mode": "pgbouncer_backend",
+                            "private_db_tunnel_addr": "127.0.0.1:5444",
                         },
                     },
                     token="demo-token",
@@ -145,7 +105,7 @@ class BundleServiceTest(unittest.TestCase):
                 else:
                     os.environ["EASY_RATHOLE_RESOURCES_DIR"] = previous_resources
 
-            self.assertIn("db=port_5445 127.0.0.1:5445", client_toml)
+            self.assertIn("db=port_5445 127.0.0.1:5444", client_toml)
             self.assertIn("http=port_5480 127.0.0.1:5480", client_toml)
 
     def test_generate_windows7_bundle_excludes_gui_binary(self) -> None:
@@ -164,16 +124,9 @@ class BundleServiceTest(unittest.TestCase):
                 bundle_service.WINDOWS_RATHOLE_BINARY_NAME,
                 bundle_service.WINDOWS_UNIFIED_NAME,
                 bundle_service.WINDOWS_NSSM_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_BINARY_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_LIBEVENT_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_LIBSSL_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
-                bundle_service.WINDOWS_PGBOUNCER_USERLIST_NAME,
             ):
                 (assets / name).write_bytes(b"x")
 
-            (assets / "pgbouncer.ini.tpl").write_text("[databases]\n", encoding="utf-8")
             (templates / "client.toml.tpl").write_text(
                 "remote_addr={{SERVER_ADDR}}:{{RATHOLE_CONTROL_PORT}}\n"
                 "db={{DB_SERVICE_KEY}} {{DB_CLIENT_LOCAL_ADDR}}\n",

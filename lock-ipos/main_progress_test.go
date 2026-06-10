@@ -21,10 +21,10 @@ func TestProgressPlan_InstallIPPublic_DoesNotIncludeLegacyPgBouncer(t *testing.T
 }
 
 func TestNewProgressStateData_InitializesPendingSteps(t *testing.T) {
-	title, steps := progressPlan(optionInstallPgBouncer)
+	title, steps := progressPlan(optionInstallIPPublic)
 	data := newProgressStateData(title, steps)
 
-	if data.Title != "Install PgBouncer" {
+	if data.Title != "Install IP Public" {
 		t.Fatalf("unexpected title: %s", data.Title)
 	}
 	if len(data.Steps) != len(steps) {
