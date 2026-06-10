@@ -346,9 +346,23 @@ main() {
     rm -f "${postgres_home}/.bucardorc" || true
   fi
 
-  if ! sudo -u postgres bucardo status >/dev/null 2>&1; then
+  local bucardo_db_exists
+  bucardo_db_exists=$(sudo -u postgres psql -t -A -c "SELECT 1 FROM pg_database WHERE datname='bucardo'" 2>/dev/null || echo "0")
+
+  if [[ "${EASY_RATHOLE_RESET_BUCARDO:-0}" == "1" ]]; then
+    log WARN "EASY_RATHOLE_RESET_BUCARDO=1 terdeteksi. Menghapus database dan schema Bucardo lama..."
+    sudo -u postgres psql -c "DROP DATABASE IF EXISTS bucardo;" || true
+    sudo -u postgres psql -d postgres -c "DROP SCHEMA IF EXISTS bucardo CASCADE;" || true
+    sudo -u postgres psql -d "$app_db" -c "DROP SCHEMA IF EXISTS bucardo CASCADE;" || true
+    bucardo_db_exists="0"
+  fi
+
+  if [[ "$bucardo_db_exists" != "1" ]]; then
     log INFO "Inisialisasi database kontrol Bucardo..."
     sudo -u postgres bucardo install --batch --quiet --dbuser=postgres
+  else
+    log INFO "Database kontrol Bucardo sudah terdeteksi. Menjalankan upgrade/validasi..."
+    sudo -u postgres bucardo upgrade --batch --quiet || true
   fi
 
   log INFO "Mengatur password user bucardo di host PostgreSQL..."
