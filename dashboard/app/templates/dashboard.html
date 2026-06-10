@@ -4,543 +4,1164 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IPOS5TunnelPublik Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f4f7fc;
-      --card: #ffffff;
-      --line: #e5e7eb;
-      --text: #111827;
-      --muted: #6b7280;
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --secondary: #334155;
-      --success: #047857;
-      --warning: #b45309;
-      --error: #b91c1c;
-      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --bg: #0b0f19;
+      --card: #111827;
+      --card-alt: #1f2937;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: #3b82f6;
+      --line: #374151;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --secondary: #4b5563;
+      --secondary-hover: #374151;
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.25);
+      --warning: #f59e0b;
+      --warning-glow: rgba(245, 158, 11, 0.25);
+      --error: #ef4444;
+      --error-glow: rgba(239, 68, 68, 0.25);
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
-      background: radial-gradient(circle at top right, #ebf2ff 0%, var(--bg) 38%);
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.12) 0, transparent 35%),
+        radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.06) 0, transparent 40%);
+      background-attachment: fixed;
       color: var(--text);
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
-      line-height: 1.5;
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding-bottom: 60px;
     }
 
     .container {
-      max-width: 1360px;
+      max-width: 1300px;
       margin: 0 auto;
-      padding: 28px 20px 44px;
+      padding: 30px 20px;
     }
 
-    .hero {
+    /* Header / Hero */
+    .header {
       display: flex;
       justify-content: space-between;
-      gap: 16px;
+      align-items: center;
+      gap: 20px;
       flex-wrap: wrap;
-      background: linear-gradient(140deg, #1d4ed8, #2563eb 60%, #1e40af);
-      color: #fff;
-      border-radius: 18px;
-      padding: 24px;
-      box-shadow: 0 14px 32px rgba(37, 99, 235, 0.24);
-      margin-bottom: 18px;
-    }
-
-    .hero h1 {
-      margin: 0 0 6px;
-      font-size: 29px;
-      letter-spacing: 0.2px;
-    }
-
-    .hero p { margin: 0; opacity: 0.95; }
-
-    .hero-meta {
-      background: rgba(255,255,255,0.13);
-      border: 1px solid rgba(255,255,255,0.25);
-      border-radius: 12px;
-      padding: 10px 12px;
-      min-width: 240px;
-    }
-
-    .layout-grid,
-    .quick-grid,
-    .details-grid {
-      display: grid;
-      gap: 16px;
-    }
-
-    .quick-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      margin-bottom: 16px;
-    }
-
-    .layout-grid {
-      grid-template-columns: 1.4fr 1fr;
-      margin-bottom: 16px;
-    }
-
-    .details-grid {
-      grid-template-columns: 1fr;
-      margin-bottom: 16px;
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 18px;
+      background: rgba(17, 24, 39, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 30px;
       box-shadow: var(--shadow);
+      margin-bottom: 30px;
+      position: relative;
+      overflow: hidden;
     }
 
-    .card h2,
-    .card h3 {
-      margin: 0 0 10px;
-      line-height: 1.3;
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--success));
     }
 
-    .card p { margin: 8px 0; }
+    .header-title h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
 
-    .metric-label {
+    .header-title p {
       color: var(--muted);
+      font-size: 16px;
+      font-weight: 400;
+    }
+
+    .header-meta {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 200px;
+    }
+
+    .header-meta span {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+    }
+
+    .header-meta strong {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    /* Flash Message */
+    .flash-alert {
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: slideIn 0.3s ease;
+      border: 1px solid transparent;
+    }
+
+    .flash-alert.success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .flash-alert.warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+    }
+
+    .flash-alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .flash-alert.info {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(-10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Tabs Navigation */
+    .tabs-nav {
+      display: flex;
+      gap: 10px;
+      background: rgba(17, 24, 39, 0.5);
+      border: 1px solid var(--border);
+      padding: 6px;
+      border-radius: 14px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 12px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: var(--primary);
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    /* Tab Content Wrapper */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Metric Grid & Cards */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .metric-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .metric-title {
       font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .metric-val {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin-bottom: 6px;
     }
 
-    .metric-value {
+    .metric-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: auto;
+    }
+
+    .pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 0 var(--success-glow);
+      animation: pulseAnim 1.8s infinite;
+    }
+
+    .pulse.inactive {
+      background: var(--error);
+      box-shadow: 0 0 0 0 var(--error-glow);
+      animation: pulseAnimError 1.8s infinite;
+    }
+
+    .pulse.warning {
+      background: var(--warning);
+      box-shadow: 0 0 0 0 var(--warning-glow);
+      animation: pulseAnimWarning 1.8s infinite;
+    }
+
+    @keyframes pulseAnim {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    @keyframes pulseAnimError {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    @keyframes pulseAnimWarning {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+
+    /* Layout Content Split */
+    .split-layout {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .split-layout { grid-template-columns: 1fr; }
+    }
+
+    /* Core Card Design */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .card-title {
       font-size: 20px;
       font-weight: 700;
-      margin: 0;
+      color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 12px;
     }
 
-    .muted { color: var(--muted); }
-    .small { font-size: 13px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    .break { word-break: break-word; }
+    /* Lists and Forms */
+    .kv-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .kv-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      padding: 8px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+    }
+
+    .kv-item:last-child { border: none; }
+
+    .kv-key {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .kv-val {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: #e2e8f0;
+      text-align: right;
+    }
+
+    .badge-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
 
     .badge {
-      display: inline-block;
-      background: #eef2ff;
-      border: 1px solid #dbe5ff;
-      border-radius: 999px;
-      padding: 4px 11px;
-      margin-right: 6px;
-      margin-top: 6px;
-      font-size: 13px;
-      color: #1e3a8a;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      color: #93c5fd;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-weight: 500;
     }
 
-    .status-active { color: var(--success); font-weight: 700; }
-    .status-inactive { color: var(--error); font-weight: 700; }
-    .status-warning { color: var(--warning); font-weight: 700; }
-
-    .flash {
-      border-left: 5px solid;
-      margin-bottom: 16px;
-    }
-
-    .flash.success { border-color: var(--success); background: #ecfdf5; }
-    .flash.warning { border-color: var(--warning); background: #fffbeb; }
-    .flash.error { border-color: var(--error); background: #fef2f2; }
-    .flash.info { border-color: var(--primary); background: #eff6ff; }
-
-    .steps {
-      margin: 10px 0 0;
-      padding-left: 19px;
-    }
-
-    .steps li { margin-bottom: 9px; }
-
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
-      text-decoration: none;
-      color: #fff;
+      justify-content: center;
+      gap: 8px;
       background: var(--primary);
-      padding: 10px 15px;
+      color: #fff;
+      border: none;
       border-radius: 10px;
-      border: 0;
-      cursor: pointer;
+      padding: 12px 22px;
+      font-size: 14px;
       font-weight: 600;
-      margin-right: 8px;
-      margin-top: 8px;
-      transition: transform 0.12s ease, background 0.2s ease;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px var(--primary-glow);
     }
 
     .btn:hover {
-      background: var(--primary-dark);
+      background: var(--primary-hover);
       transform: translateY(-1px);
     }
 
-    .btn.secondary { background: var(--secondary); }
-    .btn.secondary:hover { background: #1f2937; }
-    .btn.warning { background: var(--warning); }
-    .btn.warning:hover { background: #92400e; }
+    .btn:active {
+      transform: translateY(0);
+    }
 
-    .action-row {
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: none;
+    }
+
+    .btn.secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn.warning {
+      background: var(--warning);
+      box-shadow: 0 4px 12px var(--warning-glow);
+    }
+
+    .btn.warning:hover {
+      background: #d97706;
+    }
+
+    .btn-group {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 10px;
+      margin-top: 14px;
     }
 
-    .inline-kv {
-      display: grid;
-      grid-template-columns: 170px 1fr;
-      gap: 8px 14px;
-      margin-top: 8px;
-    }
-
-    .inline-kv div:nth-child(odd) {
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    input[type=text] {
-      width: 100%;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      padding: 11px 12px;
-      font-size: 14px;
-      margin-top: 5px;
-    }
-
-    .notice {
-      border: 1px solid #fde68a;
-      background: #fffbeb;
-      border-radius: 10px;
-      padding: 10px 12px;
-      color: #92400e;
-      font-size: 14px;
-      margin-top: 10px;
-    }
-
-    details {
-      background: #fff;
-      border: 1px solid var(--line);
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
       border-radius: 12px;
-      padding: 12px 14px;
-      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
     }
-
-    summary {
-      cursor: pointer;
-      font-weight: 700;
-      color: #111827;
-    }
-
-    .table-wrap { overflow-x: auto; }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
-      min-width: 760px;
-    }
-
-    th, td {
       text-align: left;
-      padding: 9px 10px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
     }
 
     th {
-      font-size: 12.5px;
-      background: #f8fafc;
-      color: #334155;
+      background: var(--card-alt);
+      color: var(--muted);
+      font-size: 12px;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
     }
 
-    td { font-size: 13.5px; }
-
-    .token-card {
-      border: 1px solid #dbeafe;
-      background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      color: #e2e8f0;
+      vertical-align: middle;
     }
 
-    @media (max-width: 1180px) {
-      .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .layout-grid { grid-template-columns: 1fr; }
+    tr:last-child td { border-bottom: none; }
+    
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.01);
     }
 
-    @media (max-width: 700px) {
-      .container { padding: 20px 14px 34px; }
-      .quick-grid { grid-template-columns: 1fr; }
-      .inline-kv { grid-template-columns: 1fr; gap: 4px; }
+    .table-mono {
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: #fff;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    /* Logs Console */
+    .console {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .console-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      padding: 10px 16px;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+
+    .console-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .console-wrap {
+      margin-top: 10px;
+    }
+
+    .console-wrap .console {
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+    }
+
+    /* Status Indicator Colors */
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-status.active {
+      background: rgba(16, 185, 129, 0.1);
+      color: #34d399;
+    }
+
+    .badge-status.inactive {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+    }
+
+    .badge-status.warning {
+      background: rgba(245, 158, 11, 0.1);
+      color: #fbbf24;
+    }
+
+    /* Debug Tab Layout */
+    .debug-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .debug-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="hero">
-      <div>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title">
         <h1>IPOS5TunnelPublik Dashboard</h1>
-        <p>Panel operasional untuk unduh installer client, memantau layanan, dan mengelola tunnel dengan lebih cepat.</p>
+        <p>Panel manajemen infrastruktur VPS untuk replikasi PostgreSQL 2-arah dan rathole tunnel.</p>
       </div>
-      <div class="hero-meta small">
-        <div><strong>Update terakhir:</strong></div>
-        <div class="mono">{{ updated_at }}</div>
+      <div class="header-meta">
+        <span>Sistem Operasional</span>
+        <strong>Update: {{ updated_at }}</strong>
       </div>
     </div>
 
+    <!-- Alert / Flash Message -->
     {% if flash_message %}
-      <div class="card flash {{ flash_type }}">
-        <strong>Informasi:</strong> {{ flash_message }}
+      <div class="flash-alert {{ flash_type }}">
+        {% if flash_type == 'success' %}
+          <span>✅</span>
+        {% elif flash_type == 'error' %}
+          <span>❌</span>
+        {% elif flash_type == 'warning' %}
+          <span>⚠️</span>
+        {% else %}
+          <span>ℹ️</span>
+        {% endif %}
+        <div>{{ flash_message }}</div>
       </div>
     {% endif %}
 
-    <div class="quick-grid">
-      <div class="card">
-        <div class="metric-label">Status Global Token</div>
-        <p class="metric-value {% if token_exists %}status-active{% else %}status-inactive{% endif %}">
-          {% if token_exists %}Siap Digunakan{% else %}Belum Diset{% endif %}
-        </p>
-        <p class="small muted">Token saat ini: <span class="mono">{{ token_masked }}</span></p>
-      </div>
-
-      <div class="card">
-        <div class="metric-label">Layanan Rathole</div>
-        <p class="metric-value mono {% if rathole_status == 'active' %}status-active{% else %}status-inactive{% endif %}">{{ rathole_status }}</p>
-        <p class="small muted">Service: <span class="mono">{{ rathole_service }}</span></p>
-      </div>
-
-      <div class="card">
-        <div class="metric-label">Layanan Dashboard</div>
-        <p class="metric-value mono {% if dashboard_status == 'active' %}status-active{% else %}status-inactive{% endif %}">{{ dashboard_status }}</p>
-        <p class="small muted">Service: <span class="mono">{{ dashboard_service }}</span></p>
-      </div>
-
-      <div class="card">
-        <div class="metric-label">Port Forward Aktif</div>
-        <p class="metric-value"><span class="mono">{{ forward_active_count }}</span> / <span class="mono">{{ forward_port_status|length }}</span></p>
-        <p class="small muted">Ringkasan status port forward TCP.</p>
-      </div>
-
-      <div class="card">
-        <div class="metric-label">
-          PostgreSQL {% if db_sync_enabled %}Public DB {{ public_db_addr }}{% else %}Client (VPS {{ db_remote_port }} -> {{ db_backend_local_addr }}){% endif %}
+    <!-- Global Operasional Metrics -->
+    <div class="metric-grid">
+      <!-- Token Status -->
+      <div class="metric-card">
+        <span class="metric-title">Global Token</span>
+        <div class="metric-val">
+          <span class="pulse {% if token_exists %}active{% else %}inactive{% endif %}"></span>
+          {% if token_exists %}Ready{% else %}Missing{% endif %}
         </div>
-        <p class="metric-value mono {% if postgres_monitor.status == 'Healthy' %}status-active{% elif postgres_monitor.status == 'Warning' %}status-warning{% else %}status-inactive{% endif %}">
-          {{ postgres_monitor.status }}
-        </p>
-        <p class="small muted">connect: <span class="mono">{{ postgres_monitor.connect_ms if postgres_monitor.connect_ms is not none else '-' }} ms</span></p>
-        <p class="small muted">query: <span class="mono">{{ postgres_monitor.query_ms if postgres_monitor.query_ms is not none else '-' }} ms</span></p>
-        <p class="small muted">tx: <span class="mono">{{ postgres_monitor.tx_ms if postgres_monitor.tx_ms is not none else '-' }} ms</span></p>
+        <div class="metric-desc mono">{{ token_masked }}</div>
+      </div>
+
+      <!-- Rathole Tunnel Status -->
+      <div class="metric-card">
+        <span class="metric-title">Service Rathole</span>
+        <div class="metric-val">
+          <span class="pulse {% if rathole_status == 'active' %}active{% else %}inactive{% endif %}"></span>
+          <span style="font-family: var(--font-mono);">{{ rathole_status }}</span>
+        </div>
+        <div class="metric-desc">Service: {{ rathole_service }}</div>
+      </div>
+
+      <!-- Dashboard UI Status -->
+      <div class="metric-card">
+        <span class="metric-title">Service Dashboard</span>
+        <div class="metric-val">
+          <span class="pulse {% if dashboard_status == 'active' %}active{% else %}inactive{% endif %}"></span>
+          <span style="font-family: var(--font-mono);">{{ dashboard_status }}</span>
+        </div>
+        <div class="metric-desc">Service: {{ dashboard_service }}</div>
+      </div>
+
+      <!-- DB Sync / Replication Status -->
+      <div class="metric-card">
+        <span class="metric-title">Replikasi (Bucardo)</span>
+        <div class="metric-val">
+          <span class="pulse {% if bucardo_configured %}active{% elif db_sync_waiting_for_client or db_sync_status_label == 'waiting-client' %}warning{% else %}inactive{% endif %}"></span>
+          <span style="font-size: 18px;">
+            {% if bucardo_configured %}
+              Configured
+            {% elif db_sync_waiting_for_client %}
+              Waiting Client
+            {% elif db_sync_enabled %}
+              Pending Auto-Setup
+            {% else %}
+              Disabled
+            {% endif %}
+          </span>
+        </div>
+        <div class="metric-desc">Mode Sync: {% if db_sync_enabled %}Aktif (2-Way){% else %}Nonaktif (Forward){% endif %}</div>
+      </div>
+
+      <!-- Live DB Health -->
+      <div class="metric-card">
+        <span class="metric-title">Status Postgres VPS</span>
+        <div class="metric-val">
+          <span class="pulse {% if postgres_monitor.status == 'Healthy' %}active{% elif postgres_monitor.status == 'Warning' %}warning{% else %}inactive{% endif %}"></span>
+          <span>{{ postgres_monitor.status }}</span>
+        </div>
+        <div class="metric-desc">Query: {{ postgres_monitor.query_ms if postgres_monitor.query_ms is not none else '-' }} ms</div>
       </div>
     </div>
 
-    <div class="layout-grid">
-      <div class="card">
-        <h2>Unduh Installer Client</h2>
-        <p class="muted">Unduh paket installer client yang sudah otomatis dikonfigurasi dari server ini.</p>
-        <a class="btn" href="/download/windows">Unduh ZIP Client Windows</a>
-        <a class="btn secondary" href="/download/windows7">Unduh ZIP Client Windows 7</a>
-        <a class="btn secondary" href="/download/linux">Unduh ZIP Client Linux</a>
-        <p class="small muted">Jika token belum diset, proses download akan ditolak sistem.</p>
+    <!-- Tabbed Navigation -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="openTab(event, 'tab-overview')">🌐 Ringkasan & Unduh</button>
+      <button class="tab-btn" onclick="openTab(event, 'tab-postgres')">📊 PostgreSQL Monitor</button>
+      <button class="tab-btn" onclick="openTab(event, 'tab-replication')">🔄 Sync & Bucardo</button>
+      <button class="tab-btn" onclick="openTab(event, 'tab-debug')">🐛 Debugging & Log</button>
+    </div>
 
-        <h3 style="margin-top:16px;">Alur Penggunaan Direkomendasikan</h3>
-        <ol class="steps">
-          <li><strong>Unduh installer client</strong> sesuai sistem operasi perangkat.</li>
-          <li><strong>Jalankan installer</strong> di perangkat tujuan (Windows/Linux).</li>
-          <li><strong>Lakukan rotasi token</strong> hanya saat perlu mengganti client (bagian paling bawah halaman).</li>
-        </ol>
-      </div>
-
-      <div class="card">
-        <h2>Informasi Server</h2>
-        <div class="inline-kv">
-          <div>Public IP</div>
-          <div class="mono">{{ public_ip }}</div>
-
-          <div>Port Control Rathole</div>
-          <div class="mono">{{ control_port }}</div>
-
-          <div>Port Dashboard</div>
-          <div class="mono">{{ dashboard_port }}</div>
-
-          {% if db_sync_enabled %}
-            <div>Public DB</div>
-            <div class="mono">{{ public_db_addr }}</div>
-
-            <div>Private Sync Tunnel</div>
-            <div class="mono">{{ private_sync_tunnel_addr }}</div>
-
-            <div>Status DB Sync</div>
-            <div class="mono">{{ db_sync_status_label }}</div>
-
-            <div>Initial Clone</div>
-            <div class="mono">{% if initial_clone_done %}done{% elif db_sync_waiting_for_client %}waiting-client{% else %}pending{% endif %}</div>
-
-            <div>Bucardo</div>
-            <div class="mono">{% if bucardo_configured %}configured{% elif db_sync_waiting_for_client %}waiting-client{% else %}pending{% endif %}</div>
-          {% endif %}
-        </div>
-        {% if db_sync_finalize_available %}
-          <form class="action-row" method="post" action="/db-sync/finalize">
-            <button class="btn warning" type="submit">Finalisasi DB Sync</button>
-          </form>
-          <p class="small muted">Jalankan setelah client rathole aktif dan private DB reachable lewat tunnel <span class="mono">{{ private_sync_tunnel_addr }}</span>.</p>
-        {% elif db_sync_enabled and bucardo_configured %}
-          <p class="small status-active">DB sync sudah selesai dikonfigurasi.</p>
-        {% endif %}
-
-        <p style="margin-top: 12px;"><strong>Port TCP Dibuka</strong></p>
+    <!-- ================= TAB: OVERVIEW & DOWNLOAD ================= -->
+    <div id="tab-overview" class="tab-content active">
+      <div class="split-layout">
+        <!-- Main Actions: Bundle Client Downloads -->
         <div>
-          {% for p in exposed_ports %}
-            <span class="badge mono">{{ p }}</span>
-          {% endfor %}
+          <div class="card">
+            <div class="card-title">💾 Unduh Installer Client</div>
+            <p style="color: var(--muted); margin-bottom: 20px;">Unduh paket installer client lengkap yang telah diprapasang kredensial dan konfigurasi tunnel dari server ini.</p>
+            
+            <div class="btn-group">
+              <a class="btn" href="/download/windows">
+                <span>🪟</span> Unduh Client Windows (Modern)
+              </a>
+              <a class="btn secondary" href="/download/windows7">
+                <span>💾</span> Windows 7 Legacy
+              </a>
+              <a class="btn secondary" href="/download/linux">
+                <span>🐧</span> Client Linux
+              </a>
+            </div>
+            
+            <p style="margin-top: 15px; font-size: 13px; color: var(--muted);">
+              * Harap setel/konfigurasi Global Token terlebih dahulu di bawah sebelum mengunduh installer.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="card-title">⚡ Alur Integrasi Cepat (Zero-Config)</div>
+            <ol style="margin-left: 20px; color: #cbd5e1; display: flex; flex-direction: column; gap: 10px;">
+              <li>Unduh bundle client (ZIP) dari tombol di atas.</li>
+              <li>Ekstrak ZIP di komputer client/kasir yang terinstall database PostgreSQL IPOS5.</li>
+              <li>Jalankan <strong>setup.exe</strong> (klik kanan -> Run as Administrator).</li>
+              <li>Pilih menu instalasi. Program akan otomatis mengarahkan port, membuat service Windows, dan menghubungkan tunnel.</li>
+              <li><strong>Otomatisasi Klon Awal:</strong> Begitu client terhubung ke tunnel, VPS akan langsung mendeteksi koneksi dan melakukan klon database pertama kali, lalu mengonfigurasi sinkronisasi Bucardo. Tidak diperlukan konfigurasi manual lebih lanjut!</li>
+            </ol>
+          </div>
         </div>
+
+        <!-- Server Information Right Side -->
+        <div>
+          <div class="card">
+            <div class="card-title">ℹ️ Metadata Server VPS</div>
+            <div class="kv-list">
+              <div class="kv-item">
+                <span class="kv-key">Alamat IP Publik VPS</span>
+                <span class="kv-val">{{ public_ip }}</span>
+              </div>
+              <div class="kv-item">
+                <span class="kv-key">Port Control Rathole</span>
+                <span class="kv-val">{{ control_port }}</span>
+              </div>
+              <div class="kv-item">
+                <span class="kv-key">Port Dashboard</span>
+                <span class="kv-val">{{ dashboard_port }}</span>
+              </div>
+              {% if db_sync_enabled %}
+                <div class="kv-item">
+                  <span class="kv-key">Public Database Address</span>
+                  <span class="kv-val">{{ public_db_addr }}</span>
+                </div>
+                <div class="kv-item">
+                  <span class="kv-key">Private Tunnel Sync</span>
+                  <span class="kv-val">{{ private_sync_tunnel_addr }}</span>
+                </div>
+              {% endif %}
+            </div>
+            
+            <p style="margin-top: 15px; margin-bottom: 5px; font-size: 14px; font-weight: 600; color:#fff;">Port Publik Terbuka (UFW/Firewalld):</p>
+            <div class="badge-list">
+              {% for p in exposed_ports %}
+                <span class="badge">{{ p }}</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Port Forward List -->
+          <div class="card">
+            <div class="card-title">🔌 Ringkasan Forward Port</div>
+            <div class="kv-list">
+              {% for row in forward_port_status %}
+                <div class="kv-item">
+                  <span class="kv-key">
+                    <span class="badge-status {% if row.status == 'active' %}active{% else %}inactive{% endif %}" style="font-size: 10px; padding: 2px 5px; text-transform:none;">
+                      {{ row.service }}
+                    </span>
+                  </span>
+                  <span class="kv-val">Port {{ row.port }} &rarr; {{ row.status }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Global Token Settings -->
+      <div class="card token-card" style="border: 1px solid rgba(59, 130, 246, 0.2); background: rgba(59, 130, 246, 0.02);">
+        <div class="card-title">🔑 Rotasi Global Token</div>
+        <p style="color: var(--muted); margin-bottom: 15px;">Ganti kredensial akses global jika terindikasi kebocoran atau untuk mereset seluruh koneksi client.</p>
+        
+        <form method="post" action="/token">
+          <div class="form-group">
+            <label for="token">Global Token Baru (Min. 8 karakter):</label>
+            <input id="token" name="token" type="text" placeholder="Masukkan token keamanan baru..." required />
+          </div>
+          <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px; padding: 12px; font-size: 13px; color: #fbbf24; margin-bottom: 15px;">
+            ⚠️ <strong>Perhatian:</strong> Setelah token dirotasi, seluruh client lama akan terputus seketika hingga Anda mengunduh bundle client baru dan memasangnya kembali di mesin kasir/client.
+          </div>
+          <button class="btn warning" type="submit">Simpan & Rotasi Global Token</button>
+        </form>
       </div>
     </div>
 
-    <div class="details-grid">
-      <details>
-        <summary>Detail Lanjutan: PostgreSQL {% if db_sync_enabled %}2-Way Sync (Public {{ public_db_addr }}, Tunnel {{ private_sync_tunnel_addr }}){% else %}Client (VPS {{ db_remote_port }} -> {{ db_backend_local_addr }}){% endif %}</summary>
-        <div class="table-wrap">
+    <!-- ================= TAB: POSTGRESQL MONITOR ================= -->
+    <div id="tab-postgres" class="tab-content">
+      <div class="card">
+        <div class="card-title">📊 Detail Kinerja & Metrik Database PostgreSQL VPS</div>
+        
+        <div class="table-responsive" style="margin-bottom: 20px;">
           <table>
             <thead>
               <tr>
-                <th>Status</th>
-                <th>Connect (ms)</th>
-                <th>Query (ms)</th>
-                <th>Tx (ms)</th>
-                <th>Active Conn</th>
-                <th>Waiting Conn</th>
-                <th>Cache Hit (%)</th>
-                <th>Last Checked</th>
+                <th>Metrik Operasional</th>
+                <th>Nilai Terdeteksi</th>
+                <th>Kategori Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="pg-metrics-tbody">
               <tr>
-                <td class="mono">{{ postgres_monitor.status }}</td>
-                <td class="mono">{{ postgres_monitor.connect_ms if postgres_monitor.connect_ms is not none else '-' }}</td>
-                <td class="mono">{{ postgres_monitor.query_ms if postgres_monitor.query_ms is not none else '-' }}</td>
-                <td class="mono">{{ postgres_monitor.tx_ms if postgres_monitor.tx_ms is not none else '-' }}</td>
-                <td class="mono">{{ postgres_monitor.active_connections if postgres_monitor.active_connections is not none else '-' }}</td>
-                <td class="mono">{{ postgres_monitor.waiting_connections if postgres_monitor.waiting_connections is not none else '-' }}</td>
-                <td class="mono">{{ postgres_monitor.cache_hit_ratio if postgres_monitor.cache_hit_ratio is not none else '-' }}</td>
-                <td class="mono">{{ postgres_monitor.checked_at }}</td>
+                <td>Konektivitas TCP Latency</td>
+                <td class="table-mono" id="val-connect_ms">{{ postgres_monitor.connect_ms if postgres_monitor.connect_ms is not none else '-' }} ms</td>
+                <td><span class="badge-status {% if postgres_monitor.status == 'Healthy' %}active{% elif postgres_monitor.status == 'Warning' %}warning{% else %}inactive{% endif %}" id="status-connect">{{ postgres_monitor.status }}</span></td>
+              </tr>
+              <tr>
+                <td>Kecepatan Eksekusi Query (SELECT 1)</td>
+                <td class="table-mono" id="val-query_ms">{{ postgres_monitor.query_ms if postgres_monitor.query_ms is not none else '-' }} ms</td>
+                <td><span class="badge-status {% if postgres_monitor.status == 'Healthy' %}active{% elif postgres_monitor.status == 'Warning' %}warning{% else %}inactive{% endif %}" id="status-query">{{ postgres_monitor.status }}</span></td>
+              </tr>
+              <tr>
+                <td>Transaction Commit latency (SELECT 1 + commit)</td>
+                <td class="table-mono" id="val-tx_ms">{{ postgres_monitor.tx_ms if postgres_monitor.tx_ms is not none else '-' }} ms</td>
+                <td><span class="badge-status {% if postgres_monitor.status == 'Healthy' %}active{% elif postgres_monitor.status == 'Warning' %}warning{% else %}inactive{% endif %}" id="status-tx">{{ postgres_monitor.status }}</span></td>
+              </tr>
+              <tr>
+                <td>Jumlah Koneksi Aktif (Active Connections)</td>
+                <td class="table-mono" id="val-active_conn">{{ postgres_monitor.active_connections if postgres_monitor.active_connections is not none else '-' }}</td>
+                <td><span class="badge-status active">Normal</span></td>
+              </tr>
+              <tr>
+                <td>Koneksi Antre/Menunggu (Waiting Connections)</td>
+                <td class="table-mono" id="val-waiting_conn">{{ postgres_monitor.waiting_connections if postgres_monitor.waiting_connections is not none else '-' }}</td>
+                <td>
+                  <span class="badge-status {% if (postgres_monitor.waiting_connections or 0) > 0 %}inactive{% else %}active{% endif %}" id="status-waiting">
+                    {% if (postgres_monitor.waiting_connections or 0) > 0 %}Antrean Terdeteksi{% else %}Lancar{% endif %}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>Cache Hit Ratio (Buffer Cache)</td>
+                <td class="table-mono" id="val-cache_hit">{{ postgres_monitor.cache_hit_ratio if postgres_monitor.cache_hit_ratio is not none else '-' }} %</td>
+                <td><span class="badge-status active">Optimal</span></td>
+              </tr>
+              <tr>
+                <td>Checked At (Waktu UTC Pemeriksaan)</td>
+                <td class="table-mono" colspan="2" id="val-checked_at">{{ postgres_monitor.checked_at }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-        {% if postgres_monitor.last_error %}
-          <div class="notice">
-            Last error: <span class="mono break">{{ postgres_monitor.last_error }}</span>
-          </div>
-        {% endif %}
-      </details>
 
-      <details>
-        <summary>Detail Lanjutan: Status Port Forward</summary>
-        <p class="muted small">Ringkasan: <strong>{{ forward_active_count }}</strong> dari <strong>{{ forward_port_status|length }}</strong> port dalam kondisi aktif.</p>
-        <div class="table-wrap">
+        <div id="pg-error-notice" class="notice" style="{% if postgres_monitor.last_error %}{% else %}display:none;{% endif %} background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #f87171;">
+          <strong>Error Terakhir Terdeteksi:</strong> <span class="mono" id="pg-error-text">{{ postgres_monitor.last_error }}</span>
+        </div>
+      </div>
+      
+      <!-- Forwarding Port Status Detail Table -->
+      <div class="card">
+        <div class="card-title">🔌 Detail Status Listening Port System</div>
+        <div class="table-responsive">
           <table>
             <thead>
               <tr>
-                <th>Nama Port</th>
+                <th>Layanan</th>
                 <th>Protokol</th>
-                <th>Port Forward</th>
-                <th>Status</th>
-                <th>Alamat Listener</th>
-                <th>Aplikasi/Proses</th>
+                <th>Port Publik</th>
+                <th>Listener</th>
+                <th>Status Port</th>
+                <th>Proses Deteksi</th>
               </tr>
             </thead>
             <tbody>
               {% for row in forward_port_status %}
                 <tr>
-                  <td class="mono">{{ row.service }}</td>
-                  <td class="mono">{{ row.protocol }}</td>
-                  <td class="mono">{{ row.port }}</td>
+                  <td class="table-mono">{{ row.service }}</td>
+                  <td>{{ row.protocol }}</td>
+                  <td class="table-mono">{{ row.port }}</td>
+                  <td class="table-mono">{{ row.listener }}</td>
                   <td>
-                    <span class="mono {% if row.status == 'active' %}status-active{% else %}status-inactive{% endif %}">{{ row.status }}</span>
+                    <span class="badge-status {% if row.status == 'active' %}active{% else %}inactive{% endif %}">
+                      {{ row.status }}
+                    </span>
                   </td>
-                  <td class="mono break">{{ row.listener }}</td>
-                  <td class="mono break small">{{ row.process }}</td>
+                  <td class="table-mono" style="font-size:12px; color: var(--muted);">{{ row.process }}</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
-      </details>
-
-      <details>
-        <summary>Detail Lanjutan: Dukungan Client & Mapping Tunnel</summary>
-
-        <h3 style="margin-top: 12px;">Dukungan Platform Client</h3>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Platform</th>
-                <th>Arsitektur</th>
-                <th>Nama Service</th>
-                <th>Paket</th>
-                <th>Sumber Binary</th>
-                <th>Cara Jalankan</th>
-                <th>Endpoint Remote</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in supported_clients %}
-                <tr>
-                  <td>{{ row.platform }}</td>
-                  <td class="mono">{{ row.architecture }}</td>
-                  <td class="mono">{{ row.service_name }}</td>
-                  <td>{{ row.delivery }}</td>
-                  <td>{{ row.binary_source }}</td>
-                  <td class="mono">{{ row.setup_hint }}</td>
-                  <td class="mono">{{ row.remote_endpoint }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-
-        <h3 style="margin-top: 16px;">Mapping Tunnel Default (Sisi Client)</h3>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Nama Port</th>
-                <th>Protokol</th>
-                <th>Port Remote (Server)</th>
-                <th>Alamat Lokal Client</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in client_tunnel_details %}
-                <tr>
-                  <td class="mono">{{ row.service }}</td>
-                  <td class="mono">{{ row.protocol }}</td>
-                  <td class="mono">{{ row.remote_port }}</td>
-                  <td class="mono">{{ row.client_local_addr }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </details>
+      </div>
     </div>
 
-    <div class="card token-card">
-      <h2>Rotasi Global Token</h2>
-      <p class="muted">Gunakan bagian ini <strong>jika ingin ganti client</strong> atau mengganti kredensial akses tunnel secara global.</p>
-      <p>Token saat ini: <span class="mono">{{ token_masked }}</span></p>
+    <!-- ================= TAB: REPLICATION & BUCARDO ================= -->
+    <div id="tab-replication" class="tab-content">
+      <div class="split-layout">
+        <!-- Left details -->
+        <div>
+          <div class="card">
+            <div class="card-title">🔄 Status Sinkronisasi Database 2-Arah</div>
+            
+            {% if db_sync_enabled %}
+              <div class="kv-list" style="margin-bottom: 20px;">
+                <div class="kv-item">
+                  <span class="kv-key">Status Alur Sinkronisasi</span>
+                  <span class="kv-val">
+                    <span class="badge-status {% if bucardo_configured %}active{% elif db_sync_waiting_for_client %}warning{% else %}inactive{% endif %}">
+                      {{ db_sync_status_label }}
+                    </span>
+                  </span>
+                </div>
+                <div class="kv-item">
+                  <span class="kv-key">Initial Clone Status</span>
+                  <span class="kv-val">{% if initial_clone_done %}Selesai (Success){% elif db_sync_waiting_for_client %}Menunggu Client Aktif{% else %}Pending{% endif %}</span>
+                </div>
+                <div class="kv-item">
+                  <span class="kv-key">Bucardo Control Engine</span>
+                  <span class="kv-val">{% if bucardo_configured %}Aktif (Replicating){% elif db_sync_waiting_for_client %}Menunggu Client Aktif{% else %}Pending{% endif %}</span>
+                </div>
+                <div class="kv-item">
+                  <span class="kv-key">Alamat Private Tunnel Client</span>
+                  <span class="kv-val">{{ private_sync_tunnel_addr }}</span>
+                </div>
+                <div class="kv-item">
+                  <span class="kv-key">Alamat Public DB VPS (Untuk Apps)</span>
+                  <span class="kv-val">{{ public_db_bind_addr }}</span>
+                </div>
+              </div>
 
-      <form method="post" action="/token">
-        <label for="token"><strong>Global Token Baru</strong></label>
-        <input id="token" name="token" type="text" placeholder="Contoh: TokenAman12345" required />
-        <p class="muted small">Ketentuan: minimal 8 karakter, maksimal 128 karakter.</p>
-        <div class="notice">
-          Setelah token dirotasi, client lama perlu diinstal/di-setup ulang menggunakan installer terbaru agar dapat terhubung kembali.
+              {% if db_sync_finalize_available %}
+                <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                  <h4 style="margin-bottom: 8px; font-size:15px; color:#fff;">⚙️ Kontrol Manual Finalisasi</h4>
+                  <p style="font-size:13.5px; color: var(--muted); margin-bottom: 12px;">Sistem akan melakukan finalisasi secara otomatis begitu mendeteksi client terhubung. Namun Anda tetap dapat memicu proses klon dan setup Bucardo secara manual jika diperlukan:</p>
+                  
+                  <form method="post" action="/db-sync/finalize">
+                    <button class="btn warning" type="submit">Jalankan Finalisasi Manual</button>
+                  </form>
+                </div>
+              {% endif %}
+            {% else %}
+              <div style="text-align: center; padding: 40px 20px;">
+                <span style="font-size: 48px; display: block; margin-bottom: 15px;">⏭️</span>
+                <h3 style="color:#fff; margin-bottom: 8px;">Replikasi Database Tidak Aktif</h3>
+                <p style="color: var(--muted); font-size: 14px; max-width: 460px; margin: 0 auto;">Saat ini sistem berjalan dalam mode Port Forwarding Database murni tanpa kloning VPS. Untuk mengaktifkan mode sinkronisasi 2-arah Bucardo, jalankan kembali installer utama di VPS dengan parameter:</p>
+                <code style="display: block; background: #000; border: 1px solid var(--border); border-radius: 8px; padding: 10px; color:#f87171; font-family: var(--font-mono); font-size: 12px; margin-top: 15px; text-align:left;">sudo EASY_RATHOLE_INSTALL_DB_SYNC=1 bash install.sh</code>
+              </div>
+            {% endif %}
+          </div>
+          
+          <!-- Mapping tunnel info -->
+          <div class="card">
+            <div class="card-title">🗺️ Mapping Port & Tunnel Default Client</div>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nama Layanan</th>
+                    <th>Protokol</th>
+                    <th>Port VPS (Server)</th>
+                    <th>Port Lokal Client</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in client_tunnel_details %}
+                    <tr>
+                      <td class="table-mono">{{ row.service }}</td>
+                      <td>{{ row.protocol }}</td>
+                      <td class="table-mono">{{ row.remote_port }}</td>
+                      <td class="table-mono">{{ row.client_local_addr }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <button class="btn" type="submit">Simpan & Rotasi Token</button>
-      </form>
+
+        <!-- Bucardo Live status Output -->
+        <div>
+          <div class="card" style="height: 100%;">
+            <div class="card-title">📟 Console Status Engine Bucardo</div>
+            <p style="color: var(--muted); font-size:13.5px; margin-bottom: 15px;">Output status replikasi engine Bucardo real-time yang sedang berjalan di sistem VPS.</p>
+            
+            <div class="console-header">
+              <span class="console-title">bucardo status</span>
+              <button class="btn secondary" style="padding: 4px 10px; font-size: 11px; margin:0;" onclick="refreshBucardoConsole()">Refresh</button>
+            </div>
+            <div class="console" id="bucardo-console-output" style="height: 480px;">Memuat data bucardo status...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB: DEBUGGING & LOGS ================= -->
+    <div id="tab-debug" class="tab-content">
+      <div class="card">
+        <div class="card-title">🐛 Monitoring System Logs & Troubleshooting</div>
+        <p style="color: var(--muted); margin-bottom: 20px;">Pantau log dari systemd services secara real-time untuk mempercepat pelacakan masalah (debugging).</p>
+
+        <div class="debug-grid">
+          <!-- Rathole Service Logs -->
+          <div>
+            <div class="console-header">
+              <span class="console-title">journalctl -u rathole -n 50</span>
+              <button class="btn secondary" style="padding: 4px 10px; font-size: 11px; margin:0;" onclick="refreshLogs('rathole')">Refresh</button>
+            </div>
+            <div class="console" id="console-rathole">Memuat log service rathole...</div>
+          </div>
+
+          <!-- Dashboard Service Logs -->
+          <div>
+            <div class="console-header">
+              <span class="console-title">journalctl -u easy-rathole-dashboard -n 50</span>
+              <button class="btn secondary" style="padding: 4px 10px; font-size: 11px; margin:0;" onclick="refreshLogs('easy-rathole-dashboard')">Refresh</button>
+            </div>
+            <div class="console" id="console-dashboard">Memuat log service dashboard...</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+
+  <script>
+    // Tab switching logic
+    function openTab(evt, tabId) {
+      const contents = document.getElementsByClassName("tab-content");
+      for (let i = 0; i < contents.length; i++) {
+        contents[i].classList.remove("active");
+      }
+      
+      const buttons = document.getElementsByClassName("tab-btn");
+      for (let i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove("active");
+      }
+      
+      document.getElementById(tabId).classList.add("active");
+      evt.currentTarget.classList.add("active");
+
+      // Auto load data on specific tabs
+      if (tabId === 'tab-debug') {
+        refreshLogs('rathole');
+        refreshLogs('easy-rathole-dashboard');
+      } else if (tabId === 'tab-replication') {
+        refreshBucardoConsole();
+      }
+    }
+
+    // API calls for logs & status
+    async function refreshLogs(serviceName) {
+      const consoleElement = document.getElementById(`console-${serviceName}`);
+      if (!consoleElement) return;
+      
+      consoleElement.textContent = `Mengambil log terbaru untuk ${serviceName}...`;
+      try {
+        const response = await fetch(`/api/debug/logs/${serviceName}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        consoleElement.textContent = data.logs || 'Tidak ada log terdeteksi.';
+      } catch (err) {
+        consoleElement.textContent = `Gagal memuat log:\n${err.message}\nPastikan Anda memiliki hak akses administrator (Basic Auth) dan session aktif.`;
+      }
+    }
+
+    async function refreshBucardoConsole() {
+      const consoleElement = document.getElementById('bucardo-console-output');
+      if (!consoleElement) return;
+
+      consoleElement.textContent = 'Mengambil status terbaru dari Bucardo engine...';
+      try {
+        const response = await fetch('/api/debug/bucardo');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        let content = '';
+        if (data.status) {
+          content += `=== BUCARDO STATUS ===\n${data.status}\n`;
+        }
+        if (data.sync) {
+          content += `=== BUCARDO LIST SYNC ===\n${data.sync}\n`;
+        }
+        consoleElement.textContent = content || 'Bucardo belum dikonfigurasi atau tidak terdeteksi.';
+      } catch (err) {
+        consoleElement.textContent = `Gagal memuat status Bucardo:\n${err.message}\nPastikan engine Bucardo terpasang di VPS.`;
+      }
+    }
+
+    // Auto refresh PostgreSQL stats periodically
+    async function refreshPostgresStats() {
+      try {
+        const response = await fetch('/api/monitor/postgres/latest');
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        // Update metric values in Table
+        if (data.checked_at) {
+          document.getElementById('val-checked_at').textContent = data.checked_at;
+          document.getElementById('val-connect_ms').textContent = data.connect_ms !== null ? `${data.connect_ms} ms` : '-';
+          document.getElementById('val-query_ms').textContent = data.query_ms !== null ? `${data.query_ms} ms` : '-';
+          document.getElementById('val-tx_ms').textContent = data.tx_ms !== null ? `${data.tx_ms} ms` : '-';
+          document.getElementById('val-active_conn').textContent = data.active_connections !== null ? data.active_connections : '-';
+          document.getElementById('val-waiting_conn').textContent = data.waiting_connections !== null ? data.waiting_connections : '-';
+          document.getElementById('val-cache_hit').textContent = data.cache_hit_ratio !== null ? `${data.cache_hit_ratio} %` : '-';
+
+          // Update badges
+          const setBadgeStatus = (elId, statusText) => {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            el.textContent = statusText;
+            el.className = 'badge-status';
+            if (statusText === 'Healthy' || statusText === 'Lancar' || statusText === 'Normal') {
+              el.classList.add('active');
+            } else if (statusText === 'Warning') {
+              el.classList.add('warning');
+            } else {
+              el.classList.add('inactive');
+            }
+          };
+
+          setBadgeStatus('status-connect', data.status);
+          setBadgeStatus('status-query', data.status);
+          setBadgeStatus('status-tx', data.status);
+          setBadgeStatus('status-waiting', (data.waiting_connections || 0) > 0 ? 'Antrean Terdeteksi' : 'Lancar');
+
+          // Error handling
+          const errNotice = document.getElementById('pg-error-notice');
+          const errText = document.getElementById('pg-error-text');
+          if (data.last_error) {
+            errNotice.style.display = 'block';
+            errText.textContent = data.last_error;
+          } else {
+            errNotice.style.display = 'none';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to auto-refresh postgres stats:', err);
+      }
+    }
+
+    // Set intervals
+    setInterval(refreshPostgresStats, 5000);
+  </script>
 </body>
 </html>

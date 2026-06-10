@@ -4,6 +4,8 @@ import os
 import sqlite3
 import socket
 import subprocess
+import threading
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus
@@ -264,6 +266,11 @@ def summarize_command_output(result: subprocess.CompletedProcess[str], limit: in
     return output[-limit:]
 
 
+finalize_lock = threading.Lock()
+last_finalize_attempt = 0.0
+FINALIZE_COOLDOWN_SEC = 30.0
+
+
 def run_db_sync_finalize(state: dict[str, Any]) -> tuple[bool, str]:
     db_sync_mode = state.get("db_sync_mode")
     if not isinstance(db_sync_mode, dict) or db_sync_mode.get("enabled") is not True:
@@ -271,41 +278,75 @@ def run_db_sync_finalize(state: dict[str, Any]) -> tuple[bool, str]:
     if db_sync_mode.get("bucardo_configured") is True:
         return True, "DB sync sudah selesai; Bucardo sudah configured."
 
-    script_path = finalize_script_path(state)
-    if not script_path.exists():
-        return False, f"Script finalisasi DB sync tidak ditemukan: {script_path}"
-
-    state_path = get_state_path()
-    easy_root = state_path.parent.parent if state_path.parent.name == "state" else Path("/opt/easy-rathole")
-    env = os.environ.copy()
-    env.setdefault("EASY_RATHOLE_ROOT", str(easy_root))
-    env["EASY_RATHOLE_STATE_FILE"] = str(state_path)
+    if not finalize_lock.acquire(blocking=False):
+        return False, "Proses finalisasi DB sync sedang berjalan."
 
     try:
-        result = subprocess.run(
-            ["bash", str(script_path)],
-            check=False,
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=int(os.environ.get("EASY_RATHOLE_DB_SYNC_FINALIZE_TIMEOUT", "3600")),
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return False, f"Finalisasi DB sync gagal dijalankan: {exc}"
+        # Re-check in case it was updated while waiting for lock
+        current_state = load_state()
+        current_sync = current_state.get("db_sync_mode")
+        if isinstance(current_sync, dict) and current_sync.get("bucardo_configured") is True:
+            return True, "DB sync sudah selesai; Bucardo sudah configured."
 
-    if result.returncode != 0:
-        detail = summarize_command_output(result)
-        if detail:
-            return False, f"Finalisasi DB sync gagal: {detail}"
-        return False, f"Finalisasi DB sync gagal dengan exit code {result.returncode}."
+        script_path = finalize_script_path(state)
+        if not script_path.exists():
+            return False, f"Script finalisasi DB sync tidak ditemukan: {script_path}"
 
-    refreshed = load_state()
-    refreshed_sync = refreshed.get("db_sync_mode")
-    if isinstance(refreshed_sync, dict) and refreshed_sync.get("bucardo_configured") is True:
-        return True, "Finalisasi DB sync berhasil: initial clone selesai dan Bucardo aktif."
-    if isinstance(refreshed_sync, dict) and refreshed_sync.get("waiting_for_client") is True:
-        return True, "Finalisasi DB sync menunggu client: private DB belum reachable via tunnel."
-    return True, "Finalisasi DB sync selesai dijalankan."
+        state_path = get_state_path()
+        easy_root = state_path.parent.parent if state_path.parent.name == "state" else Path("/opt/easy-rathole")
+        env = os.environ.copy()
+        env.setdefault("EASY_RATHOLE_ROOT", str(easy_root))
+        env["EASY_RATHOLE_STATE_FILE"] = str(state_path)
+
+        try:
+            result = subprocess.run(
+                ["bash", str(script_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=int(os.environ.get("EASY_RATHOLE_DB_SYNC_FINALIZE_TIMEOUT", "3600")),
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return False, f"Finalisasi DB sync gagal dijalankan: {exc}"
+
+        if result.returncode != 0:
+            detail = summarize_command_output(result)
+            if detail:
+                return False, f"Finalisasi DB sync gagal: {detail}"
+            return False, f"Finalisasi DB sync gagal dengan exit code {result.returncode}."
+
+        refreshed = load_state()
+        refreshed_sync = refreshed.get("db_sync_mode")
+        if isinstance(refreshed_sync, dict) and refreshed_sync.get("bucardo_configured") is True:
+            return True, "Finalisasi DB sync berhasil: initial clone selesai dan Bucardo aktif."
+        if isinstance(refreshed_sync, dict) and refreshed_sync.get("waiting_for_client") is True:
+            return True, "Finalisasi DB sync menunggu client: private DB belum reachable via tunnel."
+        return True, "Finalisasi DB sync selesai dijalankan."
+    finally:
+        finalize_lock.release()
+
+
+def auto_finalize_callback() -> None:
+    global last_finalize_attempt
+    now = time.time()
+    if now - last_finalize_attempt < FINALIZE_COOLDOWN_SEC:
+        return
+
+    state = load_state()
+    db_sync = state.get("db_sync_mode")
+    if isinstance(db_sync, dict) and db_sync.get("enabled") is True and not db_sync.get("bucardo_configured"):
+        tunnel_addr = db_sync.get("private_db_tunnel_addr", "127.0.0.1:5445")
+        if ":" in tunnel_addr:
+            host, port_str = tunnel_addr.rsplit(":", 1)
+            if port_str.isdigit():
+                port = int(port_str)
+                try:
+                    with socket.create_connection((host, port), timeout=0.5):
+                        last_finalize_attempt = now
+                        run_db_sync_finalize(state)
+                except OSError:
+                    pass
 
 
 @app.get("/health")
@@ -313,10 +354,50 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/debug/logs/{service}")
+def get_debug_logs(service: str, _: str = Depends(require_auth)) -> dict[str, str]:
+    if service not in ("rathole", "easy-rathole-dashboard"):
+        raise HTTPException(status_code=400, detail="Service tidak valid")
+    try:
+        result = subprocess.run(
+            ["journalctl", "-u", service, "-n", "50", "--no-pager"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return {"service": service, "logs": result.stdout or result.stderr or ""}
+    except Exception as exc:
+        return {"service": service, "logs": f"Gagal mengambil log: {exc}"}
+
+
+@app.get("/api/debug/bucardo")
+def get_bucardo_status(_: str = Depends(require_auth)) -> dict[str, str]:
+    try:
+        result_status = subprocess.run(
+            ["bucardo", "status"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        result_sync = subprocess.run(
+            ["bucardo", "list", "sync"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return {
+            "status": result_status.stdout or result_status.stderr or "",
+            "sync": result_sync.stdout or result_sync.stderr or "",
+        }
+    except Exception as exc:
+        return {"status": f"Bucardo tidak terdeteksi atau gagal dihubungi: {exc}", "sync": ""}
+
+
 @app.on_event("startup")
 def startup() -> None:
     with connect() as conn:
         ensure_postgres_monitor_table(conn)
+    postgres_monitor_worker.set_auto_finalize_callback(auto_finalize_callback)
     postgres_monitor_worker.start()
 
 

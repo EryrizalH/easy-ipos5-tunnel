@@ -248,6 +248,73 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         self.assertEqual(response.status_code, 303)
         self.assertIn("Finalisasi+DB+sync+gagal", response.headers["location"])
 
+    @patch("socket.create_connection")
+    @patch("app.main.run_db_sync_finalize")
+    def test_auto_finalize_callback_triggers_finalize_when_reachable(self, mock_finalize, mock_connect) -> None:
+        save_state(
+            {
+                "db_sync_mode": {
+                    "enabled": True,
+                    "initial_clone_done": False,
+                    "bucardo_configured": False,
+                    "private_db_tunnel_addr": "127.0.0.1:5445",
+                }
+            },
+            self.state_path,
+        )
+        main.last_finalize_attempt = 0.0
+        
+        main.auto_finalize_callback()
+        
+        mock_connect.assert_called_once_with(("127.0.0.1", 5445), timeout=0.5)
+        mock_finalize.assert_called_once()
+
+    @patch("socket.create_connection")
+    @patch("app.main.run_db_sync_finalize")
+    def test_auto_finalize_callback_honors_cooldown(self, mock_finalize, mock_connect) -> None:
+        save_state(
+            {
+                "db_sync_mode": {
+                    "enabled": True,
+                    "initial_clone_done": False,
+                    "bucardo_configured": False,
+                    "private_db_tunnel_addr": "127.0.0.1:5445",
+                }
+            },
+            self.state_path,
+        )
+        main.last_finalize_attempt = main.time.time() - 5.0 # only 5s ago, cooldown is 30s
+        
+        main.auto_finalize_callback()
+        
+        mock_connect.assert_not_called()
+        mock_finalize.assert_not_called()
+
+    @patch("app.main.subprocess.run")
+    def test_get_debug_logs_success(self, mock_run) -> None:
+        mock_run.return_value = main.subprocess.CompletedProcess(
+            args=["journalctl"], returncode=0, stdout="rathole log lines", stderr=""
+        )
+        
+        response = main.get_debug_logs(service="rathole", _="admin")
+        self.assertEqual(response["service"], "rathole")
+        self.assertEqual(response["logs"], "rathole log lines")
+
+    def test_get_debug_logs_invalid_service(self) -> None:
+        with self.assertRaises(HTTPException) as ctx:
+            main.get_debug_logs(service="invalid_service", _="admin")
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    @patch("app.main.subprocess.run")
+    def test_get_bucardo_status(self, mock_run) -> None:
+        mock_run.return_value = main.subprocess.CompletedProcess(
+            args=["bucardo"], returncode=0, stdout="bucardo active", stderr=""
+        )
+        
+        response = main.get_bucardo_status(_="admin")
+        self.assertEqual(response["status"], "bucardo active")
+        self.assertEqual(response["sync"], "bucardo active")
+
 
 if __name__ == "__main__":
     unittest.main()

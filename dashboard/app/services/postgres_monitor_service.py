@@ -222,6 +222,10 @@ class PostgresMonitorWorker:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self.cfg = read_monitor_config()
+        self._auto_finalize_callback = None
+
+    def set_auto_finalize_callback(self, callback) -> None:
+        self._auto_finalize_callback = callback
 
     def start(self) -> None:
         if not self.cfg["enabled"]:
@@ -242,4 +246,11 @@ class PostgresMonitorWorker:
             with connect() as conn:
                 ensure_postgres_monitor_table(conn)
                 upsert_postgres_monitor_snapshot(conn, snap)
+            
+            if self._auto_finalize_callback:
+                try:
+                    self._auto_finalize_callback()
+                except Exception:
+                    pass
+
             self._stop_event.wait(self.cfg["interval_sec"])
