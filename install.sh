@@ -105,6 +105,19 @@ PY
   fi
 }
 
+install_cli() {
+  local state_file="$1"
+  local cli_path="${EASY_RATHOLE_CLI_PATH:-/usr/local/bin/easy-rathole}"
+  local now
+
+  install -m 0755 "${SCRIPT_DIR}/scripts/easy-rathole-cli.sh" "$cli_path"
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  state_merge_json "$state_file" "{\
+    \"cli_path\": \"${cli_path}\", \
+    \"updated_at\": \"${now}\"\
+  }"
+}
+
 initialize_db_sync_mode() {
   local state_file="$1"
   local vps_bind_host="${EASY_RATHOLE_VPS_DB_BIND_HOST:-0.0.0.0}"
@@ -189,7 +202,7 @@ main() {
   export EASY_RATHOLE_CONFIG_DIR="${EASY_RATHOLE_CONFIG_DIR:-/etc/easy-rathole}"
   export EASY_RATHOLE_STATE_FILE="${EASY_RATHOLE_STATE_FILE:-${EASY_RATHOLE_ROOT}/state/install-state.json}"
 
-  local total_steps=7
+  local total_steps=8
   local current_step=1
 
   run_step "$current_step" "$total_steps" "Hardening baseline server" \
@@ -240,6 +253,10 @@ main() {
 
   run_step "$current_step" "$total_steps" "Configure firewall ports" \
     configure_firewall_ports "${EASY_RATHOLE_STATE_FILE}"
+  current_step=$((current_step + 1))
+
+  run_step "$current_step" "$total_steps" "Install root CLI" \
+    install_cli "${EASY_RATHOLE_STATE_FILE}"
 
   if [[ "${EASY_RATHOLE_INSTALL_DB_SYNC:-0}" == "1" ]]; then
     log INFO "DB sync finalization pending. Buka dashboard setelah client tunnel aktif, lalu jalankan Finalisasi DB Sync."
@@ -259,12 +276,14 @@ main() {
   local db_sync_waiting
   local db_sync_clone_done
   local db_sync_bucardo_configured
+  local cli_path
 
   public_ip="$(state_get "${EASY_RATHOLE_STATE_FILE}" "public_ip" "<unknown>")"
   control_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "rathole_control_port" "<unknown>")"
   dashboard_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "dashboard_port" "8088")"
   admin_username="$(state_get "${EASY_RATHOLE_STATE_FILE}" "admin_username" "admin")"
   credentials_file="$(state_get "${EASY_RATHOLE_STATE_FILE}" "credentials_file" "${EASY_RATHOLE_ROOT}/state/dashboard-credentials.txt")"
+  cli_path="$(state_get "${EASY_RATHOLE_STATE_FILE}" "cli_path" "/usr/local/bin/easy-rathole")"
   hardening_applied="$(state_get "${EASY_RATHOLE_STATE_FILE}" "hardening_applied" "false")"
   hardening_ssh_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "hardening_ssh_port" "22")"
   db_sync_enabled="$(python3 - "${EASY_RATHOLE_STATE_FILE}" <<'PY'
@@ -391,6 +410,11 @@ Services:
   - rathole
   - easy-rathole-dashboard
 
+Root CLI:
+  - sudo ${cli_path} status
+  - sudo ${cli_path} debug
+  - sudo ${cli_path} db-sync finalize
+
 Baseline keamanan:
   - hardening diterapkan : ${hardening_applied}
   - port SSH diizinkan   : ${hardening_ssh_port}
@@ -400,7 +424,7 @@ DB sync:
   - initial clone         : ${db_sync_clone_done}
   - Bucardo configured    : ${db_sync_bucardo_configured}
   - waiting for client    : ${db_sync_waiting}
-  - finalisasi            : jalankan dari dashboard setelah client tunnel aktif
+  - finalisasi            : dashboard atau sudo ${cli_path} db-sync finalize
 ============================================================
 EOF
 }

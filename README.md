@@ -16,6 +16,7 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
   - melihat status service dan status port forward
   - set/rotasi global token
   - download bundle client Windows/Linux
+- Root CLI `easy-rathole` untuk setup ulang dan debugging dari terminal VPS
 - Hardening baseline server saat install (UFW, fail2ban, unattended-upgrades, sysctl, baseline sshd)
 - Generator bundle client:
   - **Windows**: ZIP berisi service installer (NSSM) + GUI tray auto-start
@@ -127,6 +128,7 @@ Setelah install selesai, installer menampilkan:
 - lokasi file password dashboard
 - control port rathole
 - daftar port forward aktif
+- command CLI root untuk status, debug, dan finalisasi DB sync
 
 ---
 
@@ -166,6 +168,7 @@ Setelah install selesai, installer menampilkan:
     Gunakan `private_db_backend_mode=pgbouncer_backend` bila PostgreSQL private sudah dipindah ke backend `127.0.0.1:5445` oleh PgBouncer.
 - Metadata PostgreSQL VPS Docker disimpan pada `vps_postgres`.
 - Config rathole server: `/etc/easy-rathole/server.toml`
+- Root CLI: `/usr/local/bin/easy-rathole`
 - Credential dashboard: `/opt/easy-rathole/state/dashboard-credentials.txt`
 - DB dashboard (sqlite): `/opt/easy-rathole/state/easy-rathole.db`
 - Output bundle client: `/opt/easy-rathole/bundles`
@@ -196,6 +199,24 @@ Fitur utama:
 Health check endpoint:
 
 - `GET /health` → `{"status":"ok"}`
+
+Root CLI di VPS:
+
+```bash
+sudo easy-rathole status
+sudo easy-rathole debug
+sudo easy-rathole doctor
+sudo easy-rathole logs rathole -n 100
+sudo easy-rathole logs dashboard -n 100
+```
+
+Setup ulang lewat CLI:
+
+```bash
+sudo easy-rathole setup
+sudo easy-rathole setup --db-sync
+sudo easy-rathole setup --vps-db-only
+```
 
 Endpoint monitor PostgreSQL untuk GUI:
 
@@ -368,6 +389,14 @@ Clone awal melalui dashboard:
 - DB VPS tidak akan dioverwrite bila sudah berisi object user, kecuali `EASY_RATHOLE_FORCE_INITIAL_CLONE=1`.
 - Dump sementara disimpan di `/opt/easy-rathole/backups`.
 - Role/auth di-dump best-effort sebelum restore. Password hash role bisa 1:1 hanya bila user dump punya permission cukup.
+
+Finalisasi dan debug DB sync juga bisa lewat CLI:
+
+```bash
+sudo easy-rathole db-sync finalize
+sudo easy-rathole db-sync status
+sudo easy-rathole debug
+```
 
 Sequence ganjil/genap sengaja tidak diterapkan otomatis. Jalankan hanya setelah backup dan snapshot awal kedua database sama:
 

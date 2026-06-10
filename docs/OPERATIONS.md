@@ -43,6 +43,7 @@ sudo systemctl restart easy-rathole-dashboard
 - DB dashboard: `/opt/easy-rathole/state/easy-rathole.db`
 - Rathole server config: `/etc/easy-rathole/server.toml`
 - Bundle output: `/opt/easy-rathole/bundles`
+- Root CLI: `/usr/local/bin/easy-rathole`
 
 ## Rotasi token
 
@@ -82,6 +83,27 @@ PY
 ```bash
 journalctl -u rathole -f
 journalctl -u easy-rathole-dashboard -f
+```
+
+## Root CLI setup dan debugging
+
+Installer memasang CLI `easy-rathole` untuk operasi root dari terminal VPS:
+
+```bash
+sudo easy-rathole status
+sudo easy-rathole debug
+sudo easy-rathole doctor
+sudo easy-rathole logs rathole -n 100
+sudo easy-rathole logs dashboard -n 100
+```
+
+Setup ulang dan finalisasi DB sync:
+
+```bash
+sudo easy-rathole setup
+sudo easy-rathole setup --db-sync
+sudo easy-rathole db-sync finalize
+sudo easy-rathole db-sync status
 ```
 
 ## Setup DB sync Bucardo
@@ -157,6 +179,7 @@ sudo EASY_RATHOLE_APPLY_SEQUENCE_POLICY=1 /opt/easy-rathole/src/easy-ipos5-tunne
 Verifikasi koneksi Bucardo:
 
 ```bash
+sudo easy-rathole db-sync status
 psql "host=127.0.0.1 port=5444 dbname=postgres user=DB_USER" -c "select 1"
 psql "host=127.0.0.1 port=5445 dbname=postgres user=DB_USER" -c "select 1"
 bucardo status
@@ -172,9 +195,8 @@ ERROR: relation "bucardo.bucardo_truncate_trigger" does not exist
 jalankan finalisasi DB sync ulang dari dashboard, atau dari VPS:
 
 ```bash
-sudo /opt/easy-rathole/src/easy-ipos5-tunnel/scripts/install_db_sync_bucardo.sh
-sudo bucardo restart
-bucardo status
+sudo easy-rathole db-sync finalize
+sudo easy-rathole db-sync status
 ```
 
 Script finalisasi akan memastikan tabel metadata truncate Bucardo tersedia di DB VPS dan DB private, lalu menjalankan `bucardo validate sync` ulang. Jika tetap gagal, pastikan user DB sync punya hak `CREATE` pada database aplikasi di kedua sisi.
