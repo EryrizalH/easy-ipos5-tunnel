@@ -2,6 +2,7 @@ package pgadmin
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/lock-ipos/lock-ipos/internal/db"
 	"github.com/lock-ipos/lock-ipos/internal/logger"
@@ -120,6 +121,25 @@ func ExecuteSQLViaWorkaroundWithProgress(pgBinPath, databaseName, sql string, re
 // SetPermissionViaWorkaround sets the PostgreSQL user permission using the trust authentication workaround
 func SetPermissionViaWorkaround(pgBinPath, targetUser string, allowCreateDB bool) error {
 	return SetPermissionViaWorkaroundWithProgress(pgBinPath, targetUser, allowCreateDB, progress.NopReporter())
+}
+
+// EnsureBucardoRoleViaWorkaround grants the local sync role privileges required
+// by Bucardo to apply replicated rows on PostgreSQL 9.5.
+func EnsureBucardoRoleViaWorkaround(pgBinPath, targetUser string) error {
+	return EnsureBucardoRoleViaWorkaroundWithProgress(pgBinPath, targetUser, progress.NopReporter())
+}
+
+func EnsureBucardoRoleViaWorkaroundWithProgress(pgBinPath, targetUser string, reporter progress.Reporter) error {
+	query := buildBucardoRoleSQL(targetUser)
+	return ExecuteSQLViaWorkaroundWithProgress(pgBinPath, "postgres", query, reporter)
+}
+
+func buildBucardoRoleSQL(targetUser string) string {
+	return fmt.Sprintf("ALTER ROLE %s WITH SUPERUSER CREATEROLE REPLICATION;", quoteIdentifier(targetUser))
+}
+
+func quoteIdentifier(value string) string {
+	return `"` + fmt.Sprint(strings.ReplaceAll(value, `"`, `""`)) + `"`
 }
 
 func SetPermissionViaWorkaroundWithProgress(pgBinPath, targetUser string, allowCreateDB bool, reporter progress.Reporter) (err error) {

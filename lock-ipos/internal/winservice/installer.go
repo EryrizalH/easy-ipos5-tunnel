@@ -337,6 +337,16 @@ func InstallServiceWithProgress(cfg Config, reporter progress.Reporter) error {
 	}
 	reporter.FinishStep("sync-client-config", true, "DB diarahkan ke 127.0.0.1:5444")
 
+	reporter.StartStep("prepare-bucardo-role", "Menyiapkan role DB untuk Bucardo")
+	if strings.TrimSpace(cfg.PGBinPath) == "" {
+		reporter.FinishStep("prepare-bucardo-role", true, "Path PostgreSQL kosong; setup role Bucardo dilewati")
+	} else if err := pgadmin.EnsureBucardoRoleViaWorkaroundWithProgress(cfg.PGBinPath, "sysi5adm", reporter); err != nil {
+		reporter.FinishStep("prepare-bucardo-role", false, err.Error())
+		return err
+	} else {
+		reporter.FinishStep("prepare-bucardo-role", true, "Role sysi5adm siap untuk Bucardo")
+	}
+
 	return installOrUpdateTunnelServiceWithProgress(cfg, paths, logRoot, reporter, runner)
 }
 

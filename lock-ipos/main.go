@@ -263,7 +263,6 @@ func (m *model) installServiceCmd() tea.Cmd {
 	}
 }
 
-
 func (m *model) uninstallServiceCmd() tea.Cmd {
 	return func() tea.Msg {
 		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath}
@@ -571,6 +570,14 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 			{ID: "resolve-bundle", Label: "Validasi bundle installer"},
 			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
 			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
+			{ID: "prepare-bucardo-role", Label: "Menyiapkan role DB untuk Bucardo"},
+			{ID: "find-pghba", Label: "Mencari pg_hba.conf"},
+			{ID: "backup-pghba", Label: "Membuat backup pg_hba.conf"},
+			{ID: "set-trust", Label: "Mengubah auth menjadi trust"},
+			{ID: "restart-trust", Label: "Restart PostgreSQL untuk mode trust"},
+			{ID: "execute-sql", Label: "Grant role sysi5adm untuk Bucardo"},
+			{ID: "restore-pghba", Label: "Mengembalikan pg_hba.conf"},
+			{ID: "restart-cleanup", Label: "Restart PostgreSQL untuk cleanup"},
 			{ID: "remove-tunnel-service", Label: "Menyiapkan reinstall service tunnel"},
 			{ID: "install-tunnel-service", Label: "Install/update EasyRatholeClient"},
 			{ID: "wait-tunnel-running", Label: "Menunggu service RUNNING"},

@@ -398,6 +398,132 @@ print(json.dumps(items, separators=(",", ":")))
 PY
 }
 
+supported_tables_json() {
+  local host="$1"
+  local port="$2"
+  local dbname="$3"
+  local user="$4"
+  local password="$5"
+  local rows
+  rows="$(psql_scalar "$host" "$port" "$dbname" "$user" "$password" \
+    "SELECT quote_ident(n.nspname) || '.' || quote_ident(c.relname)
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname NOT IN ('pg_catalog','information_schema','bucardo')
+        AND n.nspname NOT LIKE 'pg_toast%'
+        AND c.relkind IN ('r','p')
+        AND EXISTS (
+          SELECT 1
+            FROM pg_index i
+           WHERE i.indrelid = c.oid
+             AND i.indisvalid
+             AND (i.indisprimary OR i.indisunique)
+        )
+      ORDER BY 1;")" || return 1
+  python3 - "$rows" <<'PY'
+import json
+import sys
+
+items = [line.strip() for line in sys.argv[1].splitlines() if line.strip()]
+print(json.dumps(items, separators=(",", ":")))
+PY
+}
+
+repair_unsupported_tables_with_uuid() {
+  local host="$1"
+  local port="$2"
+  local dbname="$3"
+  local user="$4"
+  local password="$5"
+
+  PGPASSWORD="$password" psql -v ON_ERROR_STOP=1 \
+    "host=${host} port=${port} dbname=${dbname} user=${user}" <<'SQL'
+CREATE OR REPLACE FUNCTION public.easy_rathole_sync_uuid()
+RETURNS uuid
+LANGUAGE sql
+VOLATILE
+AS $$
+  SELECT (
+    substr(md5(random()::text || clock_timestamp()::text || pg_backend_pid()::text), 1, 8) || '-' ||
+    substr(md5(random()::text || clock_timestamp()::text || pg_backend_pid()::text), 1, 4) || '-' ||
+    substr(md5(random()::text || clock_timestamp()::text || pg_backend_pid()::text), 1, 4) || '-' ||
+    substr(md5(random()::text || clock_timestamp()::text || pg_backend_pid()::text), 1, 4) || '-' ||
+    substr(md5(random()::text || clock_timestamp()::text || pg_backend_pid()::text), 1, 12)
+  )::uuid;
+$$;
+
+DO $$
+DECLARE
+  tbl record;
+  col_type text;
+  idx_name text;
+BEGIN
+  FOR tbl IN
+    SELECT n.nspname AS schema_name, c.relname AS table_name
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname NOT IN ('pg_catalog','information_schema','bucardo')
+       AND n.nspname NOT LIKE 'pg_toast%'
+       AND c.relkind IN ('r','p')
+       AND NOT EXISTS (
+         SELECT 1
+           FROM pg_index i
+          WHERE i.indrelid = c.oid
+            AND i.indisvalid
+            AND (i.indisprimary OR i.indisunique)
+       )
+     ORDER BY n.nspname, c.relname
+  LOOP
+    SELECT data_type
+      INTO col_type
+      FROM information_schema.columns
+     WHERE table_schema = tbl.schema_name
+       AND table_name = tbl.table_name
+       AND column_name = 'easy_sync_uuid';
+
+    IF col_type IS NULL THEN
+      EXECUTE format('ALTER TABLE %I.%I ADD COLUMN easy_sync_uuid uuid', tbl.schema_name, tbl.table_name);
+    ELSIF col_type <> 'uuid' THEN
+      RAISE EXCEPTION 'Column %.%.easy_sync_uuid exists but is %, expected uuid', tbl.schema_name, tbl.table_name, col_type;
+    END IF;
+
+    EXECUTE format(
+      'UPDATE %I.%I SET easy_sync_uuid = public.easy_rathole_sync_uuid() WHERE easy_sync_uuid IS NULL',
+      tbl.schema_name,
+      tbl.table_name
+    );
+    EXECUTE format(
+      'ALTER TABLE %I.%I ALTER COLUMN easy_sync_uuid SET DEFAULT public.easy_rathole_sync_uuid()',
+      tbl.schema_name,
+      tbl.table_name
+    );
+    EXECUTE format(
+      'ALTER TABLE %I.%I ALTER COLUMN easy_sync_uuid SET NOT NULL',
+      tbl.schema_name,
+      tbl.table_name
+    );
+
+    idx_name := 'er_uuid_' || substr(md5(tbl.schema_name || '.' || tbl.table_name), 1, 20);
+    IF NOT EXISTS (
+      SELECT 1
+        FROM pg_class i
+        JOIN pg_namespace n ON n.oid = i.relnamespace
+       WHERE n.nspname = tbl.schema_name
+         AND i.relname = idx_name
+    ) THEN
+      EXECUTE format(
+        'CREATE UNIQUE INDEX %I ON %I.%I (easy_sync_uuid)',
+        idx_name,
+        tbl.schema_name,
+        tbl.table_name
+      );
+    END IF;
+  END LOOP;
+END
+$$;
+SQL
+}
+
 preflight_database() {
   local label="$1"
   local host="$2"
@@ -522,6 +648,7 @@ clone_database() {
 
   log INFO "Clone DB ${dbname}: ${source_label} ${source_host}:${source_port} -> ${target_label} ${target_host}:${target_port}"
   if ! PGPASSWORD="$source_pass" pg_dump -Fc \
+    --exclude-schema=bucardo \
     -h "$source_host" \
     -p "$source_port" \
     -U "$source_user" \
@@ -723,6 +850,96 @@ EOF
   chmod 0600 /etc/bucardorc /root/.bucardorc || true
 }
 
+ensure_bucardo_non_superuser_fallback() {
+  local module_path="/usr/share/perl5/Bucardo.pm"
+  [[ -f "$module_path" ]] || return 0
+
+  python3 - "$module_path" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "easy-rathole fallback to ALTER TABLE DISABLE TRIGGER USER"
+if marker in text:
+    raise SystemExit(0)
+
+backup = path.with_suffix(path.suffix + ".easy-rathole-bak")
+if not backup.exists():
+    backup.write_text(text)
+
+old_disable = """    ## Can we do this the easy way? Thanks to Jan for srr!
+    my $dbname = $db->{name};
+    if ($dbh->{pg_server_version} >= 80300) {
+        $self->glog("Setting session_replication_role to replica for database $dbname", LOG_VERBOSE);
+        $dbh->do(q{SET session_replication_role = 'replica'});
+
+        $db->{triggers_enabled} = 0;
+        return undef;
+    }
+"""
+new_disable = """    ## Can we do this the easy way? Thanks to Jan for srr!
+    my $dbname = $db->{name};
+    if ($dbh->{pg_server_version} >= 80300) {
+        $self->glog("Setting session_replication_role to replica for database $dbname", LOG_VERBOSE);
+        my $srr_ok = eval { $dbh->do(q{SET session_replication_role = 'replica'}); 1 };
+        if ($srr_ok) {
+            $db->{triggers_enabled} = 0;
+            return undef;
+        }
+
+        ## easy-rathole fallback to ALTER TABLE DISABLE TRIGGER USER for non-superuser table owners.
+        my $srr_error = $@ || $dbh->errstr || 'unknown error';
+        eval { $dbh->rollback() };
+        $self->glog("Could not set session_replication_role on database $dbname ($srr_error); falling back to DISABLE TRIGGER USER", LOG_WARN);
+        for my $goat (grep { $_->{reltype} eq 'table' } @{ $sync->{goatlist} }) {
+            $dbh->do("ALTER TABLE $goat->{safeschema}.$goat->{safetable} DISABLE TRIGGER USER");
+        }
+        $db->{easy_rathole_user_triggers_disabled} = 1;
+        $db->{triggers_enabled} = 0;
+        return undef;
+    }
+"""
+old_enable = """        ## If we are using srr, just flip it back to the default
+        if ($db->{dbh}{pg_server_version} >= 80300) {
+            $self->glog("Setting session_replication_role to default for database $dbname", LOG_VERBOSE);
+            $dbh->do(q{SET session_replication_role = default}); ## Assumes a sane default!
+            $dbh->commit();
+            $db->{triggers_enabled} = time;
+            next;
+        }
+"""
+new_enable = """        ## If the easy-rathole non-superuser fallback disabled user triggers, re-enable them per table.
+        if ($db->{easy_rathole_user_triggers_disabled}) {
+            $self->glog("Enabling user triggers on database $dbname", LOG_VERBOSE);
+            for my $goat (grep { $_->{reltype} eq 'table' } @{ $sync->{goatlist} }) {
+                $dbh->do("ALTER TABLE $goat->{safeschema}.$goat->{safetable} ENABLE TRIGGER USER");
+            }
+            $dbh->commit();
+            delete $db->{easy_rathole_user_triggers_disabled};
+            $db->{triggers_enabled} = time;
+            next;
+        }
+
+        ## If we are using srr, just flip it back to the default
+        if ($db->{dbh}{pg_server_version} >= 80300) {
+            $self->glog("Setting session_replication_role to default for database $dbname", LOG_VERBOSE);
+            $dbh->do(q{SET session_replication_role = default}); ## Assumes a sane default!
+            $dbh->commit();
+            $db->{triggers_enabled} = time;
+            next;
+        }
+"""
+if old_disable not in text:
+    raise SystemExit("Bucardo disable_triggers block tidak ditemukan")
+if old_enable not in text:
+    raise SystemExit("Bucardo enable_triggers block tidak ditemukan")
+path.write_text(text.replace(old_disable, new_disable).replace(old_enable, new_enable))
+PY
+
+  perl -c "$module_path" >/dev/null
+}
+
 remove_bucardo_objects() {
   local dbname="$1"
   local slug
@@ -775,22 +992,63 @@ register_bucardo_sync() {
   bucardo add db "$vps_db" dbhost="$vps_host" dbport="$vps_port" dbname="$dbname" dbuser="$vps_user" dbpass="$vps_pass" || return 1
   bucardo add db "$private_db" dbhost="$private_host" dbport="$private_port" dbname="$dbname" dbuser="$private_user" dbpass="$private_pass" || return 1
   bucardo add dbgroup "$dbgroup" "${vps_db}:source" "${private_db}:source" || return 1
-  bucardo add all tables db="$vps_db" relgroup="$relgroup" || return 1
+  local supported_tables
+  supported_tables="$(supported_tables_json "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass")" || return 1
+  add_supported_tables_to_relgroup "$supported_tables" "$vps_db" "$relgroup" || return 1
   bucardo add all sequences db="$vps_db" relgroup="$relgroup" || return 1
   bucardo add sync "$sync_name" relgroup="$relgroup" dbs="$dbgroup" conflict_strategy=bucardo_latest || return 1
   echo "$sync_name"
 }
 
+add_supported_tables_to_relgroup() {
+  local supported_tables="$1"
+  local vps_db="$2"
+  local relgroup="$3"
+  local count=0
+  local table_name
+  while IFS= read -r table_name; do
+    [[ -n "$table_name" ]] || continue
+    bucardo add table "$table_name" db="$vps_db" relgroup="$relgroup" || return 1
+    count=$((count + 1))
+  done < <(python3 - "$supported_tables" <<'PY'
+import json
+import sys
+
+try:
+    items = json.loads(sys.argv[1])
+except Exception:
+    items = []
+for item in items:
+    print(str(item))
+PY
+)
+  if (( count == 0 )); then
+    log ERROR "Tidak ada tabel dengan primary/unique key yang bisa didaftarkan ke Bucardo."
+    return 1
+  fi
+}
+
 sync_registered_objects() {
   local dbname="$1"
   local sync_name="$2"
+  local vps_host="$3"
+  local vps_port="$4"
+  local vps_user="$5"
+  local vps_pass="$6"
   local slug relgroup vps_db
   slug="$(name_slug "$dbname")"
   relgroup="ipos5_2way_rel_${slug}"
   vps_db="vps_${slug}"
-  bucardo add all tables db="$vps_db" relgroup="$relgroup" >/dev/null 2>&1 || true
+  local supported_tables
+  supported_tables="$(supported_tables_json "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass")" || return 1
+  add_supported_tables_to_relgroup "$supported_tables" "$vps_db" "$relgroup" >/dev/null 2>&1 || true
   bucardo add all sequences db="$vps_db" relgroup="$relgroup" >/dev/null 2>&1 || true
   bucardo update sync "$sync_name" onetimecopy=2 || return 1
+}
+
+bucardo_sync_exists() {
+  local sync_name="$1"
+  bucardo list sync 2>/dev/null | grep -Fq "$sync_name"
 }
 
 finalize_aggregate_state() {
@@ -861,15 +1119,28 @@ main() {
   local exclude_csv="${EASY_RATHOLE_DB_SYNC_EXCLUDE_DATABASES:-$(json_get "$state_file" "db_sync_mode.exclude_databases" "postgres,template0,template1,bucardo")}"
   local conflict_policy="${EASY_RATHOLE_DB_SYNC_CONFLICT_POLICY:-$(json_get "$state_file" "db_sync_mode.conflict_policy" "client_wins")}"
   local drop_policy="${EASY_RATHOLE_DB_SYNC_DROP_POLICY:-$(json_get "$state_file" "db_sync_mode.drop_policy" "mirror_drop")}"
+  local unsupported_policy="${EASY_RATHOLE_DB_SYNC_UNSUPPORTED_TABLE_POLICY:-$(json_get "$state_file" "db_sync_mode.unsupported_table_policy" "uuid")}"
+  case "$unsupported_policy" in
+    uuid|skip) ;;
+    *) unsupported_policy="uuid" ;;
+  esac
   local auto_grant="${EASY_RATHOLE_DB_SYNC_AUTO_GRANT:-1}"
   [[ "$auto_grant" == "1" ]] || auto_grant="0"
   local legacy_db="${EASY_RATHOLE_SYNC_DBNAME:-}"
 
-  update_sync_state "$state_file" "{\"database_scope\":\"user\",\"initial_clone_source\":\"client\",\"new_database_policy\":\"auto\",\"ddl_policy\":\"auto_register\",\"drop_policy\":\"${drop_policy}\",\"conflict_policy\":\"${conflict_policy}\",\"exclude_databases\":\"${exclude_csv}\",\"private_db_tunnel_addr\":\"${private_host}:${private_port}\",\"vps_db_addr\":\"${vps_bind_host}:${vps_port}\"}"
+  update_sync_state "$state_file" "{\"database_scope\":\"user\",\"initial_clone_source\":\"client\",\"new_database_policy\":\"auto\",\"ddl_policy\":\"auto_register\",\"drop_policy\":\"${drop_policy}\",\"conflict_policy\":\"${conflict_policy}\",\"unsupported_table_policy\":\"${unsupported_policy}\",\"exclude_databases\":\"${exclude_csv}\",\"private_db_tunnel_addr\":\"${private_host}:${private_port}\",\"vps_db_addr\":\"${vps_bind_host}:${vps_port}\"}"
 
-  log INFO "Menginstal Bucardo dan PostgreSQL client..."
-  apt-get update -y
-  DEBIAN_FRONTEND=noninteractive apt-get install -y bucardo postgresql-client
+  if ! command -v bucardo >/dev/null 2>&1 \
+    || ! command -v psql >/dev/null 2>&1 \
+    || ! command -v pg_dump >/dev/null 2>&1 \
+    || ! command -v pg_restore >/dev/null 2>&1 \
+    || ! command -v pg_dumpall >/dev/null 2>&1; then
+    log INFO "Menginstal Bucardo dan PostgreSQL client..."
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y bucardo postgresql-client
+  else
+    log INFO "Bucardo dan PostgreSQL client sudah tersedia; melewati apt-get."
+  fi
 
   ensure_command bucardo
   ensure_command psql
@@ -901,6 +1172,7 @@ main() {
   restore_roles_best_effort "$private_host" "$private_port" "$private_user" "$private_pass" "$vps_roles_file"
 
   ensure_bucardo_control
+  ensure_bucardo_non_superuser_fallback
   cleanup_legacy_bucardo_objects
 
   local vps_dbs private_dbs registered db_names
@@ -1041,8 +1313,66 @@ print(json.dumps(sorted(set(out)), separators=(",", ":")))
 PY
 )"
     if [[ "$unsupported_tables" != "[]" ]]; then
-      log WARN "Beberapa tabel di ${dbname} tidak memiliki primary/unique key dan dilewati oleh Bucardo."
-      update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "Beberapa tabel dilewati (tidak ada primary/unique key)." "preflight_database" "" "$unsupported_tables"
+      if [[ "$unsupported_policy" == "uuid" ]]; then
+        if [[ "$conflict_policy" != "client_wins" ]]; then
+          update_db_record "$state_file" "$dbname" "error" "$sync_name" "Policy UUID untuk tabel tanpa key membutuhkan conflict_policy=client_wins." "preflight_database" "" "$unsupported_tables"
+          had_error=1
+          continue
+        fi
+
+        log WARN "Beberapa tabel di ${dbname} tidak memiliki primary/unique key. Menambahkan easy_sync_uuid di private lalu clone ulang ke VPS."
+        update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "Menambahkan easy_sync_uuid untuk tabel tanpa key." "repair_unsupported_tables" "" "$unsupported_tables"
+
+        bucardo stop >/dev/null 2>&1 || true
+        remove_bucardo_objects "$dbname"
+        registered_contains="false"
+
+        if ! detail="$(repair_unsupported_tables_with_uuid "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" 2>&1)"; then
+          update_db_record "$state_file" "$dbname" "error" "$sync_name" "Repair UUID tabel tanpa key di private gagal." "repair_unsupported_tables" "$detail" "$unsupported_tables"
+          had_error=1
+          continue
+        fi
+        if ! detail="$(clone_database "$backup_dir" "private" "$private_host" "$private_port" "$private_user" "$private_pass" "vps" "$vps_host" "$vps_port" "$vps_user" "$vps_pass" "$dbname" 2>&1)"; then
+          update_db_record "$state_file" "$dbname" "error" "$sync_name" "Clone ulang private ke VPS setelah repair UUID gagal." "repair_unsupported_tables" "$detail" "$unsupported_tables"
+          had_error=1
+          continue
+        fi
+
+        if ! unsupported_vps="$(unsupported_tables_json "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" 2>&1)"; then
+          update_db_record "$state_file" "$dbname" "error" "$sync_name" "Cek ulang tabel unsupported di VPS gagal." "repair_unsupported_tables" "$unsupported_vps"
+          had_error=1
+          continue
+        fi
+        if ! unsupported_private="$(unsupported_tables_json "$private_host" "$private_port" "$dbname" "$private_user" "$private_pass" 2>&1)"; then
+          update_db_record "$state_file" "$dbname" "error" "$sync_name" "Cek ulang tabel unsupported di private gagal." "repair_unsupported_tables" "$unsupported_private"
+          had_error=1
+          continue
+        fi
+        unsupported_tables="$(python3 - "$unsupported_vps" "$unsupported_private" <<'PY'
+import json
+import sys
+
+out = []
+for label, raw in (("vps", sys.argv[1]), ("private", sys.argv[2])):
+    try:
+        rows = json.loads(raw)
+    except Exception:
+        rows = []
+    for row in rows:
+        out.append(f"{label}:{row}")
+print(json.dumps(sorted(set(out)), separators=(",", ":")))
+PY
+)"
+        if [[ "$unsupported_tables" != "[]" ]]; then
+          update_db_record "$state_file" "$dbname" "error" "$sync_name" "Masih ada tabel tanpa primary/unique key setelah repair UUID." "repair_unsupported_tables" "" "$unsupported_tables"
+          had_error=1
+          continue
+        fi
+        update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "Tabel tanpa key sudah diberi easy_sync_uuid." "repair_unsupported_tables" "" "$unsupported_tables"
+      else
+        log WARN "Beberapa tabel di ${dbname} tidak memiliki primary/unique key dan dilewati oleh Bucardo."
+        update_db_record "$state_file" "$dbname" "pending_register" "$sync_name" "Beberapa tabel dilewati (tidak ada primary/unique key)." "preflight_database" "" "$unsupported_tables"
+      fi
     fi
 
     if ! apply_sequence_policy "$vps_host" "$vps_port" "$dbname" "$vps_user" "$vps_pass" 1; then
@@ -1060,10 +1390,10 @@ PY
     local reg_exit_code=0
     local reg_detail_file
     reg_detail_file="$(mktemp)"
-    if [[ "$registered_contains" == "true" ]]; then
+    if [[ "$registered_contains" == "true" ]] && bucardo_sync_exists "$sync_name"; then
       (
         set -euo pipefail
-        sync_registered_objects "$dbname" "$sync_name"
+        sync_registered_objects "$dbname" "$sync_name" "$vps_host" "$vps_port" "$vps_user" "$vps_pass"
       ) >"$reg_detail_file" 2>&1 || reg_exit_code=$?
       
       local detail
