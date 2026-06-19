@@ -80,15 +80,15 @@ func ParseArgs(args []string, executableDir string) (Config, error) {
 
 func (c Config) normalized() Config {
 	out := c
-	out.BundleDir = strings.TrimSpace(out.BundleDir)
+	out.BundleDir = trimWindowsArgQuotes(strings.TrimSpace(out.BundleDir))
 	if out.BundleDir == "" {
 		out.BundleDir = "."
 	}
-	out.ConfigPath = strings.TrimSpace(out.ConfigPath)
+	out.ConfigPath = trimWindowsArgQuotes(strings.TrimSpace(out.ConfigPath))
 	if out.ConfigPath == "" {
 		out.ConfigPath = filepath.Join(out.BundleDir, DefaultConfigName)
 	}
-	out.RatholePath = strings.TrimSpace(out.RatholePath)
+	out.RatholePath = trimWindowsArgQuotes(strings.TrimSpace(out.RatholePath))
 	if out.RatholePath == "" {
 		out.RatholePath = filepath.Join(out.BundleDir, DefaultRatholeBinaryName)
 	}
@@ -200,4 +200,11 @@ func shutdownChild(cmd *exec.Cmd, waitCh <-chan error, timeout time.Duration, st
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+func trimWindowsArgQuotes(value string) string {
+	if len(value) >= 2 && strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
+		return strings.TrimSuffix(strings.TrimPrefix(value, `"`), `"`)
+	}
+	return value
 }

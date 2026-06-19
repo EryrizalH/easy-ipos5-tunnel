@@ -12,7 +12,7 @@ func EnableTaskSchedulerAutoStart() error {
 		return err
 	}
 
-	tr := fmt.Sprintf("\"%s\" --hidden", exePath)
+	tr := buildTaskSchedulerRunCommand(exePath)
 	out, err := commandCombinedOutput(
 		"schtasks",
 		"/Create",
@@ -25,6 +25,10 @@ func EnableTaskSchedulerAutoStart() error {
 		return fmt.Errorf("gagal membuat task autostart: %s", strings.TrimSpace(string(out)))
 	}
 	return nil
+}
+
+func buildTaskSchedulerRunCommand(exePath string) string {
+	return fmt.Sprintf("\"%s\" --hidden", exePath)
 }
 
 func DisableTaskSchedulerAutoStart() error {

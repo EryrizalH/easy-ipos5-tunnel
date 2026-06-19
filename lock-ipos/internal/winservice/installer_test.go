@@ -96,6 +96,53 @@ func TestBuildInstallCommands(t *testing.T) {
 	}
 }
 
+func TestBuildInstallCommands_QuotesAppArgumentsWithSpaces(t *testing.T) {
+	cfg := Config{ServiceName: "EasyRatholeClient", BundleDir: `C:\Program Files\Easy Rathole Client`}
+	paths := BundlePaths{
+		ServiceWrapperPath: `C:\Program Files\Easy Rathole Client\ipos5-rathole-service.exe`,
+		RatholePath:        `C:\Program Files\Easy Rathole Client\ipos5-rathole.exe`,
+		ClientTomlPath:     `C:\Program Files\Easy Rathole Client\client.toml`,
+	}
+
+	cmds := BuildInstallCommands(cfg, paths, `C:\ProgramData\easy-rathole-client\logs`)
+	if len(cmds) == 0 {
+		t.Fatal("expected install commands")
+	}
+
+	installCmd := cmds[0]
+	if installCmd[2] != `C:\Program Files\Easy Rathole Client\ipos5-rathole-service.exe` {
+		t.Fatalf("NSSM application path must remain unquoted value, got %#v", installCmd)
+	}
+	checks := []string{
+		`--bundle-dir`,
+		`"C:\Program Files\Easy Rathole Client"`,
+		`--config`,
+		`"C:\Program Files\Easy Rathole Client\client.toml"`,
+		`--rathole-bin`,
+		`"C:\Program Files\Easy Rathole Client\ipos5-rathole.exe"`,
+	}
+	for _, want := range checks {
+		found := false
+		for _, got := range installCmd {
+			if got == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected install command to contain %q, got %#v", want, installCmd)
+		}
+	}
+
+	for _, cmd := range cmds {
+		if len(cmd) >= 4 && cmd[0] == "set" && (cmd[2] == "AppDirectory" || cmd[2] == "AppStdout" || cmd[2] == "AppStderr") {
+			if strings.HasPrefix(cmd[3], `"`) || strings.HasSuffix(cmd[3], `"`) {
+				t.Fatalf("NSSM set value %s must not be pre-quoted: %#v", cmd[2], cmd)
+			}
+		}
+	}
+}
+
 func TestBuildPgBouncerInstallCommands(t *testing.T) {
 	paths := BundlePaths{
 		NSSMPath:         `D:\bundle\nssm.exe`,
@@ -109,6 +156,25 @@ func TestBuildPgBouncerInstallCommands(t *testing.T) {
 	}
 	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install PgBouncer") {
 		t.Fatalf("unexpected first command: %s", got)
+	}
+}
+
+func TestBuildPgBouncerInstallCommands_QuotesConfigArgumentWithSpaces(t *testing.T) {
+	paths := BundlePaths{
+		PgBouncerPath:    `C:\Program Files\Easy Rathole Client\pgbouncer.exe`,
+		PgBouncerIniPath: `C:\Program Files\Easy Rathole Client\pgbouncer.ini`,
+	}
+
+	cmds := BuildPgBouncerInstallCommands(paths, `C:\ProgramData\easy-rathole-client\logs`)
+	if len(cmds) == 0 {
+		t.Fatal("expected pgbouncer install commands")
+	}
+	first := cmds[0]
+	if first[2] != `C:\Program Files\Easy Rathole Client\pgbouncer.exe` {
+		t.Fatalf("PgBouncer application path must remain unquoted value, got %#v", first)
+	}
+	if first[3] != `"C:\Program Files\Easy Rathole Client\pgbouncer.ini"` {
+		t.Fatalf("PgBouncer config argument must be quoted, got %#v", first)
 	}
 }
 
@@ -135,8 +201,6 @@ func TestBuildPgBouncerFirewallCommands(t *testing.T) {
 		}
 	}
 }
-
-
 
 func TestBuildPgBouncerIni_DefaultFallback(t *testing.T) {
 	got := buildPgBouncerIni(nil)
