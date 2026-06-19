@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .auth import hash_password
 
-DEFAULT_DB_PATH = "/opt/easy-rathole/state/easy-rathole.db"
+DEFAULT_DB_PATH = "/opt/nusatunnel/state/nusatunnel.db"
 
 
 def utc_now() -> str:
@@ -15,7 +15,7 @@ def utc_now() -> str:
 
 
 def get_db_path() -> str:
-    return os.environ.get("EASY_RATHOLE_DB_PATH", DEFAULT_DB_PATH)
+    return os.environ.get("NUSA_TUNNEL_DB_PATH", DEFAULT_DB_PATH)
 
 
 def connect(db_path: str | None = None) -> sqlite3.Connection:

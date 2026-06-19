@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"easy-rathole/client-gui/internal/appcore"
+	"nusatunnel/client-gui/internal/appcore"
 
 	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -46,7 +46,7 @@ func NewApp(startHidden bool) (*App, error) {
 	}
 
 	return &App{
-		monitor:     appcore.NewMonitor("EasyRatholeClient"),
+		monitor:     appcore.NewMonitor("NusaTunnelClient"),
 		cfgStore:    cfgStore,
 		cfg:         cfg,
 		startHidden: startHidden,
@@ -132,18 +132,18 @@ func (a *App) shutdown(ctx context.Context) {
 }
 
 func (a *App) onTrayReady() {
-	systray.SetTitle("Easy Rathole")
-	systray.SetTooltip("Easy Rathole Client GUI")
+	systray.SetTitle("NusaTunnel")
+	systray.SetTooltip("NusaTunnel Client GUI")
 	if len(trayIcon) > 0 {
 		systray.SetIcon(trayIcon)
 	}
 
-	openItem := systray.AddMenuItem("Open Dashboard", "Tampilkan dashboard")
+	openItem := systray.AddMenuItem("Buka Dashboard", "Tampilkan dashboard")
 	refreshItem := systray.AddMenuItem("Refresh", "Refresh status")
 	systray.AddSeparator()
-	startItem := systray.AddMenuItem("Start Service", "Start EasyRatholeClient")
-	stopItem := systray.AddMenuItem("Stop Service", "Stop EasyRatholeClient")
-	restartItem := systray.AddMenuItem("Restart Service", "Restart EasyRatholeClient")
+	startItem := systray.AddMenuItem("Mulai Layanan", "Mulai NusaTunnelClient")
+	stopItem := systray.AddMenuItem("Hentikan Layanan", "Hentikan NusaTunnelClient")
+	restartItem := systray.AddMenuItem("Mulai Ulang Layanan", "Mulai ulang NusaTunnelClient")
 	systray.AddSeparator()
 	exitItem := systray.AddMenuItem("Exit", "Keluar aplikasi")
 
@@ -207,21 +207,21 @@ func (a *App) GetStatus() appcore.StatusSnapshot {
 }
 
 func (a *App) StartService() appcore.ActionResult {
-	if err := appcore.StartService("EasyRatholeClient"); err != nil {
+	if err := appcore.StartService("NusaTunnelClient"); err != nil {
 		return appcore.ActionResult{OK: false, Message: err.Error()}
 	}
 	return appcore.ActionResult{OK: true, Message: "Service berhasil dijalankan"}
 }
 
 func (a *App) StopService() appcore.ActionResult {
-	if err := appcore.StopService("EasyRatholeClient"); err != nil {
+	if err := appcore.StopService("NusaTunnelClient"); err != nil {
 		return appcore.ActionResult{OK: false, Message: err.Error()}
 	}
 	return appcore.ActionResult{OK: true, Message: "Service berhasil dihentikan"}
 }
 
 func (a *App) RestartService() appcore.ActionResult {
-	if err := appcore.RestartService("EasyRatholeClient"); err != nil {
+	if err := appcore.RestartService("NusaTunnelClient"); err != nil {
 		return appcore.ActionResult{OK: false, Message: err.Error()}
 	}
 	return appcore.ActionResult{OK: true, Message: "Service berhasil direstart"}
@@ -233,7 +233,7 @@ func (a *App) SetConfigPath(path string) appcore.ActionResult {
 	if err := a.saveConfig(cfg); err != nil {
 		return appcore.ActionResult{OK: false, Message: err.Error()}
 	}
-	return appcore.ActionResult{OK: true, Message: "Path client.toml berhasil disimpan"}
+	return appcore.ActionResult{OK: true, Message: "Path File Pengaturan berhasil disimpan"}
 }
 
 func (a *App) EnableAutoStart() appcore.ActionResult {

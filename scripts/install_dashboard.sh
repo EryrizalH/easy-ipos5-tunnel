@@ -11,11 +11,11 @@ main() {
   ensure_command python3
   ensure_command systemctl
 
-  local easy_root="${EASY_RATHOLE_ROOT:-/opt/easy-rathole}"
-  local state_file="${EASY_RATHOLE_STATE_FILE:-${easy_root}/state/install-state.json}"
+  local easy_root="${NUSA_TUNNEL_ROOT:-/opt/nusatunnel}"
+  local state_file="${NUSA_TUNNEL_STATE_FILE:-${easy_root}/state/install-state.json}"
   local deploy_dir="${easy_root}/dashboard"
   local resources_dir="${easy_root}/resources"
-  local db_path="${easy_root}/state/easy-rathole.db"
+  local db_path="${easy_root}/state/nusatunnel.db"
   local bundles_dir="${easy_root}/bundles"
   local cache_dir="${easy_root}/cache"
   local dashboard_port
@@ -44,8 +44,8 @@ main() {
   [[ -f "${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll"
   [[ -f "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll"
   [[ -f "${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll"
-  [[ -f "${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe"
-  [[ -f "${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe"
+  [[ -f "${PROJECT_ROOT}/assets/windows/nusatunnel-service.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/nusatunnel-service.exe"
+  [[ -f "${PROJECT_ROOT}/assets/windows/nusatunnel.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/nusatunnel.exe"
 
   rm -rf "${deploy_dir}/app"
   cp -R "${PROJECT_ROOT}/dashboard/app" "${deploy_dir}/app"
@@ -57,9 +57,9 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-service.cmd.tpl" "${resources_dir}/assets/windows/uninstall-service.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/setup-client.cmd.tpl" "${resources_dir}/assets/windows/setup-client.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/setup.exe" "${resources_dir}/assets/windows/setup.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole-service.exe" "${resources_dir}/assets/windows/ipos5-rathole-service.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole.exe" "${resources_dir}/assets/windows/ipos5-rathole.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/ipos5-rathole-gui.exe" "${resources_dir}/assets/windows/ipos5-rathole-gui.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/nusatunnel-service.exe" "${resources_dir}/assets/windows/nusatunnel-service.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/nusatunnel.exe" "${resources_dir}/assets/windows/nusatunnel.exe"
+  install -m 0644 "${PROJECT_ROOT}/assets/windows/nusatunnel-gui.exe" "${resources_dir}/assets/windows/nusatunnel-gui.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/nssm.exe" "${resources_dir}/assets/windows/nssm.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.exe" "${resources_dir}/assets/windows/pgbouncer.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/libevent-7.dll" "${resources_dir}/assets/windows/libevent-7.dll"
@@ -91,11 +91,11 @@ main() {
   [[ -n "$admin_password" ]] || admin_password="$(random_string 24)"
   [[ -n "$token" ]] || token="$(random_string 40)"
 
-  EASY_RATHOLE_DB_PATH="$db_path" \
-  EASY_RATHOLE_STATE_FILE="$state_file" \
-  EASY_RATHOLE_INITIAL_TOKEN="$token" \
-  EASY_RATHOLE_ADMIN_USERNAME="$admin_username" \
-  EASY_RATHOLE_ADMIN_PASSWORD="$admin_password" \
+  NUSA_TUNNEL_DB_PATH="$db_path" \
+  NUSA_TUNNEL_STATE_FILE="$state_file" \
+  NUSA_TUNNEL_INITIAL_TOKEN="$token" \
+  NUSA_TUNNEL_ADMIN_USERNAME="$admin_username" \
+  NUSA_TUNNEL_ADMIN_PASSWORD="$admin_password" \
   PYTHONPATH="$deploy_dir" \
   "${venv_dir}/bin/python" -m app.bootstrap
 
@@ -108,8 +108,8 @@ main() {
   } > "$credentials_file"
   chmod 0600 "$credentials_file"
 
-  service_file="/etc/systemd/system/easy-rathole-dashboard.service"
-  render_template "${PROJECT_ROOT}/dashboard/systemd/easy-rathole-dashboard.service.tpl" "$service_file" \
+  service_file="/etc/systemd/system/nusatunnel-dashboard.service"
+  render_template "${PROJECT_ROOT}/dashboard/systemd/nusatunnel-dashboard.service.tpl" "$service_file" \
     DASHBOARD_WORKDIR "$deploy_dir" \
     DASHBOARD_VENV "$venv_dir" \
     DASHBOARD_PORT "$dashboard_port" \
@@ -120,16 +120,16 @@ main() {
     RESOURCES_DIR "$resources_dir"
 
   systemctl daemon-reload
-  systemctl enable easy-rathole-dashboard >/dev/null
-  systemctl restart easy-rathole-dashboard
-  systemctl is-active --quiet easy-rathole-dashboard || fail "Gagal menjalankan service: easy-rathole-dashboard"
+  systemctl enable nusatunnel-dashboard >/dev/null
+  systemctl restart nusatunnel-dashboard
+  systemctl is-active --quiet nusatunnel-dashboard || fail "Gagal menjalankan service: nusatunnel-dashboard"
 
   now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   state_merge_json "$state_file" "{\
     \"admin_username\": \"${admin_username}\", \
     \"admin_password\": \"${admin_password}\", \
     \"credentials_file\": \"${credentials_file}\", \
-    \"dashboard_service_name\": \"easy-rathole-dashboard\", \
+    \"dashboard_service_name\": \"nusatunnel-dashboard\", \
     \"dashboard_port\": ${dashboard_port}, \
     \"db_path\": \"${db_path}\", \
     \"bundles_dir\": \"${bundles_dir}\", \
@@ -138,7 +138,7 @@ main() {
   }"
 
   chmod 0600 "$state_file"
-  log INFO "Instalasi dashboard IPOS5TunnelPublik selesai."
+  log INFO "Instalasi dashboard Nusa IPOS 5 Tunnel selesai."
 }
 
 main "$@"

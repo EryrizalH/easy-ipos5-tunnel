@@ -25,11 +25,11 @@ import (
 )
 
 const (
-	DefaultServiceName        = "EasyRatholeClient"
-	pgBouncerService          = "PgBouncer"
-	serviceWrapperBinary      = "ipos5-rathole-service.exe"
-	ratholeBinary             = "ipos5-rathole.exe"
-	guiBinaryName             = "ipos5-rathole-gui.exe"
+	DefaultServiceName        = "NusaTunnelClient"
+	pgBouncerService          = "NusaTunnelDB"
+	serviceWrapperBinary      = "nusatunnel-service.exe"
+	ratholeBinary             = "nusatunnel.exe"
+	guiBinaryName             = "nusatunnel-gui.exe"
 	pgBouncerBinary           = "pgbouncer.exe"
 	pgBouncerLibEvent         = "libevent-7.dll"
 	pgBouncerLibSSL           = "libssl-3-x64.dll"
@@ -39,7 +39,7 @@ const (
 	pgBouncerDBsName          = "pgbouncer-databases.json"
 	pgBouncerUserlist         = "userlist.txt"
 	launcherFileName          = "launch-gui-admin.ps1"
-	shortcutFileName          = "ipos5-rathole.lnk"
+	shortcutFileName          = "nusatunnel.lnk"
 	pgBouncerHost             = "127.0.0.1"
 	pgBouncerListenHost       = "0.0.0.0"
 	pgBouncerPort             = 5444
@@ -47,7 +47,7 @@ const (
 	postgresBackendPort       = 5445
 	postgresBackend           = "127.0.0.1:5445"
 	dbClientForwardAddr       = "127.0.0.1:5444"
-	pgBouncerFirewallRuleName = "IPOS5TunnelPublik PgBouncer 5444"
+	pgBouncerFirewallRuleName = "NusaTunnel Database 5444"
 	pgBouncerStartWait        = 45 * time.Second
 	serviceStartWait          = 30 * time.Second
 	servicePollInterval       = 1 * time.Second
@@ -225,8 +225,8 @@ func BuildInstallCommands(cfg Config, paths BundlePaths, logRoot string) [][]str
 		},
 		{"set", cfg.ServiceName, "AppDirectory", cfg.BundleDir},
 		{"set", cfg.ServiceName, "Start", "SERVICE_AUTO_START"},
-		{"set", cfg.ServiceName, "DisplayName", "IPOS5TunnelPublik Client"},
-		{"set", cfg.ServiceName, "Description", "Auto-start tunnel client untuk akses publik"},
+		{"set", cfg.ServiceName, "DisplayName", "Nusa IPOS 5 Tunnel Client"},
+		{"set", cfg.ServiceName, "Description", "Auto-start sambungan client untuk akses publik"},
 		{"set", cfg.ServiceName, "AppStdout", filepath.Join(logRoot, cfg.ServiceName+".stdout.log")},
 		{"set", cfg.ServiceName, "AppStderr", filepath.Join(logRoot, cfg.ServiceName+".stderr.log")},
 		{"set", cfg.ServiceName, "AppRotateFiles", "1"},
@@ -242,8 +242,8 @@ func BuildPgBouncerInstallCommands(paths BundlePaths, logRoot string) [][]string
 		{"install", pgBouncerService, paths.PgBouncerPath, quoteWindowsCommandArg(paths.PgBouncerIniPath)},
 		{"set", pgBouncerService, "AppDirectory", filepath.Dir(paths.PgBouncerPath)},
 		{"set", pgBouncerService, "Start", "SERVICE_AUTO_START"},
-		{"set", pgBouncerService, "DisplayName", "PgBouncer"},
-		{"set", pgBouncerService, "Description", "Connection pooler PostgreSQL untuk IPOS5TunnelPublik"},
+		{"set", pgBouncerService, "DisplayName", "NusaTunnelDB"},
+		{"set", pgBouncerService, "Description", "Pengoptimal Database untuk Nusa IPOS 5 Tunnel"},
 		{"set", pgBouncerService, "AppStdout", filepath.Join(logRoot, pgBouncerService+".stdout.log")},
 		{"set", pgBouncerService, "AppStderr", filepath.Join(logRoot, pgBouncerService+".stderr.log")},
 		{"set", pgBouncerService, "AppRotateFiles", "1"},
@@ -320,7 +320,7 @@ func InstallServiceWithProgress(cfg Config, reporter progress.Reporter) error {
 	if strings.TrimSpace(programData) == "" {
 		programData = `C:\ProgramData`
 	}
-	logRoot := filepath.Join(programData, "easy-rathole-client", "logs")
+	logRoot := filepath.Join(programData, "nusatunnel-client", "logs")
 	reporter.StartStep("prepare-log-dir", "Menyiapkan folder log runtime")
 	if err := os.MkdirAll(logRoot, 0o755); err != nil {
 		wrapped := fmt.Errorf("gagal membuat folder log: %w", err)
@@ -382,14 +382,14 @@ func installOrUpdateTunnelService(cfg Config, paths BundlePaths, logRoot string)
 
 func installOrUpdateTunnelServiceWithProgress(cfg Config, paths BundlePaths, logRoot string, reporter progress.Reporter, runner commandRunner) error {
 	reporter = normalizeReporter(reporter)
-	reporter.StartStep("remove-tunnel-service", "Menyiapkan reinstall service tunnel")
+	reporter.StartStep("remove-tunnel-service", "Menyiapkan reinstall service sambungan")
 	if err := removeExistingServiceWithRunner(cfg.ServiceName, runner, reporter); err != nil {
 		reporter.FinishStep("remove-tunnel-service", false, err.Error())
 		return err
 	}
 	reporter.FinishStep("remove-tunnel-service", true, "Service lama siap diganti")
 
-	reporter.StartStep("install-tunnel-service", "Install/update EasyRatholeClient")
+	reporter.StartStep("install-tunnel-service", "Install/update NusaTunnelClient")
 	for _, args := range BuildInstallCommands(cfg, paths, logRoot) {
 		if _, err := runner.run(paths.NSSMPath, args...); err != nil {
 			wrapped := fmt.Errorf("gagal nssm %s: %w", strings.Join(args, " "), err)
@@ -402,7 +402,7 @@ func installOrUpdateTunnelServiceWithProgress(cfg Config, paths BundlePaths, log
 		reporter.FinishStep("install-tunnel-service", false, wrapped.Error())
 		return wrapped
 	}
-	reporter.FinishStep("install-tunnel-service", true, "Service tunnel berhasil dipasang")
+	reporter.FinishStep("install-tunnel-service", true, "Service sambungan berhasil dipasang")
 
 	reporter.StartStep("wait-tunnel-running", "Menunggu service RUNNING")
 	if err := waitServiceStateWithProgress(cfg.ServiceName, "RUNNING", serviceStartWait, reporter); err != nil {
@@ -412,7 +412,7 @@ func installOrUpdateTunnelServiceWithProgress(cfg Config, paths BundlePaths, log
 		reporter.FinishStep("wait-tunnel-running", false, wrapped.Error())
 		return wrapped
 	}
-	reporter.FinishStep("wait-tunnel-running", true, "Service tunnel sudah RUNNING")
+	reporter.FinishStep("wait-tunnel-running", true, "Service sambungan sudah RUNNING")
 
 	reporter.StartStep("setup-gui-shortcut", "Menyiapkan shortcut GUI")
 	if strings.TrimSpace(paths.GUIPath) == "" {
@@ -484,26 +484,26 @@ func UninstallServiceWithProgress(cfg Config, reporter progress.Reporter) error 
 	}
 	reporter.FinishStep("validate-admin", true, "Hak Administrator terdeteksi")
 
-	reporter.StartStep("remove-tunnel-service", "Menghapus EasyRatholeClient")
+	reporter.StartStep("remove-tunnel-service", "Menghapus NusaTunnelClient")
 	if err := removeExistingServiceWithRunner(cfg.ServiceName, runner, reporter); err != nil {
 		reporter.FinishStep("remove-tunnel-service", false, err.Error())
 		return err
 	}
-	reporter.FinishStep("remove-tunnel-service", true, "Service tunnel sudah bersih")
+	reporter.FinishStep("remove-tunnel-service", true, "Service sambungan sudah bersih")
 
-	reporter.StartStep("remove-pgbouncer-service", "Menghapus service PgBouncer")
+	reporter.StartStep("remove-pgbouncer-service", "Menghapus service Pengoptimal Database")
 	if err := uninstallPgBouncerWithProgress(runner, reporter); err != nil {
 		reporter.FinishStep("remove-pgbouncer-service", false, err.Error())
 		return err
 	}
-	reporter.FinishStep("remove-pgbouncer-service", true, "Service PgBouncer sudah bersih")
+	reporter.FinishStep("remove-pgbouncer-service", true, "Service Pengoptimal Database sudah bersih")
 
-	reporter.StartStep("remove-pgbouncer-firewall", "Menutup firewall LAN PgBouncer")
+	reporter.StartStep("remove-pgbouncer-firewall", "Menutup firewall LAN Pengoptimal Database")
 	if err := removePgBouncerFirewallRuleWithProgress(reporter, runner.run); err != nil {
 		reporter.FinishStep("remove-pgbouncer-firewall", false, err.Error())
 		return err
 	}
-	reporter.FinishStep("remove-pgbouncer-firewall", true, "Rule firewall PgBouncer sudah dibersihkan")
+	reporter.FinishStep("remove-pgbouncer-firewall", true, "Rule firewall Pengoptimal Database sudah dibersihkan")
 
 	reporter.StartStep("rollback-postgres-port", "Mengembalikan port PostgreSQL ke 5444")
 	if err := rollbackPostgresPort(cfg.PGBinPath); err != nil {
@@ -530,10 +530,10 @@ func installOrUpdatePgBouncerWithProgress(cfg Config, paths BundlePaths, logRoot
 func installOrUpdatePgBouncerCore(cfg Config, paths BundlePaths, logRoot string, reporter progress.Reporter, runner commandRunner, emitSteps bool) error {
 	reporter = normalizeReporter(reporter)
 	if strings.TrimSpace(cfg.PGBinPath) == "" {
-		return errors.New("pg bin path kosong, tidak bisa verifikasi PgBouncer via psql")
+		return errors.New("pg bin path kosong, tidak bisa verifikasi Pengoptimal Database via psql")
 	}
 	if emitSteps {
-		reporter.StartStep("preflight-pgbouncer", "Preflight dependency PgBouncer")
+		reporter.StartStep("preflight-pgbouncer", "Preflight dependency Pengoptimal Database")
 	}
 	if err := preflightPgBouncerInstall(cfg, paths); err != nil {
 		if emitSteps {
@@ -543,22 +543,22 @@ func installOrUpdatePgBouncerCore(cfg Config, paths BundlePaths, logRoot string,
 	}
 	if emitSteps {
 		reporter.FinishStep("preflight-pgbouncer", true, "Dependency dan port sudah siap")
-		reporter.StartStep("prepare-pgbouncer-runtime", "Menyiapkan file runtime PgBouncer")
+		reporter.StartStep("prepare-pgbouncer-runtime", "Menyiapkan file runtime Pengoptimal Database")
 	}
 
 	if err := writePgBouncerRuntimeFiles(paths.PgBouncerIniPath, paths.PgBouncerDBsPath, paths.PgBouncerUserPath, cfg.PGBinPath); err != nil {
-		wrapped := fmt.Errorf("gagal menyiapkan runtime file PgBouncer: %w", err)
+		wrapped := fmt.Errorf("gagal menyiapkan runtime file Pengoptimal Database: %w", err)
 		if emitSteps {
 			reporter.FinishStep("prepare-pgbouncer-runtime", false, wrapped.Error())
 		}
 		return wrapped
 	}
 	if emitSteps {
-		reporter.FinishStep("prepare-pgbouncer-runtime", true, "File runtime PgBouncer siap")
-		reporter.StartStep("install-pgbouncer-service", "Install/update service PgBouncer")
+		reporter.FinishStep("prepare-pgbouncer-runtime", true, "File runtime Pengoptimal Database siap")
+		reporter.StartStep("install-pgbouncer-service", "Install/update service Pengoptimal Database")
 	}
 	if err := removeExistingServiceWithRunner(pgBouncerService, runner, reporter); err != nil {
-		wrapped := fmt.Errorf("gagal menyiapkan reinstall PgBouncer: %w", err)
+		wrapped := fmt.Errorf("gagal menyiapkan reinstall Pengoptimal Database: %w", err)
 		if emitSteps {
 			reporter.FinishStep("install-pgbouncer-service", false, wrapped.Error())
 		}
@@ -582,8 +582,8 @@ func installOrUpdatePgBouncerCore(cfg Config, paths BundlePaths, logRoot string,
 		return wrapped
 	}
 	if emitSteps {
-		reporter.FinishStep("install-pgbouncer-service", true, "Service PgBouncer berhasil dipasang")
-		reporter.StartStep("wait-pgbouncer-running", "Menunggu service PgBouncer RUNNING")
+		reporter.FinishStep("install-pgbouncer-service", true, "Service Pengoptimal Database berhasil dipasang")
+		reporter.StartStep("wait-pgbouncer-running", "Menunggu service Pengoptimal Database RUNNING")
 	}
 	if err := waitServiceStateWithProgress(pgBouncerService, "RUNNING", pgBouncerStartWait, reporter); err != nil {
 		wrapped := fmt.Errorf("service %s tidak mencapai RUNNING: %w (cek log: %s)", pgBouncerService, err, pgBouncerStderrLog)
@@ -593,11 +593,11 @@ func installOrUpdatePgBouncerCore(cfg Config, paths BundlePaths, logRoot string,
 		return wrapped
 	}
 	if emitSteps {
-		reporter.FinishStep("wait-pgbouncer-running", true, "PgBouncer sudah RUNNING")
-		reporter.StartStep("configure-pgbouncer-firewall", "Membuka akses firewall LAN PgBouncer")
+		reporter.FinishStep("wait-pgbouncer-running", true, "Pengoptimal Database sudah RUNNING")
+		reporter.StartStep("configure-pgbouncer-firewall", "Membuka akses firewall LAN Pengoptimal Database")
 	}
 	if err := syncPgBouncerFirewallRuleWithProgress(reporter, runner.run); err != nil {
-		wrapped := fmt.Errorf("gagal sinkronisasi firewall PgBouncer: %w", err)
+		wrapped := fmt.Errorf("gagal sinkronisasi firewall Pengoptimal Database: %w", err)
 		if emitSteps {
 			reporter.FinishStep("configure-pgbouncer-firewall", false, wrapped.Error())
 		}

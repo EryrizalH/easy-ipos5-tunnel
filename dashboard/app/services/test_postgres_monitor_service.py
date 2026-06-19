@@ -17,9 +17,9 @@ class PostgresMonitorServiceTest(unittest.TestCase):
 
     def test_read_monitor_config_invalid_interval_fallback(self) -> None:
         env = {
-            "EASY_RATHOLE_PG_MONITOR_ENABLED": "1",
-            "EASY_RATHOLE_PG_MONITOR_INTERVAL_SEC": "invalid",
-            "EASY_RATHOLE_PG_MONITOR_DSN": "host=127.0.0.1 port=5444 dbname=postgres user=test password=test",
+            "NUSA_TUNNEL_PG_MONITOR_ENABLED": "1",
+            "NUSA_TUNNEL_PG_MONITOR_INTERVAL_SEC": "invalid",
+            "NUSA_TUNNEL_PG_MONITOR_DSN": "host=127.0.0.1 port=5444 dbname=postgres user=test password=test",
         }
         with mock.patch.dict(os.environ, env, clear=False):
             cfg = svc.read_monitor_config()

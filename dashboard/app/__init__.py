@@ -1,1 +1,1 @@
-"""IPOS5TunnelPublik dashboard application package."""
+"""NusaTunnel dashboard application package."""

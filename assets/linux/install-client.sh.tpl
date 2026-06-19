@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SERVICE_NAME="{{LINUX_SERVICE_NAME}}"
-INSTALL_ROOT="/opt/easy-rathole-client"
+INSTALL_ROOT="/opt/nusatunnel-client"
 BIN_PATH="/usr/local/bin/rathole"
 CONFIG_PATH="${INSTALL_ROOT}/client.toml"
 WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,7 +51,7 @@ for item in data.get("assets", []):
 install_service() {
   cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
 [Unit]
-Description=IPOS5TunnelPublik Client
+Description=NusaTunnel Client
 After=network-online.target
 Wants=network-online.target
 

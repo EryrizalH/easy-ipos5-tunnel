@@ -7,13 +7,13 @@ from .db import init_db
 
 
 def main() -> int:
-    db_path = os.environ.get("EASY_RATHOLE_DB_PATH", "/opt/easy-rathole/state/easy-rathole.db")
-    admin_username = os.environ.get("EASY_RATHOLE_ADMIN_USERNAME", "admin")
-    admin_password = os.environ.get("EASY_RATHOLE_ADMIN_PASSWORD", "")
-    token = os.environ.get("EASY_RATHOLE_INITIAL_TOKEN", "")
+    db_path = os.environ.get("NUSA_TUNNEL_DB_PATH", "/opt/nusatunnel/state/nusatunnel.db")
+    admin_username = os.environ.get("NUSA_TUNNEL_ADMIN_USERNAME", "admin")
+    admin_password = os.environ.get("NUSA_TUNNEL_ADMIN_PASSWORD", "")
+    token = os.environ.get("NUSA_TUNNEL_INITIAL_TOKEN", "")
 
     if not admin_password:
-        raise SystemExit("EASY_RATHOLE_ADMIN_PASSWORD is required for bootstrap")
+        raise SystemExit("NUSA_TUNNEL_ADMIN_PASSWORD is required for bootstrap")
 
     init_db(
         db_path=db_path,

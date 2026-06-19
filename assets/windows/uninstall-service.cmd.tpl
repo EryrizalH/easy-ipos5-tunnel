@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-echo [IPOS5TunnelPublik] Menghapus service client Windows...
+echo [NusaTunnel] Menghapus service client Windows...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0uninstall-service.ps1"
 set "rc=%ERRORLEVEL%"
 

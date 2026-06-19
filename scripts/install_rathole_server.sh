@@ -14,9 +14,9 @@ main() {
   ensure_command ss
   ensure_command systemctl
 
-  local easy_root="${EASY_RATHOLE_ROOT:-/opt/easy-rathole}"
-  local config_dir="${EASY_RATHOLE_CONFIG_DIR:-/etc/easy-rathole}"
-  local state_file="${EASY_RATHOLE_STATE_FILE:-${easy_root}/state/install-state.json}"
+  local easy_root="${NUSA_TUNNEL_ROOT:-/opt/nusatunnel}"
+  local config_dir="${NUSA_TUNNEL_CONFIG_DIR:-/etc/nusatunnel}"
+  local state_file="${NUSA_TUNNEL_STATE_FILE:-${easy_root}/state/install-state.json}"
   local state_dir
   state_dir="$(dirname "$state_file")"
   local cache_dir="${easy_root}/cache"
@@ -235,7 +235,7 @@ PY
 
   cat > "/etc/systemd/system/${rathole_service}.service" <<EOF
 [Unit]
-Description=IPOS5TunnelPublik - Rathole Reverse Tunnel Server
+Description=Nusa IPOS 5 Tunnel - Rathole Reverse Tunnel Server
 After=network-online.target
 Wants=network-online.target
 

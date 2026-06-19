@@ -52,7 +52,7 @@ func detectAuthFailureFromEventLog(serviceName string) (bool, error) {
 		"$start=(Get-Date).AddMinutes(-15)",
 		"$events=Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=$start} -MaxEvents 300 -ErrorAction SilentlyContinue",
 		"$match=$events | Where-Object {",
-		"  ($_.ProviderName -match 'nssm|rathole|easyrathole|ipos5tunnelpublik' -or $_.Message -match 'rathole|easyrathole|ipos5') -and",
+		"  ($_.ProviderName -match 'nssm|rathole|easyrathole|ipos5tunnelpublik|nusatunnel' -or $_.Message -match 'rathole|easyrathole|ipos5|nusatunnel') -and",
 		"  $_.Message -match '" + pattern + "'",
 		"} | Select-Object -First 1 -ExpandProperty Message",
 		"if ($match) { 'AUTH_FAIL' }",
@@ -82,5 +82,5 @@ func serviceLogPath(serviceName string) (string, error) {
 	if safeService == "" {
 		safeService = defaultServiceName
 	}
-	return filepath.Join(programData, "easy-rathole-client", "logs", safeService+".stderr.log"), nil
+	return filepath.Join(programData, "nusatunnel-client", "logs", safeService+".stderr.log"), nil
 }

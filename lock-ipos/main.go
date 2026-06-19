@@ -270,7 +270,7 @@ func (m *model) installPgBouncerCmd() tea.Cmd {
 		if err := winservice.InstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
-		return serviceActionCompletedMsg{success: true, message: "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445, PgBouncer listen di 0.0.0.0:5444, dan firewall inbound TCP 5444 dibuka untuk semua sumber. Service EasyRatholeClient tidak di-install ulang."}
+		return serviceActionCompletedMsg{success: true, message: "Install Pengoptimal Database berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445, Pengoptimal Database aktif di port 5444. Service NusaTunnelClient tidak di-install ulang."}
 	}
 }
 
@@ -551,7 +551,7 @@ func (m *model) runProgressWorkflow(option int, ch chan any) {
 			sendServiceResult(false, "", err)
 			return
 		}
-		summary := "Install PgBouncer berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445, PgBouncer listen di 0.0.0.0:5444, dan firewall inbound TCP 5444 dibuka untuk semua sumber. Service EasyRatholeClient tidak di-install ulang."
+		summary := "Install Pengoptimal Database berhasil: PostgreSQL dimigrasikan ke 127.0.0.1:5445, Pengoptimal Database aktif di port 5444. Service NusaTunnelClient tidak di-install ulang."
 		reporter.Summary(summary)
 		sendServiceResult(true, summary, nil)
 	case optionUninstallService:
@@ -594,29 +594,29 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
 			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
 			{ID: "remove-tunnel-service", Label: "Menyiapkan reinstall service tunnel"},
-			{ID: "install-tunnel-service", Label: "Install/update EasyRatholeClient"},
+			{ID: "install-tunnel-service", Label: "Install/update NusaTunnelClient"},
 			{ID: "wait-tunnel-running", Label: "Menunggu service RUNNING"},
 			{ID: "setup-gui-shortcut", Label: "Menyiapkan shortcut GUI"},
 		}
 	case optionInstallPgBouncer:
-		return "Install PgBouncer", []progress.StepDefinition{
+		return "Install Pengoptimal Database", []progress.StepDefinition{
 			{ID: "validate-admin", Label: "Validasi hak Administrator"},
-			{ID: "resolve-bundle", Label: "Validasi bundle PgBouncer"},
+			{ID: "resolve-bundle", Label: "Validasi bundle Pengoptimal"},
 			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
 			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
 			{ID: "migrate-postgres-port", Label: "Migrasi port PostgreSQL ke 5445"},
-			{ID: "preflight-pgbouncer", Label: "Preflight dependency PgBouncer"},
-			{ID: "prepare-pgbouncer-runtime", Label: "Menyiapkan file runtime PgBouncer"},
-			{ID: "install-pgbouncer-service", Label: "Install/update service PgBouncer"},
-			{ID: "wait-pgbouncer-running", Label: "Menunggu service PgBouncer RUNNING"},
+			{ID: "preflight-pgbouncer", Label: "Preflight dependency Pengoptimal"},
+			{ID: "prepare-pgbouncer-runtime", Label: "Menyiapkan file runtime Pengoptimal"},
+			{ID: "install-pgbouncer-service", Label: "Install/update service Pengoptimal"},
+			{ID: "wait-pgbouncer-running", Label: "Menunggu service Pengoptimal RUNNING"},
 			{ID: "configure-pgbouncer-firewall", Label: "Membuka firewall LAN TCP 5444"},
-			{ID: "health-check-pgbouncer", Label: "Health check PgBouncer"},
+			{ID: "health-check-pgbouncer", Label: "Health check Pengoptimal"},
 		}
 	case optionUninstallService:
 		return "Uninstall Service", []progress.StepDefinition{
 			{ID: "validate-admin", Label: "Validasi hak Administrator"},
-			{ID: "remove-tunnel-service", Label: "Menghapus EasyRatholeClient"},
-			{ID: "remove-pgbouncer-service", Label: "Menghapus service PgBouncer"},
+			{ID: "remove-tunnel-service", Label: "Menghapus NusaTunnelClient"},
+			{ID: "remove-pgbouncer-service", Label: "Menghapus service Pengoptimal"},
 			{ID: "remove-pgbouncer-firewall", Label: "Menutup firewall LAN TCP 5444"},
 			{ID: "rollback-postgres-port", Label: "Mengembalikan port PostgreSQL ke 5444"},
 			{ID: "cleanup-artifacts", Label: "Membersihkan artefak runtime dan shortcut"},
@@ -649,15 +649,15 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 }
 
 func installIPPublicSuccessMessage(bundleDir string) string {
-	base := "Install IP publik berhasil: service EasyRatholeClient terpasang. Forward DB diarahkan ke 127.0.0.1:5444."
+	base := "Install IP publik berhasil: service NusaTunnelClient terpasang."
 	if winservice.BundleIncludesGUI(bundleDir) {
-		return base + " GUI dibuka lewat shortcut desktop 'ipos5-rathole' (UAC Run as Administrator)."
+		return base + " GUI dibuka lewat shortcut desktop 'nusatunnel' (Izin Administrator)."
 	}
 	return base + " Bundle ini tidak menyertakan GUI desktop."
 }
 
 func uninstallSuccessMessage(bundleDir string) string {
-	base := "Service IP Public dan PgBouncer berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444."
+	base := "Service IP Public dan Pengoptimal Database berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444."
 	if winservice.BundleIncludesGUI(bundleDir) {
 		return base + " GUI shortcut desktop sudah dibersihkan."
 	}
@@ -743,7 +743,7 @@ func defaultBundleDir() string {
 
 func main() {
 	serviceName := flag.String("service-name", winservice.DefaultServiceName, "Windows service name")
-	bundleDir := flag.String("bundle-dir", defaultBundleDir(), "Directory containing sidecar files (nssm.exe, ipos5-rathole-service.exe, ipos5-rathole.exe, pgbouncer.exe, libevent-7.dll, libssl-3-x64.dll, libcrypto-3-x64.dll, client.toml)")
+	bundleDir := flag.String("bundle-dir", defaultBundleDir(), "Directory containing sidecar files (nssm.exe, nusatunnel-service.exe, nusatunnel.exe, pgbouncer.exe, client.toml)")
 	flag.Parse()
 
 	if err := logger.Init(); err != nil {

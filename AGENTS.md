@@ -1,21 +1,21 @@
 # AI Development Guidelines
 
-This repo is a mixed deployment project for IPOS5TunnelPublik / easy-Rathole. Treat changes as cross-platform: an edit in one folder can affect Ubuntu server install, FastAPI dashboard, generated bundles, Windows services, and the Windows operator UI.
+This repo is a mixed deployment project for Nusa IPOS 5 Tunnel / NusaTunnel. Treat changes as cross-platform: an edit in one folder can affect Ubuntu server install, FastAPI dashboard, generated bundles, Windows services, and the Windows operator UI.
 
 ## Project Shape
 
 - `install.sh`, `public-install.sh`, `scripts/`, `templates/`: Ubuntu 22+ server installer, hardening, systemd services, rathole server/client templates.
 - `dashboard/`: FastAPI dashboard, SQLite state, token rotation, service status, PostgreSQL monitor, bundle generation.
-- `client-gui/`: Go/Wails Windows GUI and tray app for `EasyRatholeClient`.
-- `lock-ipos/`: Go interactive Windows setup/TUI, PgBouncer install flow, PostgreSQL lock/allow handling, service wrapper.
+- `client-gui/`: Go/Wails Windows GUI and tray app for `NusaTunnelClient`.
+- `lock-ipos/`: Go interactive Windows setup/TUI, PgBouncer/NusaTunnelDB install flow, PostgreSQL lock/allow handling, service wrapper.
 - `assets/windows` and `assets/windows7`: packaged Windows runtime assets. Avoid modifying binary files unless the user asks for a build or bundle refresh.
 
 ## Hard Invariants
 
 - Default exposed remote ports stay `5444`, `5480`, and `5485` unless the user explicitly changes routing.
 - DB forwarding must stay coherent: VPS `5444` -> rathole client `127.0.0.1:5444`; PgBouncer mode uses `0.0.0.0:5444` -> PostgreSQL `127.0.0.1:5445`.
-- Service names are part of the external contract: `rathole`, `easy-rathole-dashboard`, `easy-rathole-client`, `EasyRatholeClient`, and `PgBouncer`.
-- Windows 7 bundle is separate and intentionally excludes `ipos5-rathole-gui.exe`.
+- Service names are part of the external contract: `rathole`, `nusatunnel-dashboard`, `nusatunnel-client`, `NusaTunnelClient`, and `NusaTunnelDB`.
+- Windows 7 bundle is separate and intentionally excludes `nusatunnel-gui.exe`.
 - Do not run root/system-changing installer scripts on the dev machine unless explicitly requested with a clear target environment.
 - Do not expose real tokens, dashboard passwords, `userlist.txt` contents, or PgBouncer auth values.
 
@@ -66,3 +66,4 @@ powershell -ExecutionPolicy Bypass -File scripts/build_windows7_assets.ps1
 Detailed workflow: `docs/AI_DEVELOPMENT_WORKFLOW.md`.
 
 Project skill: `.codex/skills/easy-rathole-workflow/SKILL.md`.
+

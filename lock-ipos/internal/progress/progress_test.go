@@ -25,7 +25,7 @@ func TestChannelReporter_EmitsStructuredMessages(t *testing.T) {
 	reporter := NewChannelReporter(ch)
 
 	reporter.StartStep("validate-admin", "Validasi hak Administrator")
-	reporter.Log("Menjalankan: sc query EasyRatholeClient")
+	reporter.Log("Menjalankan: sc query NusaTunnelClient")
 	reporter.FinishStep("validate-admin", true, "Hak Administrator terdeteksi")
 	reporter.Summary("Ringkasan selesai")
 
@@ -35,7 +35,7 @@ func TestChannelReporter_EmitsStructuredMessages(t *testing.T) {
 	}
 
 	msg2 := (<-ch).(LogLineMsg)
-	if msg2.Line != "Menjalankan: sc query EasyRatholeClient" {
+	if msg2.Line != "Menjalankan: sc query NusaTunnelClient" {
 		t.Fatalf("unexpected log message: %#v", msg2)
 	}
 

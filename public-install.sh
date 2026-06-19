@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# IPOS5TunnelPublik public bootstrap installer
+# Nusa IPOS 5 Tunnel public bootstrap installer
 # Usage (recommended):
 #   curl -fsSL https://raw.githubusercontent.com/pruedence21/easy-ipos5-tunnel/main/public-install.sh | sudo bash
 
 REPO_URL="${REPO_URL:-https://github.com/pruedence21/easy-ipos5-tunnel}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
-REPO_BASE_DIR="${REPO_BASE_DIR:-/opt/easy-rathole}"
+REPO_BASE_DIR="${REPO_BASE_DIR:-/opt/nusatunnel}"
 
 log() {
   printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*"

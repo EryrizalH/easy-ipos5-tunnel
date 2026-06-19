@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IPOS5TunnelPublik Dashboard</title>
+  <title>Nusa IPOS 5 Tunnel Dashboard</title>
   <style>
     :root {
       --bg: #f4f7fc;
@@ -268,8 +268,8 @@
   <div class="container">
     <div class="hero">
       <div>
-        <h1>IPOS5TunnelPublik Dashboard</h1>
-        <p>Panel operasional untuk unduh installer client, memantau layanan, dan mengelola tunnel dengan lebih cepat.</p>
+        <h1>Nusa IPOS 5 Tunnel Dashboard</h1>
+        <p>Panel operasional untuk unduh installer client, memantau layanan, dan mengelola sambungan dengan lebih cepat.</p>
       </div>
       <div class="hero-meta small">
         <div><strong>Update terakhir:</strong></div>
@@ -293,7 +293,7 @@
       </div>
 
       <div class="card">
-        <div class="metric-label">Layanan Rathole</div>
+        <div class="metric-label">Layanan Sambungan</div>
         <p class="metric-value mono {% if rathole_status == 'active' %}status-active{% else %}status-inactive{% endif %}">{{ rathole_status }}</p>
         <p class="small muted">Service: <span class="mono">{{ rathole_service }}</span></p>
       </div>
@@ -305,9 +305,9 @@
       </div>
 
       <div class="card">
-        <div class="metric-label">Port Forward Aktif</div>
+        <div class="metric-label">Jalur Forward Aktif</div>
         <p class="metric-value"><span class="mono">{{ forward_active_count }}</span> / <span class="mono">{{ forward_port_status|length }}</span></p>
-        <p class="small muted">Ringkasan status port forward TCP.</p>
+        <p class="small muted">Ringkasan status jalur forward TCP.</p>
       </div>
 
       <div class="card">
@@ -344,14 +344,14 @@
           <div>Public IP</div>
           <div class="mono">{{ public_ip }}</div>
 
-          <div>Port Control Rathole</div>
+          <div>Jalur Kontrol Sambungan</div>
           <div class="mono">{{ control_port }}</div>
 
-          <div>Port Dashboard</div>
+          <div>Jalur Dashboard</div>
           <div class="mono">{{ dashboard_port }}</div>
         </div>
 
-        <p style="margin-top: 12px;"><strong>Port TCP Dibuka</strong></p>
+        <p style="margin-top: 12px;"><strong>Jalur TCP Dibuka</strong></p>
         <div>
           {% for p in exposed_ports %}
             <span class="badge mono">{{ p }}</span>
@@ -399,15 +399,15 @@
       </details>
 
       <details>
-        <summary>Detail Lanjutan: Status Port Forward</summary>
-        <p class="muted small">Ringkasan: <strong>{{ forward_active_count }}</strong> dari <strong>{{ forward_port_status|length }}</strong> port dalam kondisi aktif.</p>
+        <summary>Detail Lanjutan: Status Jalur Forward</summary>
+        <p class="muted small">Ringkasan: <strong>{{ forward_active_count }}</strong> dari <strong>{{ forward_port_status|length }}</strong> jalur dalam kondisi aktif.</p>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Nama Port</th>
+                <th>Nama Jalur</th>
                 <th>Protokol</th>
-                <th>Port Forward</th>
+                <th>Jalur Forward</th>
                 <th>Status</th>
                 <th>Alamat Listener</th>
                 <th>Aplikasi/Proses</th>
@@ -432,7 +432,7 @@
       </details>
 
       <details>
-        <summary>Detail Lanjutan: Dukungan Client & Mapping Tunnel</summary>
+        <summary>Detail Lanjutan: Dukungan Client & Mapping Sambungan</summary>
 
         <h3 style="margin-top: 12px;">Dukungan Platform Client</h3>
         <div class="table-wrap">
@@ -464,14 +464,14 @@
           </table>
         </div>
 
-        <h3 style="margin-top: 16px;">Mapping Tunnel Default (Sisi Client)</h3>
+        <h3 style="margin-top: 16px;">Mapping Sambungan Default (Sisi Client)</h3>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Nama Port</th>
+                <th>Nama Jalur</th>
                 <th>Protokol</th>
-                <th>Port Remote (Server)</th>
+                <th>Jalur Remote (Server)</th>
                 <th>Alamat Lokal Client</th>
               </tr>
             </thead>
@@ -492,7 +492,7 @@
 
     <div class="card token-card">
       <h2>Rotasi Global Token</h2>
-      <p class="muted">Gunakan bagian ini <strong>jika ingin ganti client</strong> atau mengganti kredensial akses tunnel secara global.</p>
+      <p class="muted">Gunakan bagian ini <strong>jika ingin ganti client</strong> atau mengganti kredensial akses sambungan secara global.</p>
       <p>Token saat ini: <span class="mono">{{ token_masked }}</span></p>
 
       <form method="post" action="/token">

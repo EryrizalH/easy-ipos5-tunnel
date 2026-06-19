@@ -7,7 +7,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-os.environ.setdefault("EASY_RATHOLE_PG_MONITOR_ENABLED", "0")
+os.environ.setdefault("NUSA_TUNNEL_PG_MONITOR_ENABLED", "0")
 
 from fastapi import HTTPException
 
@@ -25,21 +25,21 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         self.root = Path(self._tmp.name)
         self.resources = self.root / "resources"
         self.bundles = self.root / "bundles"
-        self.db_path = self.root / "state" / "easy-rathole.db"
+        self.db_path = self.root / "state" / "nusatunnel.db"
         self.state_path = self.root / "state" / "install-state.json"
         self.resources.mkdir(parents=True, exist_ok=True)
         self.bundles.mkdir(parents=True, exist_ok=True)
 
         self._old_env = {
-            "EASY_RATHOLE_DB_PATH": os.environ.get("EASY_RATHOLE_DB_PATH"),
-            "EASY_RATHOLE_STATE_FILE": os.environ.get("EASY_RATHOLE_STATE_FILE"),
-            "EASY_RATHOLE_RESOURCES_DIR": os.environ.get("EASY_RATHOLE_RESOURCES_DIR"),
-            "EASY_RATHOLE_BUNDLES_DIR": os.environ.get("EASY_RATHOLE_BUNDLES_DIR"),
+            "NUSA_TUNNEL_DB_PATH": os.environ.get("NUSA_TUNNEL_DB_PATH"),
+            "NUSA_TUNNEL_STATE_FILE": os.environ.get("NUSA_TUNNEL_STATE_FILE"),
+            "NUSA_TUNNEL_RESOURCES_DIR": os.environ.get("NUSA_TUNNEL_RESOURCES_DIR"),
+            "NUSA_TUNNEL_BUNDLES_DIR": os.environ.get("NUSA_TUNNEL_BUNDLES_DIR"),
         }
-        os.environ["EASY_RATHOLE_DB_PATH"] = str(self.db_path)
-        os.environ["EASY_RATHOLE_STATE_FILE"] = str(self.state_path)
-        os.environ["EASY_RATHOLE_RESOURCES_DIR"] = str(self.resources)
-        os.environ["EASY_RATHOLE_BUNDLES_DIR"] = str(self.bundles)
+        os.environ["NUSA_TUNNEL_DB_PATH"] = str(self.db_path)
+        os.environ["NUSA_TUNNEL_STATE_FILE"] = str(self.state_path)
+        os.environ["NUSA_TUNNEL_RESOURCES_DIR"] = str(self.resources)
+        os.environ["NUSA_TUNNEL_BUNDLES_DIR"] = str(self.bundles)
         self.addCleanup(self.restore_env)
 
     def restore_env(self) -> None:
@@ -136,7 +136,7 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         detail = str(ctx.exception.detail)
         self.assertIn("Windows 7", detail)
         self.assertIn("assets/windows7/setup.exe", detail)
-        self.assertIn("tidak memakai ipos5-rathole-gui.exe", detail)
+        self.assertIn("tidak memakai nusatunnel-gui.exe", detail)
 
 
 if __name__ == "__main__":

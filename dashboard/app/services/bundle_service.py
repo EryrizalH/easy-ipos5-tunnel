@@ -11,9 +11,9 @@ from typing import Any
 
 from .tunnel_ports import normalize_service_ports
 
-WINDOWS_SERVICE_WRAPPER_NAME = "ipos5-rathole-service.exe"
-WINDOWS_RATHOLE_BINARY_NAME = "ipos5-rathole.exe"
-WINDOWS_GUI_BINARY_NAME = "ipos5-rathole-gui.exe"
+WINDOWS_SERVICE_WRAPPER_NAME = "nusatunnel-service.exe"
+WINDOWS_RATHOLE_BINARY_NAME = "nusatunnel.exe"
+WINDOWS_GUI_BINARY_NAME = "nusatunnel-gui.exe"
 WINDOWS_UNIFIED_NAME = "setup.exe"
 WINDOWS_NSSM_NAME = "nssm.exe"
 WINDOWS_PGBOUNCER_BINARY_NAME = "pgbouncer.exe"
@@ -24,8 +24,8 @@ WINDOWS_PGBOUNCER_LIBWINPTH_NAME = "libwinpthread-1.dll"
 WINDOWS_PGBOUNCER_INI_NAME = "pgbouncer.ini"
 WINDOWS_PGBOUNCER_DATABASES_NAME = "pgbouncer-databases.json"
 WINDOWS_PGBOUNCER_USERLIST_NAME = "userlist.sample.txt"
-LINUX_SERVICE_NAME = "easy-rathole-client"
-WINDOWS_SERVICE_NAME = "EasyRatholeClient"
+LINUX_SERVICE_NAME = "nusatunnel-client"
+WINDOWS_SERVICE_NAME = "NusaTunnelClient"
 WINDOWS_ASSET_DIRNAME = "windows"
 WINDOWS7_ASSET_DIRNAME = "windows7"
 
@@ -39,13 +39,13 @@ def get_env_path(name: str, fallback: str) -> Path:
 
 
 def bundles_dir() -> Path:
-    path = get_env_path("EASY_RATHOLE_BUNDLES_DIR", "/opt/easy-rathole/bundles")
+    path = get_env_path("NUSA_TUNNEL_BUNDLES_DIR", "/opt/nusatunnel/bundles")
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def resources_dir() -> Path:
-    return get_env_path("EASY_RATHOLE_RESOURCES_DIR", "/opt/easy-rathole/resources")
+    return get_env_path("NUSA_TUNNEL_RESOURCES_DIR", "/opt/nusatunnel/resources")
 
 
 def windows_asset_path(asset_dir: str, name: str) -> Path:
@@ -160,7 +160,7 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     bundle_name = f"windows-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
 
-    temp_dir = Path(tempfile.mkdtemp(prefix="easy-rathole-win-"))
+    temp_dir = Path(tempfile.mkdtemp(prefix="nusatunnel-win-"))
     try:
         shutil.copy2(windows_wrapper_bin, temp_dir / WINDOWS_SERVICE_WRAPPER_NAME)
         shutil.copy2(windows_rathole_bin, temp_dir / WINDOWS_RATHOLE_BINARY_NAME)
@@ -183,33 +183,32 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
         (temp_dir / "README.txt").write_text(
             "\n".join(
                 [
-                    "IPOS5TunnelPublik - Client Windows",
+                    "Nusa IPOS 5 Tunnel - Client Windows",
                     "",
                     "1) Ekstrak file ZIP ini.",
                     "2) Jalankan setup.exe sebagai Administrator.",
                     "3) Gunakan menu aplikasi untuk:",
-                    "   - Install IP Public (tanpa PgBouncer)",
-                    "   - Install PgBouncer (meningkatkan performa)",
-                    "   - Uninstall Service IP Public",
+                    "   - Install Sambungan (tanpa Pengoptimal Database)",
+                    "   - Install Pengoptimal Database (meningkatkan performa)",
+                    "   - Uninstall Service Sambungan",
                     "   - Kunci/Lepas Kunci pembuatan database baru",
                     "4) Arsitektur DB forwarding terbaru:",
-                    "   - rathole DB local_addr: 127.0.0.1:5444",
-                    "   - PgBouncer (menu 2): listen 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445",
-                    "   - Windows Firewall: inbound TCP 5444 dibuka untuk semua sumber",
-                    "   dengan pool_mode=transaction dan auth_type=md5.",
+                    "   - Sambungan Database lokal: 127.0.0.1:5444",
+                    "   - Pengoptimal Database (menu 2): listen 0.0.0.0:5444 -> Database 127.0.0.1:5445",
+                    "   - Keamanan Jaringan: port TCP 5444 dibuka",
                     "5) Saat Install Service, aplikasi otomatis membuat shortcut desktop",
-                    "   'ipos5-rathole' untuk membuka GUI jendela utama dengan Run as Administrator (UAC prompt).",
+                    "   'nusatunnel' untuk membuka GUI jendela utama dengan Run as Administrator (Izin Administrator).",
                     "6) GUI tidak autostart saat login Windows; buka manual via shortcut desktop.",
                     "7) Saat Uninstall Service, shortcut desktop GUI ikut dihapus.",
                     f"8) Service default yang dipakai: {WINDOWS_SERVICE_NAME}",
                     "9) setup.exe adalah installer interaktif; service Windows tidak menjalankan setup.exe.",
-                    f"10) Service wrapper {WINDOWS_SERVICE_WRAPPER_NAME} akan menjalankan {WINDOWS_RATHOLE_BINARY_NAME} dengan client.toml.",
+                    f"10) Service wrapper {WINDOWS_SERVICE_WRAPPER_NAME} akan menjalankan {WINDOWS_RATHOLE_BINARY_NAME} dengan File Pengaturan.",
                     "11) Script template lama (setup-client.cmd/install-service.cmd) bukan jalur utama bundle dashboard.",
                     "12) Jika install PgBouncer (menu 2) gagal, proses dibatalkan (fail-fast).",
                     "13) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
                     "    Daftar database PgBouncer dibaca dari pgbouncer-databases.json bila tersedia.",
                     "14) Paket ini wajib utuh:",
-                    "   setup.exe + ipos5-rathole-service.exe + rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + pgbouncer-databases.json + userlist.sample.txt",
+                    "   setup.exe + nusatunnel-service.exe + nusatunnel.exe + nusatunnel-gui.exe + client.toml + file pendukung database",
                 ]
             )
             + "\n",
@@ -252,7 +251,7 @@ def generate_windows7_bundle(state: dict[str, Any], token: str) -> Path:
     bundle_name = f"windows7-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
 
-    temp_dir = Path(tempfile.mkdtemp(prefix="easy-rathole-win7-"))
+    temp_dir = Path(tempfile.mkdtemp(prefix="nusatunnel-win7-"))
     try:
         shutil.copy2(windows_wrapper_bin, temp_dir / WINDOWS_SERVICE_WRAPPER_NAME)
         shutil.copy2(windows_rathole_bin, temp_dir / WINDOWS_RATHOLE_BINARY_NAME)
@@ -274,19 +273,19 @@ def generate_windows7_bundle(state: dict[str, Any], token: str) -> Path:
         (temp_dir / "README.txt").write_text(
             "\n".join(
                 [
-                    "IPOS5TunnelPublik - Client Windows 7",
+                    "Nusa IPOS 5 Tunnel - Client Windows 7",
                     "",
                     "1) Ekstrak file ZIP ini.",
                     "2) Jalankan setup.exe sebagai Administrator.",
                     "3) Paket Windows 7 ini fokus ke service tunnel dan kompatibilitas Win7.",
-                    "4) Bundle ini tidak menyertakan GUI desktop (ipos5-rathole-gui.exe).",
+                    "4) Bundle ini tidak menyertakan GUI desktop (nusatunnel-gui.exe).",
                     "5) Installer/service Win7 harus berasal dari aset kompatibel di assets/windows7.",
                     "6) Arsitektur DB forwarding terbaru:",
-                    "   - rathole DB local_addr: 127.0.0.1:5444",
-                    "   - PgBouncer (jika dipasang): listen 0.0.0.0:5444 -> PostgreSQL 127.0.0.1:5445",
+                    "   - Sambungan Database lokal: 127.0.0.1:5444",
+                    "   - Pengoptimal Database (jika dipasang): listen 0.0.0.0:5444 -> Database 127.0.0.1:5445",
                     "7) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
                     "8) Paket ini wajib utuh:",
-                    "   setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + pgbouncer-databases.json + userlist.sample.txt",
+                    "   setup.exe + nusatunnel-service.exe + nusatunnel.exe + client.toml + file pendukung database",
                 ]
             )
             + "\n",
@@ -306,7 +305,7 @@ def generate_linux_bundle(state: dict[str, Any], token: str) -> Path:
     bundle_name = f"linux-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
 
-    temp_dir = Path(tempfile.mkdtemp(prefix="easy-rathole-linux-"))
+    temp_dir = Path(tempfile.mkdtemp(prefix="nusatunnel-linux-"))
     try:
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
 
@@ -324,7 +323,7 @@ def generate_linux_bundle(state: dict[str, Any], token: str) -> Path:
         (temp_dir / "README.txt").write_text(
             "\n".join(
                 [
-                    "IPOS5TunnelPublik - Client Linux",
+                    "Nusa IPOS 5 Tunnel - Client Linux",
                     "",
                     "1) Ekstrak paket ini di mesin client Linux.",
                     "2) Jalankan: sudo ./install-client.sh",

@@ -36,7 +36,7 @@ Do not run `install.sh`, `public-install.sh`, or `scripts/prepare_server.sh` loc
 Touch `dashboard/app/*` when changing:
 
 - Basic auth, token rotation, dashboard display, `/health`, `/download/*`, PostgreSQL monitor, bundle generation.
-- State paths and resources controlled by `EASY_RATHOLE_*` env vars.
+- State paths and resources controlled by `NUSA_TUNNEL_*` env vars.
 
 Guardrails:
 
@@ -61,7 +61,7 @@ Touch `install.sh`, `public-install.sh`, `scripts/*`, and `templates/rathole/*` 
 Guardrails:
 
 - Preserve Ubuntu 22+ requirement unless explicitly changed.
-- Preserve idempotent state updates in `/opt/easy-rathole/state/install-state.json`.
+- Preserve idempotent state updates in `/opt/nusatunnel/state/install-state.json`.
 - If `service_ports` changes, update firewall, server template rendering, dashboard display, client bundle rendering, and tests.
 - Keep `curl | bash` flow simple for public install.
 
@@ -75,7 +75,7 @@ Verification:
 
 Touch `lock-ipos/*` when changing:
 
-- Interactive setup menu, PgBouncer install/uninstall, PostgreSQL lock/allow behavior, service wrapper, installer progress.
+- Interactive setup menu, PgBouncer/Pengoptimal Database install/uninstall, PostgreSQL lock/allow behavior, service wrapper, installer progress.
 
 Guardrails:
 
@@ -100,7 +100,7 @@ Touch `client-gui/*` when changing:
 Guardrails:
 
 - Close button hides to tray unless quitting.
-- Service control targets `EasyRatholeClient`.
+- Service control targets `NusaTunnelClient`.
 - Keep admin/UAC expectations visible in user-facing messages.
 
 Verification:
@@ -117,8 +117,8 @@ Touch `assets/windows*` and build scripts only when changing packaging or refres
 
 Guardrails:
 
-- Modern Windows bundle includes `setup.exe`, `ipos5-rathole-service.exe`, `ipos5-rathole.exe`, `ipos5-rathole-gui.exe`, `nssm.exe`, PgBouncer binary/libs, `client.toml`, `pgbouncer.ini`, `pgbouncer-databases.json`, and `userlist.sample.txt`.
-- Windows 7 bundle excludes `ipos5-rathole-gui.exe`.
+- Modern Windows bundle includes `setup.exe`, `nusatunnel-service.exe`, `nusatunnel.exe`, `nusatunnel-gui.exe`, `nssm.exe`, PgBouncer binary/libs, `client.toml`, `pgbouncer.ini`, `pgbouncer-databases.json`, and `userlist.sample.txt`.
+- Windows 7 bundle excludes `nusatunnel-gui.exe`.
 - Do not alter binary assets accidentally during doc or source-only changes.
 
 Build commands:
@@ -146,12 +146,13 @@ Use this checklist when a change touches ports, services, state, tokens, or bund
 ## Current Default Contract
 
 - Server OS: Ubuntu 22+.
-- Dashboard port: `8088` unless `DASHBOARD_PORT` overrides it.
-- Server services: `rathole`, `easy-rathole-dashboard`.
-- Client services: `easy-rathole-client` on Linux, `EasyRatholeClient` on Windows.
-- PgBouncer service: `PgBouncer`.
+- Dashboard port: `8088` unless `NUSA_TUNNEL_PORT` overrides it.
+- Server services: `rathole`, `nusatunnel-dashboard`.
+- Client services: `nusatunnel-client` on Linux, `NusaTunnelClient` on Windows.
+- PgBouncer service: `NusaTunnelDB`.
 - Default remote ports: `5444`, `5480`, `5485`.
-- State: `/opt/easy-rathole/state/install-state.json`.
-- Server config: `/etc/easy-rathole/server.toml`.
-- Dashboard DB: `/opt/easy-rathole/state/easy-rathole.db`.
-- Bundle output: `/opt/easy-rathole/bundles`.
+- State: `/opt/nusatunnel/state/install-state.json`.
+- Server config: `/etc/nusatunnel/server.toml`.
+- Dashboard DB: `/opt/nusatunnel/state/nusatunnel.db`.
+- Bundle output: `/opt/nusatunnel/bundles`.
+

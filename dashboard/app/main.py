@@ -37,7 +37,7 @@ from .services.tunnel_ports import exposed_ports_from_service_ports, normalize_s
 from .services.token_service import update_global_token
 from .state import load_state
 
-app = FastAPI(title="IPOS5TunnelPublik Dashboard", version="0.2.0")
+app = FastAPI(title="NusaTunnel Dashboard", version="0.2.0")
 security = HTTPBasic()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 postgres_monitor_worker = PostgresMonitorWorker()
@@ -175,8 +175,8 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Linux",
             "architecture": "x86_64, aarch64/arm64",
             "service_name": LINUX_SERVICE_NAME,
-            "delivery": "Paket ZIP (client.toml + install-client.sh)",
-            "binary_source": "Script installer akan mengunduh rathole terbaru sesuai arsitektur",
+            "delivery": "Paket ZIP (File Pengaturan + install-client.sh)",
+            "binary_source": "Script installer akan mengunduh sambungan terbaru sesuai arsitektur",
             "setup_hint": "sudo ./install-client.sh",
             "remote_endpoint": endpoint,
         },
@@ -184,24 +184,24 @@ def build_supported_clients(public_ip: str, control_port: str) -> list[dict[str,
             "platform": "Windows",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + ipos5-rathole-gui.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
+            "delivery": "Paket ZIP (setup.exe + nusatunnel-service.exe + nusatunnel.exe + nusatunnel-gui.exe + File Pengaturan)",
             "binary_source": (
                 "Bundled dari aset lokal dashboard: "
-                f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_SERVICE_WRAPPER_NAME} + {WINDOWS_RATHOLE_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
+                f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_SERVICE_WRAPPER_NAME} + {WINDOWS_RATHOLE_BINARY_NAME} + {WINDOWS_GUI_BINARY_NAME}"
             ),
-            "setup_hint": "Jalankan setup.exe sebagai Administrator (install service membuat shortcut desktop GUI admin; GUI dibuka manual, tidak autostart)",
+            "setup_hint": "Jalankan setup.exe sebagai Administrator (install service membuat shortcut desktop; GUI dibuka manual, tidak autostart)",
             "remote_endpoint": endpoint,
         },
         {
             "platform": "Windows 7",
             "architecture": "x86_64",
             "service_name": WINDOWS_SERVICE_NAME,
-            "delivery": "Paket ZIP (setup.exe + ipos5-rathole-service.exe + ipos5-rathole.exe + nssm.exe + pgbouncer.exe + libevent-7.dll + libssl-3-x64.dll + libcrypto-3-x64.dll + libwinpthread-1.dll + client.toml + pgbouncer.ini + userlist.sample.txt)",
+            "delivery": "Paket ZIP (setup.exe + nusatunnel-service.exe + nusatunnel.exe + File Pengaturan)",
             "binary_source": (
                 "Bundled dari aset lokal dashboard versi Win7: "
-                f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_SERVICE_WRAPPER_NAME} + {WINDOWS_RATHOLE_BINARY_NAME} + {WINDOWS_NSSM_NAME}"
+                f"{WINDOWS_UNIFIED_NAME} + {WINDOWS_SERVICE_WRAPPER_NAME} + {WINDOWS_RATHOLE_BINARY_NAME}"
             ),
-            "setup_hint": "Jalankan setup.exe sebagai Administrator (varian Win7 tanpa GUI desktop).",
+            "setup_hint": "Jalankan setup.exe sebagai Administrator (varian Win7 tanpa shortcut desktop).",
             "remote_endpoint": endpoint,
         },
     ]
@@ -257,7 +257,7 @@ def dashboard(
     state = load_state()
     current_token = get_setting(conn, "global_token", state.get("token", ""))
     rathole_service = str(state.get("rathole_service_name", "rathole"))
-    dashboard_service = str(state.get("dashboard_service_name", "easy-rathole-dashboard"))
+    dashboard_service = str(state.get("dashboard_service_name", "nusatunnel-dashboard"))
     service_ports = normalize_service_ports(state.get("service_ports"))
     db_port_mapping = next((row for row in service_ports if str(row.get("name")) == "db"), {})
     db_remote_port = int(db_port_mapping.get("remote_bind_port", 5444))
@@ -322,7 +322,7 @@ def build_windows_bundle_error_message(
     assets_hint = ", ".join(f"assets/{asset_dir}/{name}" for name in required_assets)
     extra = ""
     if not includes_gui:
-        extra = " Bundle ini memang tidak memakai ipos5-rathole-gui.exe."
+        extra = " Bundle ini memang tidak memakai nusatunnel-gui.exe."
     return (
         f"Bundle {platform_label} belum siap. {exc}. "
         f"Pastikan aset berikut tersedia pada server resources: {assets_hint}."

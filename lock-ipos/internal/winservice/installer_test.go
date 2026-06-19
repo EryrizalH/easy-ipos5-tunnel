@@ -84,33 +84,33 @@ func TestResolveBundlePaths_MissingFiles(t *testing.T) {
 }
 
 func TestBuildInstallCommands(t *testing.T) {
-	cfg := Config{ServiceName: "EasyRatholeClient", BundleDir: `D:\bundle`}
+	cfg := Config{ServiceName: "NusaTunnelClient", BundleDir: `D:\bundle`}
 	paths := BundlePaths{
 		NSSMPath:           `D:\bundle\nssm.exe`,
-		ServiceWrapperPath: `D:\bundle\ipos5-rathole-service.exe`,
-		RatholePath:        `D:\bundle\ipos5-rathole.exe`,
-		GUIPath:            `D:\bundle\ipos5-rathole-gui.exe`,
+		ServiceWrapperPath: `D:\bundle\nusatunnel-service.exe`,
+		RatholePath:        `D:\bundle\nusatunnel.exe`,
+		GUIPath:            `D:\bundle\nusatunnel-gui.exe`,
 		ClientTomlPath:     `D:\bundle\client.toml`,
 		PgBouncerPath:      `D:\bundle\pgbouncer.exe`,
 		PgBouncerIniPath:   `D:\bundle\pgbouncer.ini`,
 		PgBouncerUserPath:  `D:\bundle\userlist.txt`,
 	}
 
-	cmds := BuildInstallCommands(cfg, paths, `C:\ProgramData\easy-rathole-client\logs`)
+	cmds := BuildInstallCommands(cfg, paths, `C:\ProgramData\nusatunnel-client\logs`)
 	if len(cmds) < 5 {
 		t.Fatalf("expected install commands, got %d", len(cmds))
 	}
 
-	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install EasyRatholeClient") {
+	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install NusaTunnelClient") {
 		t.Fatalf("unexpected first command: %s", got)
 	}
-	if got := strings.Join(cmds[0], " "); !strings.Contains(got, `ipos5-rathole-service.exe --bundle-dir D:\bundle --config D:\bundle\client.toml --rathole-bin D:\bundle\ipos5-rathole.exe`) {
+	if got := strings.Join(cmds[0], " "); !strings.Contains(got, `nusatunnel-service.exe --bundle-dir D:\bundle --config D:\bundle\client.toml --rathole-bin D:\bundle\nusatunnel.exe`) {
 		t.Fatalf("install command must target wrapper and explicit args, got: %s", got)
 	}
 
 	hasAutoStart := false
 	for _, cmd := range cmds {
-		if strings.Join(cmd, " ") == "set EasyRatholeClient Start SERVICE_AUTO_START" {
+		if strings.Join(cmd, " ") == "set NusaTunnelClient Start SERVICE_AUTO_START" {
 			hasAutoStart = true
 			break
 		}
@@ -121,20 +121,20 @@ func TestBuildInstallCommands(t *testing.T) {
 }
 
 func TestBuildInstallCommands_QuotesAppArgumentsWithSpaces(t *testing.T) {
-	cfg := Config{ServiceName: "EasyRatholeClient", BundleDir: `C:\Program Files\Easy Rathole Client`}
+	cfg := Config{ServiceName: "NusaTunnelClient", BundleDir: `C:\Program Files\Easy Rathole Client`}
 	paths := BundlePaths{
-		ServiceWrapperPath: `C:\Program Files\Easy Rathole Client\ipos5-rathole-service.exe`,
-		RatholePath:        `C:\Program Files\Easy Rathole Client\ipos5-rathole.exe`,
+		ServiceWrapperPath: `C:\Program Files\Easy Rathole Client\nusatunnel-service.exe`,
+		RatholePath:        `C:\Program Files\Easy Rathole Client\nusatunnel.exe`,
 		ClientTomlPath:     `C:\Program Files\Easy Rathole Client\client.toml`,
 	}
 
-	cmds := BuildInstallCommands(cfg, paths, `C:\ProgramData\easy-rathole-client\logs`)
+	cmds := BuildInstallCommands(cfg, paths, `C:\ProgramData\nusatunnel-client\logs`)
 	if len(cmds) == 0 {
 		t.Fatal("expected install commands")
 	}
 
 	installCmd := cmds[0]
-	if installCmd[2] != `C:\Program Files\Easy Rathole Client\ipos5-rathole-service.exe` {
+	if installCmd[2] != `C:\Program Files\Easy Rathole Client\nusatunnel-service.exe` {
 		t.Fatalf("NSSM application path must remain unquoted value, got %#v", installCmd)
 	}
 	checks := []string{
@@ -143,7 +143,7 @@ func TestBuildInstallCommands_QuotesAppArgumentsWithSpaces(t *testing.T) {
 		`--config`,
 		`"C:\Program Files\Easy Rathole Client\client.toml"`,
 		`--rathole-bin`,
-		`"C:\Program Files\Easy Rathole Client\ipos5-rathole.exe"`,
+		`"C:\Program Files\Easy Rathole Client\nusatunnel.exe"`,
 	}
 	for _, want := range checks {
 		found := false
@@ -174,11 +174,11 @@ func TestBuildPgBouncerInstallCommands(t *testing.T) {
 		PgBouncerIniPath: `D:\bundle\pgbouncer.ini`,
 	}
 
-	cmds := BuildPgBouncerInstallCommands(paths, `C:\ProgramData\easy-rathole-client\logs`)
+	cmds := BuildPgBouncerInstallCommands(paths, `C:\ProgramData\nusatunnel-client\logs`)
 	if len(cmds) < 5 {
 		t.Fatalf("expected pgbouncer install commands, got %d", len(cmds))
 	}
-	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install PgBouncer") {
+	if got := strings.Join(cmds[0], " "); !strings.Contains(got, "install NusaTunnelDB") {
 		t.Fatalf("unexpected first command: %s", got)
 	}
 }
@@ -189,7 +189,7 @@ func TestBuildPgBouncerInstallCommands_QuotesConfigArgumentWithSpaces(t *testing
 		PgBouncerIniPath: `C:\Program Files\Easy Rathole Client\pgbouncer.ini`,
 	}
 
-	cmds := BuildPgBouncerInstallCommands(paths, `C:\ProgramData\easy-rathole-client\logs`)
+	cmds := BuildPgBouncerInstallCommands(paths, `C:\ProgramData\nusatunnel-client\logs`)
 	if len(cmds) == 0 {
 		t.Fatal("expected pgbouncer install commands")
 	}
@@ -234,7 +234,7 @@ func TestExecuteInstallModeWithHandlers_IPPublicOnlySkipsPgBouncerFlow(t *testin
 	err := executeInstallModeWithHandlers(
 		Config{InstallMode: InstallModeIPPublicOnly},
 		BundlePaths{},
-		`C:\ProgramData\easy-rathole-client\logs`,
+		`C:\ProgramData\nusatunnel-client\logs`,
 		progress.NopReporter(),
 		commandRunner{},
 		installModeHandlers{
@@ -439,7 +439,7 @@ func TestBuildPgBouncerUserlist(t *testing.T) {
 }
 
 func TestBuildGUIShortcutSpec(t *testing.T) {
-	spec := BuildGUIShortcutSpec(`D:\bundle`, `D:\bundle\ipos5-rathole-gui.exe`)
+	spec := BuildGUIShortcutSpec(`D:\bundle`, `D:\bundle\nusatunnel-gui.exe`)
 	if !strings.Contains(spec.LauncherPath, launcherFileName) {
 		t.Fatalf("launcher path mismatch: %s", spec.LauncherPath)
 	}
@@ -455,7 +455,7 @@ func TestBuildGUIShortcutSpec(t *testing.T) {
 }
 
 func TestBuildLauncherContent_NoHiddenModeAndUsesRunAs(t *testing.T) {
-	content := buildLauncherContent(`D:\bundle\ipos5-rathole-gui.exe`)
+	content := buildLauncherContent(`D:\bundle\nusatunnel-gui.exe`)
 	lower := strings.ToLower(content)
 	if strings.Contains(lower, "--hidden") {
 		t.Fatalf("launcher should not force hidden mode: %s", content)
@@ -463,7 +463,7 @@ func TestBuildLauncherContent_NoHiddenModeAndUsesRunAs(t *testing.T) {
 	if !strings.Contains(lower, "-verb runas") {
 		t.Fatalf("launcher must use RunAs: %s", content)
 	}
-	if !strings.Contains(content, "ipos5-rathole-gui.exe") {
+	if !strings.Contains(content, "nusatunnel-gui.exe") {
 		t.Fatalf("launcher must include GUI path: %s", content)
 	}
 }

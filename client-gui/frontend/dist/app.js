@@ -39,15 +39,15 @@ function renderStatus(snapshot) {
   stateEls.serviceState.textContent = snapshot.serviceState || "-";
   decorateStatus(stateEls.serviceState, snapshot.serviceState === "running");
 
-  stateEls.serviceName.textContent = snapshot.serviceName || "EasyRatholeClient";
-  stateEls.lastChecked.textContent = `Last checked: ${snapshot.lastCheckedAt || "-"}`;
+  stateEls.serviceName.textContent = snapshot.serviceName || "NusaTunnelClient";
+  stateEls.lastChecked.textContent = `Terakhir diperiksa: ${snapshot.lastCheckedAt || "-"}`;
   stateEls.serverPublicIP.textContent = snapshot.serverPublicIP || "-";
   stateEls.serverHost.textContent = `Host: ${snapshot.serverHost || "-"}`;
-  stateEls.dashboardStatus.textContent = `Dashboard: ${snapshot.dashboardReachable ? "Up" : "Down"}`;
-  stateEls.controlStatus.textContent = `Control Port: ${snapshot.controlPortReachable ? "Up" : "Down"} (${snapshot.serverControlPort || "-"})`;
+  stateEls.dashboardStatus.textContent = `Dashboard: ${snapshot.dashboardReachable ? "Aktif" : "Tidak Aktif"}`;
+  stateEls.controlStatus.textContent = `Control Port: ${snapshot.controlPortReachable ? "Aktif" : "Tidak Aktif"} (${snapshot.serverControlPort || "-"})`;
   stateEls.postgresStatus.textContent = `Status: ${snapshot.postgresStatus || "-"}`;
   stateEls.postgresLatency.textContent = `Connect: ${snapshot.postgresConnectMs || "-"} ms | Query: ${snapshot.postgresQueryMs || "-"} ms | Tx: ${snapshot.postgresTxMs || "-"} ms`;
-  stateEls.postgresChecked.textContent = `Checked: ${snapshot.postgresLastChecked || "-"}`;
+  stateEls.postgresChecked.textContent = `Diperiksa: ${snapshot.postgresLastChecked || "-"}`;
 
   if (snapshot.postgresLastError) {
     setMessage(snapshot.postgresLastError, "warn");
@@ -90,24 +90,24 @@ async function bootstrap() {
   }
 
   document.getElementById("btnRefresh").addEventListener("click", refreshStatus);
-  document.getElementById("btnStart").addEventListener("click", () => runAction("StartService", "Service started."));
-  document.getElementById("btnStop").addEventListener("click", () => runAction("StopService", "Service stopped."));
-  document.getElementById("btnRestart").addEventListener("click", () => runAction("RestartService", "Service restarted."));
+  document.getElementById("btnStart").addEventListener("click", () => runAction("StartService", "Layanan telah dijalankan."));
+  document.getElementById("btnStop").addEventListener("click", () => runAction("StopService", "Layanan telah dihentikan."));
+  document.getElementById("btnRestart").addEventListener("click", () => runAction("RestartService", "Layanan telah dijalankan ulang."));
   document.getElementById("btnEnableAutostart").addEventListener("click", () =>
-    runAction("EnableAutoStart", "Auto-start enabled."),
+    runAction("EnableAutoStart", "Auto-start telah diaktifkan."),
   );
   document.getElementById("btnDisableAutostart").addEventListener("click", () =>
-    runAction("DisableAutoStart", "Auto-start disabled."),
+    runAction("DisableAutoStart", "Auto-start telah dinonaktifkan."),
   );
   document.getElementById("btnSaveConfig").addEventListener("click", async () => {
     const path = stateEls.configPath.value.trim();
     try {
       const result = await goCall("SetConfigPath", path);
       if (result?.ok) {
-        setMessage("Config path saved.", "ok");
+        setMessage("Lokasi pengaturan disimpan.", "ok");
         await refreshStatus();
       } else {
-        setMessage(result?.message || "Failed to save config path.", "bad");
+        setMessage(result?.message || "Gagal menyimpan lokasi pengaturan.", "bad");
       }
     } catch (err) {
       setMessage(err.message || String(err), "bad");

@@ -34,7 +34,7 @@ def classify_status(query_ms: float | None, err: str) -> str:
 
 
 def resolve_default_monitor_port() -> int:
-    state_path = Path(os.environ.get("EASY_RATHOLE_STATE_FILE", "/opt/easy-rathole/state/install-state.json"))
+    state_path = Path(os.environ.get("NUSA_TUNNEL_STATE_FILE", "/opt/nusatunnel/state/install-state.json"))
     if not state_path.exists():
         return 5444
 
@@ -61,21 +61,21 @@ def resolve_default_monitor_port() -> int:
 
 
 def read_monitor_config() -> dict[str, Any]:
-    enabled = os.environ.get("EASY_RATHOLE_PG_MONITOR_ENABLED", "1") == "1"
-    interval_raw = os.environ.get("EASY_RATHOLE_PG_MONITOR_INTERVAL_SEC", "5").strip()
+    enabled = os.environ.get("NUSA_TUNNEL_PG_MONITOR_ENABLED", "1") == "1"
+    interval_raw = os.environ.get("NUSA_TUNNEL_PG_MONITOR_INTERVAL_SEC", "5").strip()
     try:
         interval_sec = max(1, int(interval_raw))
     except ValueError:
         interval_sec = 5
 
-    dsn = os.environ.get("EASY_RATHOLE_PG_MONITOR_DSN", "").strip()
-    host = os.environ.get("EASY_RATHOLE_PG_MONITOR_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    dsn = os.environ.get("NUSA_TUNNEL_PG_MONITOR_DSN", "").strip()
+    host = os.environ.get("NUSA_TUNNEL_PG_MONITOR_HOST", "127.0.0.1").strip() or "127.0.0.1"
     default_port = str(resolve_default_monitor_port())
-    port = int(os.environ.get("EASY_RATHOLE_PG_MONITOR_PORT", default_port))
-    user = os.environ.get("EASY_RATHOLE_PG_MONITOR_USER", "sysi5adm").strip()
-    password = os.environ.get("EASY_RATHOLE_PG_MONITOR_PASSWORD", "u&aV23cc.o82dtr1x89c").strip()
-    dbname = os.environ.get("EASY_RATHOLE_PG_MONITOR_DBNAME", "postgres").strip()
-    connect_timeout = max(1, int(os.environ.get("EASY_RATHOLE_PG_MONITOR_TIMEOUT_SEC", "3")))
+    port = int(os.environ.get("NUSA_TUNNEL_PG_MONITOR_PORT", default_port))
+    user = os.environ.get("NUSA_TUNNEL_PG_MONITOR_USER", "sysi5adm").strip()
+    password = os.environ.get("NUSA_TUNNEL_PG_MONITOR_PASSWORD", "u&aV23cc.o82dtr1x89c").strip()
+    dbname = os.environ.get("NUSA_TUNNEL_PG_MONITOR_DBNAME", "postgres").strip()
+    connect_timeout = max(1, int(os.environ.get("NUSA_TUNNEL_PG_MONITOR_TIMEOUT_SEC", "3")))
 
     if not dsn:
         dsn = (

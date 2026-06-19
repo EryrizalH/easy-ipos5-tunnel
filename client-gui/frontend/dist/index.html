@@ -3,70 +3,70 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Easy Rathole Client</title>
+    <title>NusaTunnel</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
-        <h1>Easy Rathole</h1>
-        <small id="lastChecked">Last checked: -</small>
+        <h1>NusaTunnel</h1>
+        <small id="lastChecked">Terakhir diperiksa: -</small>
       </header>
 
       <section class="status-grid">
         <article class="tile">
-          <span class="label">Connection</span>
+          <span class="label">Sambungan</span>
           <p id="connectionState" class="value">-</p>
         </article>
         <article class="tile">
-          <span class="label">Service</span>
+          <span class="label">Layanan</span>
           <p id="serviceState" class="value">-</p>
-          <small id="serviceName">EasyRatholeClient</small>
+          <small id="serviceName">NusaTunnelClient</small>
         </article>
         <article class="tile tile-wide">
-          <span class="label">Server Public IP</span>
+          <span class="label">IP Publik Server</span>
           <p id="serverPublicIP" class="value">-</p>
           <small id="serverHost">Host: -</small>
         </article>
         <article class="tile tile-wide">
-          <span class="label">Server Status</span>
+          <span class="label">Status Server</span>
           <p id="dashboardStatus" class="value">Dashboard: -</p>
           <small id="controlStatus">Control Port: -</small>
         </article>
         <article class="tile tile-wide">
-          <span class="label">PostgreSQL Performance (VPS 5444 -> PGbouncer 5444)</span>
+          <span class="label">Performa Database (Pengoptimal)</span>
           <p id="postgresStatus" class="value">Status: -</p>
           <small id="postgresLatency">Connect: - ms | Query: - ms | Tx: - ms</small>
-          <small id="postgresChecked">Checked: -</small>
+          <small id="postgresChecked">Diperiksa: -</small>
         </article>
       </section>
 
       <section class="panel compact">
-        <h2>Service Control</h2>
+        <h2>Kontrol Layanan</h2>
         <div class="actions-grid">
-          <button id="btnStart">Start</button>
-          <button id="btnStop">Stop</button>
-          <button id="btnRestart">Restart</button>
-          <button id="btnRefresh">Refresh</button>
+          <button id="btnStart">Mulai</button>
+          <button id="btnStop">Hentikan</button>
+          <button id="btnRestart">Mulai Ulang</button>
+          <button id="btnRefresh">Perbarui</button>
         </div>
       </section>
 
       <section class="panel compact">
-        <h2>Settings</h2>
-        <label for="configPath">client.toml path</label>
+        <h2>Pengaturan</h2>
+        <label for="configPath">Lokasi File Pengaturan (client.toml)</label>
         <div class="row tight">
           <input id="configPath" type="text" />
-          <button id="btnSaveConfig">Save</button>
+          <button id="btnSaveConfig">Simpan</button>
         </div>
         <div class="row tight">
-          <button id="btnEnableAutostart">Enable Auto-Start</button>
-          <button id="btnDisableAutostart">Disable Auto-Start</button>
+          <button id="btnEnableAutostart">Aktifkan Auto-Start</button>
+          <button id="btnDisableAutostart">Matikan Auto-Start</button>
         </div>
       </section>
 
       <section class="panel compact">
-        <h2>Messages</h2>
-        <p id="message" class="message">Ready.</p>
+        <h2>Pesan</h2>
+        <p id="message" class="message">Siap.</p>
       </section>
     </main>
 

@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $wrapperDir = Join-Path $repoRoot "lock-ipos\cmd\ipos5-rathole-service"
-$outPath = Join-Path $repoRoot "assets/windows/ipos5-rathole-service.exe"
+$outPath = Join-Path $repoRoot "assets/windows/nusatunnel-service.exe"
 
 if (-not (Test-Path $wrapperDir)) {
     throw "Folder service wrapper tidak ditemukan: $wrapperDir"

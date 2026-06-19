@@ -3,8 +3,8 @@ Folder ini disediakan untuk asset bundle client Windows 7 yang dipisah dari `ass
 Ekspektasi file minimal untuk route `GET /download/windows7`:
 
 - `setup.exe`
-- `ipos5-rathole-service.exe`
-- `ipos5-rathole.exe`
+- `nusatunnel-service.exe`
+- `nusatunnel.exe`
 - `nssm.exe`
 - `pgbouncer.exe`
 - `libevent-7.dll`
@@ -14,4 +14,4 @@ Ekspektasi file minimal untuk route `GET /download/windows7`:
 - `pgbouncer.ini.tpl`
 - `userlist.sample.txt`
 
-Varian ini sengaja tanpa `ipos5-rathole-gui.exe`.
+Varian ini sengaja tanpa `nusatunnel-gui.exe`.

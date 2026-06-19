@@ -65,10 +65,10 @@ class BundleServiceTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            previous_resources = os.environ.get("EASY_RATHOLE_RESOURCES_DIR")
-            previous_bundles = os.environ.get("EASY_RATHOLE_BUNDLES_DIR")
-            os.environ["EASY_RATHOLE_RESOURCES_DIR"] = str(resources)
-            os.environ["EASY_RATHOLE_BUNDLES_DIR"] = str(bundles)
+            previous_resources = os.environ.get("NUSA_TUNNEL_RESOURCES_DIR")
+            previous_bundles = os.environ.get("NUSA_TUNNEL_BUNDLES_DIR")
+            os.environ["NUSA_TUNNEL_RESOURCES_DIR"] = str(resources)
+            os.environ["NUSA_TUNNEL_BUNDLES_DIR"] = str(bundles)
             try:
                 bundle_path = bundle_service.generate_windows_bundle(
                     {
@@ -83,13 +83,13 @@ class BundleServiceTest(unittest.TestCase):
                 )
             finally:
                 if previous_resources is None:
-                    os.environ.pop("EASY_RATHOLE_RESOURCES_DIR", None)
+                    os.environ.pop("NUSA_TUNNEL_RESOURCES_DIR", None)
                 else:
-                    os.environ["EASY_RATHOLE_RESOURCES_DIR"] = previous_resources
+                    os.environ["NUSA_TUNNEL_RESOURCES_DIR"] = previous_resources
                 if previous_bundles is None:
-                    os.environ.pop("EASY_RATHOLE_BUNDLES_DIR", None)
+                    os.environ.pop("NUSA_TUNNEL_BUNDLES_DIR", None)
                 else:
-                    os.environ["EASY_RATHOLE_BUNDLES_DIR"] = previous_bundles
+                    os.environ["NUSA_TUNNEL_BUNDLES_DIR"] = previous_bundles
 
             self.assertTrue(bundle_path.exists())
             with zipfile.ZipFile(bundle_path) as zf:
@@ -143,10 +143,10 @@ class BundleServiceTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            previous_resources = os.environ.get("EASY_RATHOLE_RESOURCES_DIR")
-            previous_bundles = os.environ.get("EASY_RATHOLE_BUNDLES_DIR")
-            os.environ["EASY_RATHOLE_RESOURCES_DIR"] = str(resources)
-            os.environ["EASY_RATHOLE_BUNDLES_DIR"] = str(bundles)
+            previous_resources = os.environ.get("NUSA_TUNNEL_RESOURCES_DIR")
+            previous_bundles = os.environ.get("NUSA_TUNNEL_BUNDLES_DIR")
+            os.environ["NUSA_TUNNEL_RESOURCES_DIR"] = str(resources)
+            os.environ["NUSA_TUNNEL_BUNDLES_DIR"] = str(bundles)
             try:
                 bundle_path = bundle_service.generate_windows7_bundle(
                     {
@@ -157,13 +157,13 @@ class BundleServiceTest(unittest.TestCase):
                 )
             finally:
                 if previous_resources is None:
-                    os.environ.pop("EASY_RATHOLE_RESOURCES_DIR", None)
+                    os.environ.pop("NUSA_TUNNEL_RESOURCES_DIR", None)
                 else:
-                    os.environ["EASY_RATHOLE_RESOURCES_DIR"] = previous_resources
+                    os.environ["NUSA_TUNNEL_RESOURCES_DIR"] = previous_resources
                 if previous_bundles is None:
-                    os.environ.pop("EASY_RATHOLE_BUNDLES_DIR", None)
+                    os.environ.pop("NUSA_TUNNEL_BUNDLES_DIR", None)
                 else:
-                    os.environ["EASY_RATHOLE_BUNDLES_DIR"] = previous_bundles
+                    os.environ["NUSA_TUNNEL_BUNDLES_DIR"] = previous_bundles
 
             self.assertTrue(bundle_path.exists())
             self.assertTrue(bundle_path.name.startswith("windows7-client-"))

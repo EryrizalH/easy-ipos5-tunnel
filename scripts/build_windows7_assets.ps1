@@ -38,7 +38,7 @@ finally {
 }
 
 # 2. Build service wrapper untuk Windows 7
-$serviceOut = Join-Path $assets7Dir "ipos5-rathole-service.exe"
+$serviceOut = Join-Path $assets7Dir "nusatunnel-service.exe"
 Write-Host "Building Windows 7 service wrapper..." -ForegroundColor Cyan
 Push-Location $serviceDir
 try {

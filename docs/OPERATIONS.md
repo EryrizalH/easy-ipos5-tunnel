@@ -1,10 +1,10 @@
-# Panduan Operasional IPOS5TunnelPublik
+# Panduan Operasional NusaTunnel
 
 ## Cek status service
 
 ```bash
 systemctl is-active rathole
-systemctl is-active easy-rathole-dashboard
+systemctl is-active nusatunnel-dashboard
 systemctl is-active fail2ban
 ```
 
@@ -21,7 +21,7 @@ Lihat metadata hardening pada state file:
 ```bash
 python3 - <<'PY'
 import json
-with open('/opt/easy-rathole/state/install-state.json') as f:
+with open('/opt/nusatunnel/state/install-state.json') as f:
     d = json.load(f)
 print('hardening_applied=', d.get('hardening_applied'))
 print('hardening_ssh_port=', d.get('hardening_ssh_port'))
@@ -34,15 +34,15 @@ PY
 
 ```bash
 sudo systemctl restart rathole
-sudo systemctl restart easy-rathole-dashboard
+sudo systemctl restart nusatunnel-dashboard
 ```
 
 ## Lokasi file
 
-- State: `/opt/easy-rathole/state/install-state.json`
-- DB dashboard: `/opt/easy-rathole/state/easy-rathole.db`
-- Rathole server config: `/etc/easy-rathole/server.toml`
-- Bundle output: `/opt/easy-rathole/bundles`
+- State: `/opt/nusatunnel/state/install-state.json`
+- DB dashboard: `/opt/nusatunnel/state/nusatunnel.db`
+- Rathole server config: `/etc/nusatunnel/server.toml`
+- Bundle output: `/opt/nusatunnel/bundles`
 
 ## Rotasi token
 
@@ -62,16 +62,16 @@ sudo ss -ltnp | grep -E ':5444|:5480|:5485|:8088'
 Catatan alur database default:
 - Port VPS tetap `5444`.
 - Client Windows tetap menjalankan rathole ke `127.0.0.1:5444`.
-- Saat mode PgBouncer aktif, PostgreSQL pindah ke `127.0.0.1:5445` dan PgBouncer listen di `0.0.0.0:5444` agar bisa diakses lokal maupun LAN.
+- Saat mode Pengoptimal Database aktif, PostgreSQL pindah ke `127.0.0.1:5445` dan Pengoptimal Database (NusaTunnelDB) listen di `0.0.0.0:5444` agar bisa diakses lokal maupun LAN.
 - Installer Windows juga membuat rule firewall inbound TCP `5444` untuk semua sumber.
-- Pastikan file PGbouncer (`pgbouncer.ini` dan `userlist.txt`) tersimpan aman dan konsisten dengan kredensial PG lock.
+- Pastikan file Pengoptimal Database (`pgbouncer.ini` dan `userlist.txt`) tersimpan aman dan konsisten dengan kredensial PG lock.
 
 Untuk control port rathole, lihat dari state file:
 
 ```bash
 python3 - <<'PY'
 import json
-with open('/opt/easy-rathole/state/install-state.json') as f:
+with open('/opt/nusatunnel/state/install-state.json') as f:
     print(json.load(f).get('rathole_control_port'))
 PY
 ```
@@ -80,7 +80,7 @@ PY
 
 ```bash
 journalctl -u rathole -f
-journalctl -u easy-rathole-dashboard -f
+journalctl -u nusatunnel-dashboard -f
 ```
 
 ## Jalankan ulang installer
@@ -88,7 +88,7 @@ journalctl -u easy-rathole-dashboard -f
 Installer bersifat idempotent dasar, sehingga aman dijalankan ulang:
 
 ```bash
-sudo bash install.sh
+sudo NUSA_TUNNEL_RUN_UPGRADE=1 bash install.sh
 ```
 
 Namun setelah re-run:
@@ -99,8 +99,9 @@ Namun setelah re-run:
 
 ## Catatan aman sebelum disable SSH password
 
-Jika ingin menjalankan dengan `EASY_RATHOLE_DISABLE_SSH_PASSWORD=1`, pastikan:
+Jika ingin menjalankan dengan `NUSA_TUNNEL_DISABLE_SSH_PASSWORD=1`, pastikan:
 
 1. Login SSH pakai private key sudah teruji
 2. Minimal ada satu file `authorized_keys` valid
 3. Jangan menutup sesi SSH aktif sampai verifikasi login sesi baru berhasil
+

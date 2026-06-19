@@ -22,7 +22,7 @@ func TestExtractSCState_Success(t *testing.T) {
 }
 
 func TestExtractSCState_FieldNotFound(t *testing.T) {
-	_, err := extractSCState("SERVICE_NAME: PgBouncer")
+	_, err := extractSCState("SERVICE_NAME: NusaTunnelDB")
 	if err == nil {
 		t.Fatal("expected error when STATE field is missing")
 	}
@@ -38,7 +38,7 @@ func TestWaitServiceStateWithQuery_SuccessAfterPending(t *testing.T) {
 		return "RUNNING", "STATE : 4 RUNNING", nil
 	}
 
-	err := waitServiceStateWithQuery("PgBouncer", "RUNNING", 50*time.Millisecond, 0, queryFn, func(time.Duration) {})
+	err := waitServiceStateWithQuery("NusaTunnelDB", "RUNNING", 50*time.Millisecond, 0, queryFn, func(time.Duration) {})
 	if err != nil {
 		t.Fatalf("waitServiceStateWithQuery() error = %v", err)
 	}
@@ -52,7 +52,7 @@ func TestWaitServiceStateWithQuery_TimeoutIncludesLastState(t *testing.T) {
 		return "START_PENDING", "STATE : 2 START_PENDING", nil
 	}
 
-	err := waitServiceStateWithQuery("PgBouncer", "RUNNING", 5*time.Millisecond, 0, queryFn, func(time.Duration) {})
+	err := waitServiceStateWithQuery("NusaTunnelDB", "RUNNING", 5*time.Millisecond, 0, queryFn, func(time.Duration) {})
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
@@ -70,7 +70,7 @@ func TestWaitServiceStateWithQuery_FailsFastOnPaused(t *testing.T) {
 		return "PAUSED", "STATE : 7 PAUSED", nil
 	}
 
-	err := waitServiceStateWithQuery("EasyRatholeClient", "RUNNING", time.Minute, 0, queryFn, func(time.Duration) {
+	err := waitServiceStateWithQuery("NusaTunnelClient", "RUNNING", time.Minute, 0, queryFn, func(time.Duration) {
 		t.Fatal("sleep should not be called after PAUSED terminal state")
 	})
 	if err == nil {
@@ -92,7 +92,7 @@ func TestWaitServiceStateWithQuery_FailsFastOnStopped(t *testing.T) {
 		return "STOPPED", "STATE : 1 STOPPED", nil
 	}
 
-	err := waitServiceStateWithQuery("EasyRatholeClient", "RUNNING", time.Minute, 0, queryFn, func(time.Duration) {
+	err := waitServiceStateWithQuery("NusaTunnelClient", "RUNNING", time.Minute, 0, queryFn, func(time.Duration) {
 		t.Fatal("sleep should not be called after STOPPED terminal state")
 	})
 	if err == nil {

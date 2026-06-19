@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-echo [IPOS5TunnelPublik] Menginstal service client Windows...
+echo [NusaTunnel] Menginstal service client Windows...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-service.ps1"
 set "rc=%ERRORLEVEL%"
 

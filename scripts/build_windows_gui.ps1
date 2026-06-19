@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $guiDir = Join-Path $repoRoot "client-gui"
-$outPath = Join-Path $repoRoot "assets/windows/ipos5-rathole-gui.exe"
+$outPath = Join-Path $repoRoot "assets/windows/nusatunnel-gui.exe"
 $iconPath = Join-Path $guiDir "icon.ico"
 $sysoPath = Join-Path $guiDir "rsrc.syso"
 

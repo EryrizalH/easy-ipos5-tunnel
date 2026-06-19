@@ -36,7 +36,7 @@ func TestParseArgs_ExplicitOverrides(t *testing.T) {
 		[]string{
 			"--bundle-dir", `D:\vpn`,
 			"--config", `D:\cfg\custom.toml`,
-			"--rathole-bin", `D:\bin\ipos5-rathole.exe`,
+			"--rathole-bin", `D:\bin\nusatunnel.exe`,
 			"--service-name", "CustomSvc",
 		},
 		`D:\ignored`,
@@ -51,7 +51,7 @@ func TestParseArgs_ExplicitOverrides(t *testing.T) {
 	if cfg.ConfigPath != `D:\cfg\custom.toml` {
 		t.Fatalf("unexpected config path: %s", cfg.ConfigPath)
 	}
-	if cfg.RatholePath != `D:\bin\ipos5-rathole.exe` {
+	if cfg.RatholePath != `D:\bin\nusatunnel.exe` {
 		t.Fatalf("unexpected rathole path: %s", cfg.RatholePath)
 	}
 	if cfg.ServiceName != "CustomSvc" {
@@ -62,10 +62,10 @@ func TestParseArgs_ExplicitOverrides(t *testing.T) {
 func TestParseArgs_TrimsNSSMQuotedPathArgumentsWithSpaces(t *testing.T) {
 	cfg, err := ParseArgs(
 		[]string{
-			"--bundle-dir", `"C:\Program Files\Easy Rathole Client"`,
-			"--config", `"C:\Program Files\Easy Rathole Client\client.toml"`,
-			"--rathole-bin", `"C:\Program Files\Easy Rathole Client\ipos5-rathole.exe"`,
-			"--service-name", "EasyRatholeClient",
+			"--bundle-dir", `"C:\Program Files\NusaTunnel"`,
+			"--config", `"C:\Program Files\NusaTunnel\client.toml"`,
+			"--rathole-bin", `"C:\Program Files\NusaTunnel\nusatunnel.exe"`,
+			"--service-name", "NusaTunnelClient",
 		},
 		`C:\ignored`,
 	)
@@ -73,13 +73,13 @@ func TestParseArgs_TrimsNSSMQuotedPathArgumentsWithSpaces(t *testing.T) {
 		t.Fatalf("ParseArgs() error = %v", err)
 	}
 
-	if cfg.BundleDir != `C:\Program Files\Easy Rathole Client` {
+	if cfg.BundleDir != `C:\Program Files\NusaTunnel` {
 		t.Fatalf("unexpected bundle dir: %s", cfg.BundleDir)
 	}
-	if cfg.ConfigPath != `C:\Program Files\Easy Rathole Client\client.toml` {
+	if cfg.ConfigPath != `C:\Program Files\NusaTunnel\client.toml` {
 		t.Fatalf("unexpected config path: %s", cfg.ConfigPath)
 	}
-	if cfg.RatholePath != `C:\Program Files\Easy Rathole Client\ipos5-rathole.exe` {
+	if cfg.RatholePath != `C:\Program Files\NusaTunnel\nusatunnel.exe` {
 		t.Fatalf("unexpected rathole path: %s", cfg.RatholePath)
 	}
 }

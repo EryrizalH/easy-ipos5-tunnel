@@ -1,4 +1,4 @@
-module easy-rathole/client-gui
+module nusatunnel/client-gui
 
 go 1.23
 

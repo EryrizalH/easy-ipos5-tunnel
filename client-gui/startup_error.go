@@ -14,12 +14,12 @@ func handleFatalStartupError(err error) {
 	}
 
 	logPath := writeStartupErrorLog(err)
-	message := "Easy Rathole Client GUI gagal dijalankan.\n\n" + err.Error()
+	message := "NusaTunnel Client GUI gagal dijalankan.\n\n" + err.Error()
 	if logPath != "" {
 		message += "\n\nLog: " + logPath
 	}
 	message += "\n\nPastikan Microsoft Edge WebView2 Runtime sudah terpasang."
-	showFatalDialog("Easy Rathole Client GUI", message)
+	showFatalDialog("NusaTunnel Client GUI", message)
 	os.Exit(1)
 }
 
@@ -56,16 +56,16 @@ func writeStartupErrorLog(err error) string {
 
 func resolveLogDir() string {
 	if local := os.Getenv("LOCALAPPDATA"); local != "" {
-		return filepath.Join(local, "easy-rathole-client-gui", "logs")
+		return filepath.Join(local, "nusatunnel-client-gui", "logs")
 	}
 	if cfgDir, err := os.UserConfigDir(); err == nil {
-		return filepath.Join(cfgDir, "easy-rathole-client-gui", "logs")
+		return filepath.Join(cfgDir, "nusatunnel-client-gui", "logs")
 	}
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		return filepath.Join(home, ".easy-rathole-client-gui", "logs")
+		return filepath.Join(home, ".nusatunnel-client-gui", "logs")
 	}
 	if tmp := os.TempDir(); tmp != "" {
-		return filepath.Join(tmp, "easy-rathole-client-gui", "logs")
+		return filepath.Join(tmp, "nusatunnel-client-gui", "logs")
 	}
 	return ""
 }

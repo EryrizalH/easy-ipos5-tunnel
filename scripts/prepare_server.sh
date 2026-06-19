@@ -4,10 +4,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-EASY_RATHOLE_HARDENING="${EASY_RATHOLE_HARDENING:-1}"
-EASY_RATHOLE_RUN_UPGRADE="${EASY_RATHOLE_RUN_UPGRADE:-1}"
-EASY_RATHOLE_DISABLE_SSH_PASSWORD="${EASY_RATHOLE_DISABLE_SSH_PASSWORD:-0}"
-EASY_RATHOLE_SSH_ALLOW_CIDR="${EASY_RATHOLE_SSH_ALLOW_CIDR:-}"
+NUSA_TUNNEL_HARDENING="${NUSA_TUNNEL_HARDENING:-1}"
+NUSA_TUNNEL_RUN_UPGRADE="${NUSA_TUNNEL_RUN_UPGRADE:-1}"
+NUSA_TUNNEL_DISABLE_SSH_PASSWORD="${NUSA_TUNNEL_DISABLE_SSH_PASSWORD:-0}"
+NUSA_TUNNEL_SSH_ALLOW_CIDR="${NUSA_TUNNEL_SSH_ALLOW_CIDR:-}"
 
 get_ssh_port() {
   local port="22"
@@ -43,7 +43,7 @@ APT::Periodic::AutocleanInterval "7";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 
-  cat > /etc/apt/apt.conf.d/52easy-rathole-unattended-upgrades <<'EOF'
+  cat > /etc/apt/apt.conf.d/52nusatunnel-unattended-upgrades <<'EOF'
 Unattended-Upgrade::Automatic-Reboot "false";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
 Unattended-Upgrade::MailOnlyOnError "true";
@@ -55,7 +55,7 @@ EOF
 configure_sysctl_hardening() {
   log INFO "Menerapkan hardening sysctl jaringan..."
 
-  cat > /etc/sysctl.d/99-easy-rathole-hardening.conf <<'EOF'
+  cat > /etc/sysctl.d/99-nusatunnel-hardening.conf <<'EOF'
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 net.ipv4.conf.all.send_redirects = 0
@@ -75,7 +75,7 @@ EOF
 configure_ssh_baseline() {
   log INFO "Menerapkan hardening baseline SSH..."
 
-  local drop_in="/etc/ssh/sshd_config.d/99-easy-rathole-hardening.conf"
+  local drop_in="/etc/ssh/sshd_config.d/99-nusatunnel-hardening.conf"
   ensure_dir "/etc/ssh/sshd_config.d" 755
 
   cat > "$drop_in" <<'EOF'
@@ -88,9 +88,9 @@ ClientAliveInterval 300
 ClientAliveCountMax 2
 EOF
 
-  if [[ "$EASY_RATHOLE_DISABLE_SSH_PASSWORD" == "1" ]]; then
+  if [[ "$NUSA_TUNNEL_DISABLE_SSH_PASSWORD" == "1" ]]; then
     if ! has_authorized_keys; then
-      fail "EASY_RATHOLE_DISABLE_SSH_PASSWORD=1 tetapi authorized_keys tidak ditemukan. Hardening SSH dibatalkan demi keamanan."
+      fail "NUSA_TUNNEL_DISABLE_SSH_PASSWORD=1 tetapi authorized_keys tidak ditemukan. Hardening SSH dibatalkan demi keamanan."
     fi
     cat >> "$drop_in" <<'EOF'
 PasswordAuthentication no
@@ -108,7 +108,7 @@ configure_fail2ban() {
   log INFO "Mengonfigurasi fail2ban untuk proteksi SSH..."
 
   ensure_dir "/etc/fail2ban/jail.d" 755
-  cat > /etc/fail2ban/jail.d/easy-rathole.local <<EOF
+  cat > /etc/fail2ban/jail.d/nusatunnel.local <<EOF
 [sshd]
 enabled = true
 port = ${ssh_port}
@@ -129,8 +129,8 @@ configure_ufw_baseline() {
   ufw default deny incoming >/dev/null || true
   ufw default allow outgoing >/dev/null || true
 
-  if [[ -n "$EASY_RATHOLE_SSH_ALLOW_CIDR" ]]; then
-    ufw allow from "$EASY_RATHOLE_SSH_ALLOW_CIDR" to any port "$ssh_port" proto tcp >/dev/null || true
+  if [[ -n "$NUSA_TUNNEL_SSH_ALLOW_CIDR" ]]; then
+    ufw allow from "$NUSA_TUNNEL_SSH_ALLOW_CIDR" to any port "$ssh_port" proto tcp >/dev/null || true
   else
     ufw allow "${ssh_port}/tcp" >/dev/null || true
   fi
@@ -144,8 +144,8 @@ main() {
   require_root
   ensure_ubuntu_22_plus
 
-  if [[ "$EASY_RATHOLE_HARDENING" != "1" ]]; then
-    log WARN "Hardening dinonaktifkan via EASY_RATHOLE_HARDENING=${EASY_RATHOLE_HARDENING}. Melewati persiapan server."
+  if [[ "$NUSA_TUNNEL_HARDENING" != "1" ]]; then
+    log WARN "Hardening dinonaktifkan via NUSA_TUNNEL_HARDENING=${NUSA_TUNNEL_HARDENING}. Melewati persiapan server."
     return 0
   fi
 
@@ -161,7 +161,7 @@ main() {
     unattended-upgrades \
     apt-transport-https
 
-  if [[ "$EASY_RATHOLE_RUN_UPGRADE" == "1" ]]; then
+  if [[ "$NUSA_TUNNEL_RUN_UPGRADE" == "1" ]]; then
     log INFO "Menjalankan upgrade paket keamanan..."
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
   fi
@@ -175,12 +175,12 @@ main() {
   configure_fail2ban "$ssh_port"
   configure_ufw_baseline "$ssh_port"
 
-  local state_file="${EASY_RATHOLE_STATE_FILE:-/opt/easy-rathole/state/install-state.json}"
+  local state_file="${NUSA_TUNNEL_STATE_FILE:-/opt/nusatunnel/state/install-state.json}"
   state_merge_json "$state_file" "{\
     \"hardening_applied\": true, \
     \"hardening_ssh_port\": ${ssh_port}, \
-    \"hardening_disable_ssh_password\": ${EASY_RATHOLE_DISABLE_SSH_PASSWORD}, \
-    \"hardening_ssh_allow_cidr\": \"${EASY_RATHOLE_SSH_ALLOW_CIDR}\"\
+    \"hardening_disable_ssh_password\": ${NUSA_TUNNEL_DISABLE_SSH_PASSWORD}, \
+    \"hardening_ssh_allow_cidr\": \"${NUSA_TUNNEL_SSH_ALLOW_CIDR}\"\
   }"
 
   log INFO "Persiapan server selesai."

@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	defaultServiceName = "EasyRatholeClient"
-	taskName           = "EasyRatholeClientGUI"
+	defaultServiceName = "NusaTunnelClient"
+	taskName           = "NusaTunnelClientGUI"
 )
 
 type AppConfig struct {
@@ -27,7 +27,7 @@ func NewConfigStore() (*ConfigStore, error) {
 		return nil, err
 	}
 
-	dir := filepath.Join(cfgDir, "easy-rathole-client-gui")
+	dir := filepath.Join(cfgDir, "nusatunnel-client-gui")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}

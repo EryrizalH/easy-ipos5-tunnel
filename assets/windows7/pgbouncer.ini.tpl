@@ -1,4 +1,4 @@
-; PGbouncer sample config for IPOS5TunnelPublik (PostgreSQL 9.5 compatible)
+; PGbouncer sample config for NusaTunnel (PostgreSQL 9.5 compatible)
 ; Keep PostgreSQL local listener on 127.0.0.1:5445
 ; PGbouncer listens on 0.0.0.0:5444 for local and LAN access
 ; Runtime installer will regenerate this file and can use pgbouncer-databases.json

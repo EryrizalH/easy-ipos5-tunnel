@@ -28,7 +28,7 @@ func run(startHidden bool) error {
 	}
 
 	err = wails.Run(&options.App{
-		Title:             "Easy Rathole Client",
+		Title:             "NusaTunnel Client",
 		Width:             420,
 		Height:            560,
 		MinWidth:          420,
@@ -43,7 +43,7 @@ func run(startHidden bool) error {
 		StartHidden:       startHidden,
 		HideWindowOnClose: true,
 		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId: "com.easy-rathole.client-gui",
+			UniqueId: "com.nusatunnel.client-gui",
 			OnSecondInstanceLaunch: func(options.SecondInstanceData) {
 				app.onSecondInstanceLaunch()
 			},

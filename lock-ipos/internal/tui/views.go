@@ -27,7 +27,7 @@ func RenderPathDetect(styles *Styles, pgBinPath string, testingPath string, inpu
 	var b strings.Builder
 
 	b.WriteString(styles.Box.Render(
-		styles.Title.Render("PostgreSQL Permission Manager") +
+		styles.Title.Render("NusaTunnel - Pengaturan Izin Database") +
 			"\n\n" +
 			styles.Subtitle.Render("Mencari PostgreSQL Binary...") +
 			"\n\n" +
@@ -68,9 +68,9 @@ func RenderMainMenu(styles *Styles, canCreateDB bool, selectedOption int) string
 		details  string
 		selected bool
 	}{
-		{number: 1, label: "Install IP Public", details: "(EasyRatholeClient, tanpa PgBouncer)", selected: selectedOption == 1},
-		{number: 2, label: "Install PgBouncer", details: "(Meningkatkan performa)", selected: selectedOption == 2},
-		{number: 3, label: "Uninstall Service IP Public", details: "(EasyRatholeClient + PgBouncer)", selected: selectedOption == 3},
+		{number: 1, label: "Install IP Public", details: "(NusaTunnelClient, tanpa Pengoptimal Database)", selected: selectedOption == 1},
+		{number: 2, label: "Install Pengoptimal Database", details: "(Meningkatkan performa)", selected: selectedOption == 2},
+		{number: 3, label: "Uninstall Service IP Public", details: "(NusaTunnelClient + Pengoptimal Database)", selected: selectedOption == 3},
 		{number: 4, label: "Kunci Pembuatan Database Baru", details: "(NOCREATEDB)", selected: selectedOption == 4},
 		{number: 5, label: "Lepas Kunci Database Baru", details: "(CREATEDB)", selected: selectedOption == 5},
 	}
@@ -112,7 +112,7 @@ func RenderMainMenu(styles *Styles, canCreateDB bool, selectedOption int) string
 	menuText.WriteString(styles.HelpText.Render("[↑/↓] Pilih  [1..5] Pilih  [Enter] Konfirmasi  [Q] Keluar"))
 
 	b.WriteString(styles.Box.Render(
-		styles.Title.Render("IPOS5 Unified Tools") +
+		styles.Title.Render("NusaTunnel") +
 			"\n\n" +
 			menuText.String(),
 	))
@@ -130,27 +130,27 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 	switch option {
 	case 1:
 		actionTitle = "Install IP Public"
-		actionDesc = "Anda akan menginstall/update service tunnel publik tanpa install ulang PgBouncer."
-		consequence = "Installer akan memastikan DB forwarding local_addr=127.0.0.1:5444 lalu membuat service tunnel."
+		actionDesc = "Anda akan menginstall/update service sambungan publik tanpa install ulang Pengoptimal Database."
+		consequence = "Installer akan membuat service sambungan."
 		detailLines = []string{
 			"Service Name: " + serviceName,
 			"Bundle Dir : " + bundleDir,
-			"Wajib ada  : nssm.exe, ipos5-rathole-service.exe, ipos5-rathole.exe, client.toml",
-			"Opsional   : ipos5-rathole-gui.exe (jika ingin shortcut GUI desktop)",
+			"Wajib ada  : nssm.exe, nusatunnel-service.exe, nusatunnel.exe, client.toml",
+			"Opsional   : nusatunnel-gui.exe (jika ingin shortcut GUI desktop)",
 		}
 	case 2:
-		actionTitle = "Install PgBouncer"
-		actionDesc = "Anda akan install/update service PgBouncer untuk meningkatkan performa koneksi PostgreSQL."
-		consequence = "Installer akan migrasi PostgreSQL ke 127.0.0.1:5445, lalu PgBouncer listen di 0.0.0.0:5444 dan membuka firewall TCP 5444 untuk semua sumber."
+		actionTitle = "Install Pengoptimal Database"
+		actionDesc = "Anda akan install/update service Pengoptimal Database untuk meningkatkan performa koneksi PostgreSQL."
+		consequence = "Installer akan migrasi PostgreSQL ke 127.0.0.1:5445, lalu Pengoptimal Database listen di 0.0.0.0:5444."
 		detailLines = []string{
-			"Service Name: PgBouncer",
+			"Service Name: NusaTunnelDB",
 			"Bundle Dir : " + bundleDir,
 			"Wajib ada  : pgbouncer.exe, libevent-7.dll, libssl-3-x64.dll, libcrypto-3-x64.dll, libwinpthread-1.dll, psql.exe",
 		}
 	case 3:
 		actionTitle = "Uninstall Service IP Public"
-		actionDesc = "Anda akan menghapus service tunnel publik."
-		consequence = "Service EasyRatholeClient dan PgBouncer akan dihentikan lalu dihapus dari Windows Service, kemudian PostgreSQL dikembalikan ke port 127.0.0.1:5444."
+		actionDesc = "Anda akan menghapus service sambungan publik."
+		consequence = "Service NusaTunnelClient dan Pengoptimal Database akan dihentikan lalu dihapus dari Windows Service, kemudian PostgreSQL dikembalikan ke port 127.0.0.1:5444."
 		detailLines = []string{
 			"Service Name: " + serviceName,
 		}
@@ -281,7 +281,7 @@ func RenderResult(styles *Styles, success bool, canCreateDB bool, action int, re
 			content.WriteString("\n\n")
 			content.WriteString(styles.MutedText.Render("Error: " + errorMsg))
 			content.WriteString("\n")
-			content.WriteString(styles.HelpText.Render("Tip: cek log.txt (folder setup.exe) dan log service di C:\\ProgramData\\easy-rathole-client\\logs"))
+			content.WriteString(styles.HelpText.Render("Tip: cek log.txt (folder setup.exe) dan log service di C:\\ProgramData\\nusatunnel-client\\logs"))
 		}
 	}
 

@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-DEFAULT_STATE_PATH = "/opt/easy-rathole/state/install-state.json"
+DEFAULT_STATE_PATH = "/opt/nusatunnel/state/install-state.json"
 
 
 def utc_now() -> str:
@@ -14,7 +14,7 @@ def utc_now() -> str:
 
 
 def get_state_path() -> Path:
-    return Path(os.environ.get("EASY_RATHOLE_STATE_FILE", DEFAULT_STATE_PATH))
+    return Path(os.environ.get("NUSA_TUNNEL_STATE_FILE", DEFAULT_STATE_PATH))
 
 
 def load_state(path: Path | None = None) -> dict[str, Any]:

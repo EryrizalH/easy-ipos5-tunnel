@@ -76,7 +76,7 @@ def update_global_token(
 ) -> tuple[bool, str]:
     token = validate_token(token)
 
-    config_path = Path(state.get("rathole_config_path", "/etc/easy-rathole/server.toml"))
+    config_path = Path(state.get("rathole_config_path", "/etc/nusatunnel/server.toml"))
     control_port = int(state.get("rathole_control_port", 2333))
     service_name = str(state.get("rathole_service_name", "rathole"))
     service_ports = normalize_service_ports(state.get("service_ports"))

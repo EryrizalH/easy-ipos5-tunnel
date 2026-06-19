@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableExtensions
 
-title IPOS5TunnelPublik Windows Client Setup
+title NusaTunnel - Pemasangan Client
 
 echo ==================================================
-echo   IPOS5TunnelPublik - Setup Client Windows Sekali Klik
+echo   NusaTunnel - Pemasangan Client Windows Sekali Klik
 echo ==================================================
 echo.
 
@@ -27,22 +27,22 @@ if not exist "client.toml" (
   exit /b 1
 )
 
-if not exist "ipos5-rathole-service.exe" (
-  echo [ERROR] Service wrapper tidak ditemukan: ipos5-rathole-service.exe
+if not exist "nusatunnel-service.exe" (
+  echo [ERROR] Service wrapper tidak ditemukan: nusatunnel-service.exe
   echo         Pastikan ZIP client windows diextract lengkap.
   pause
   exit /b 1
 )
 
-if not exist "ipos5-rathole.exe" (
-  echo [ERROR] Binary tunnel tidak ditemukan: ipos5-rathole.exe
+if not exist "nusatunnel.exe" (
+  echo [ERROR] Binary tunnel tidak ditemukan: nusatunnel.exe
   echo         Pastikan ZIP client windows diextract lengkap.
   pause
   exit /b 1
 )
 
-echo [OK] Service wrapper ditemukan: ipos5-rathole-service.exe
-echo [OK] Binary tunnel ditemukan: ipos5-rathole.exe
+echo [OK] Service wrapper ditemukan: nusatunnel-service.exe
+echo [OK] Binary tunnel ditemukan: nusatunnel.exe
 
 if not exist "{{WINDOWS_GUI_BINARY_NAME}}" (
   echo [ERROR] GUI binary tidak ditemukan: {{WINDOWS_GUI_BINARY_NAME}}
@@ -90,9 +90,9 @@ if not "%ERRORLEVEL%"=="0" (
   echo [OK] GUI terdeteksi berjalan. Icon tray seharusnya muncul.
 )
 
-echo [STEP] Membuat icon desktop GUI (ipos5-rathole)...
+echo [STEP] Membuat icon desktop GUI (nusatunnel)...
 set "GUI_EXE=%~dp0{{WINDOWS_GUI_BINARY_NAME}}"
-set "GUI_SHORTCUT_NAME=ipos5-rathole.lnk"
+set "GUI_SHORTCUT_NAME=nusatunnel.lnk"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference = 'Stop';" ^
   "$target = $env:GUI_EXE;" ^
@@ -116,7 +116,7 @@ if not "%ERRORLEVEL%"=="0" (
   echo [WARN] Gagal membuat icon desktop GUI.
   echo        Anda bisa membuat shortcut manual ke {{WINDOWS_GUI_BINARY_NAME}}.
 ) else (
-  echo [OK] Icon desktop berhasil dibuat dengan nama: ipos5-rathole
+  echo [OK] Icon desktop berhasil dibuat dengan nama: nusatunnel
 )
 
 echo.

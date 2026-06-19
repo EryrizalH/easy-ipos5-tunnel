@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-EASY_RATHOLE_RELEASE_API="https://api.github.com/repos/rathole-org/rathole/releases/latest"
+NUSA_TUNNEL_RELEASE_API="https://api.github.com/repos/rathole-org/rathole/releases/latest"
 
 log() {
   local level="$1"
@@ -77,7 +77,7 @@ detect_public_ip() {
 }
 
 fetch_latest_rathole_release_json() {
-  curl -fsSL "$EASY_RATHOLE_RELEASE_API"
+  curl -fsSL "$NUSA_TUNNEL_RELEASE_API"
 }
 
 get_release_tag() {

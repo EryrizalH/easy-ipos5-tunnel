@@ -8,7 +8,7 @@ configure_firewall_ports() {
   local state_file="$1"
   local control_port
   local dashboard_port
-  local dashboard_allow_cidr="${EASY_RATHOLE_DASHBOARD_ALLOW_CIDR:-}"
+  local dashboard_allow_cidr="${NUSA_TUNNEL_DASHBOARD_ALLOW_CIDR:-}"
 
   control_port="$(state_get "$state_file" "rathole_control_port" "0")"
   dashboard_port="$(state_get "$state_file" "dashboard_port" "8088")"
@@ -90,9 +90,9 @@ main() {
   require_root
   ensure_ubuntu_22_plus
 
-  export EASY_RATHOLE_ROOT="${EASY_RATHOLE_ROOT:-/opt/easy-rathole}"
-  export EASY_RATHOLE_CONFIG_DIR="${EASY_RATHOLE_CONFIG_DIR:-/etc/easy-rathole}"
-  export EASY_RATHOLE_STATE_FILE="${EASY_RATHOLE_STATE_FILE:-${EASY_RATHOLE_ROOT}/state/install-state.json}"
+  export NUSA_TUNNEL_ROOT="${NUSA_TUNNEL_ROOT:-/opt/nusatunnel}"
+  export NUSA_TUNNEL_CONFIG_DIR="${NUSA_TUNNEL_CONFIG_DIR:-/etc/nusatunnel}"
+  export NUSA_TUNNEL_STATE_FILE="${NUSA_TUNNEL_STATE_FILE:-${NUSA_TUNNEL_ROOT}/state/install-state.json}"
 
   log INFO "Menyiapkan baseline keamanan server..."
   bash "${SCRIPT_DIR}/scripts/prepare_server.sh"
@@ -116,7 +116,7 @@ main() {
   bash "${SCRIPT_DIR}/scripts/install_dashboard.sh"
 
   log INFO "Mengonfigurasi port firewall..."
-  configure_firewall_ports "${EASY_RATHOLE_STATE_FILE}"
+  configure_firewall_ports "${NUSA_TUNNEL_STATE_FILE}"
 
   local public_ip
   local control_port
@@ -127,15 +127,15 @@ main() {
   local hardening_ssh_port
   local forward_ports
 
-  public_ip="$(state_get "${EASY_RATHOLE_STATE_FILE}" "public_ip" "<unknown>")"
-  control_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "rathole_control_port" "<unknown>")"
-  dashboard_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "dashboard_port" "8088")"
-  admin_username="$(state_get "${EASY_RATHOLE_STATE_FILE}" "admin_username" "admin")"
-  credentials_file="$(state_get "${EASY_RATHOLE_STATE_FILE}" "credentials_file" "${EASY_RATHOLE_ROOT}/state/dashboard-credentials.txt")"
-  hardening_applied="$(state_get "${EASY_RATHOLE_STATE_FILE}" "hardening_applied" "false")"
-  hardening_ssh_port="$(state_get "${EASY_RATHOLE_STATE_FILE}" "hardening_ssh_port" "22")"
+  public_ip="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "public_ip" "<unknown>")"
+  control_port="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "rathole_control_port" "<unknown>")"
+  dashboard_port="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "dashboard_port" "8088")"
+  admin_username="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "admin_username" "admin")"
+  credentials_file="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "credentials_file" "${NUSA_TUNNEL_ROOT}/state/dashboard-credentials.txt")"
+  hardening_applied="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "hardening_applied" "false")"
+  hardening_ssh_port="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "hardening_ssh_port" "22")"
   forward_ports="$(
-    python3 - "${EASY_RATHOLE_STATE_FILE}" <<'PY'
+    python3 - "${NUSA_TUNNEL_STATE_FILE}" <<'PY'
 import json
 import pathlib
 import sys
@@ -177,7 +177,7 @@ PY
   cat <<EOF
 
 ============================================================
-Instalasi IPOS5TunnelPublik selesai.
+Instalasi Nusa IPOS 5 Tunnel selesai.
 
 URL Dashboard     : http://${public_ip}:${dashboard_port}
 Pengguna Dashboard: ${admin_username}
@@ -188,7 +188,7 @@ Port Forward      : ${forward_ports}
 
 Services:
   - rathole
-  - easy-rathole-dashboard
+  - nusatunnel-dashboard
 
 Baseline keamanan:
   - hardening diterapkan : ${hardening_applied}
