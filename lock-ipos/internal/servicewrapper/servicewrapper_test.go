@@ -59,6 +59,31 @@ func TestParseArgs_ExplicitOverrides(t *testing.T) {
 	}
 }
 
+func TestParseArgs_TrimsNSSMQuotedPathArgumentsWithSpaces(t *testing.T) {
+	cfg, err := ParseArgs(
+		[]string{
+			"--bundle-dir", `"C:\Program Files\Easy Rathole Client"`,
+			"--config", `"C:\Program Files\Easy Rathole Client\client.toml"`,
+			"--rathole-bin", `"C:\Program Files\Easy Rathole Client\ipos5-rathole.exe"`,
+			"--service-name", "EasyRatholeClient",
+		},
+		`C:\ignored`,
+	)
+	if err != nil {
+		t.Fatalf("ParseArgs() error = %v", err)
+	}
+
+	if cfg.BundleDir != `C:\Program Files\Easy Rathole Client` {
+		t.Fatalf("unexpected bundle dir: %s", cfg.BundleDir)
+	}
+	if cfg.ConfigPath != `C:\Program Files\Easy Rathole Client\client.toml` {
+		t.Fatalf("unexpected config path: %s", cfg.ConfigPath)
+	}
+	if cfg.RatholePath != `C:\Program Files\Easy Rathole Client\ipos5-rathole.exe` {
+		t.Fatalf("unexpected rathole path: %s", cfg.RatholePath)
+	}
+}
+
 func TestValidate_MissingRatholeBinary(t *testing.T) {
 	tmp := t.TempDir()
 	configPath := filepath.Join(tmp, DefaultConfigName)

@@ -10,9 +10,9 @@ function Ensure-Admin {
             '-ExecutionPolicy',
             'Bypass',
             '-File',
-            '"' + $PSCommandPath + '"'
+            $PSCommandPath
         )
-        Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList ($argList -join ' ')
+        Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argList
         exit 0
     }
 }
@@ -88,7 +88,7 @@ Remove-ExistingServiceIfAny -ServiceName $serviceName
 
 New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
 
-& $nssm install $serviceName $serviceWrapperExe --bundle-dir $baseDir --config $configFile --rathole-bin $ratholeExe --service-name $serviceName
+& $nssm install $serviceName $serviceWrapperExe --bundle-dir "`"$baseDir`"" --config "`"$configFile`"" --rathole-bin "`"$ratholeExe`"" --service-name $serviceName
 & $nssm set $serviceName AppDirectory $baseDir
 & $nssm set $serviceName Start SERVICE_AUTO_START
 & $nssm set $serviceName DisplayName "IPOS5TunnelPublik Client"

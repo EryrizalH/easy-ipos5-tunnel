@@ -12,7 +12,8 @@ echo.
 powershell.exe -NoProfile -Command "$p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent()); if ($p.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) { exit 0 } else { exit 1 }"
 if not "%ERRORLEVEL%"=="0" (
   echo [INFO] Script butuh hak Administrator. Meminta izin UAC...
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+  set "SETUP_CLIENT_SELF=%~f0"
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath $env:SETUP_CLIENT_SELF -Verb RunAs"
   exit /b 0
 )
 

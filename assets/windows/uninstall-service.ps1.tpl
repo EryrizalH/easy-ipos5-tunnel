@@ -9,9 +9,9 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administra
         '-ExecutionPolicy',
         'Bypass',
         '-File',
-        '"' + $PSCommandPath + '"'
+        $PSCommandPath
     )
-    Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList ($argList -join ' ')
+    Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argList
     exit 0
 }
 

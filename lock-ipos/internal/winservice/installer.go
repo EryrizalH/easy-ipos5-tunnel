@@ -218,9 +218,9 @@ func BuildInstallCommands(cfg Config, paths BundlePaths, logRoot string) [][]str
 			"install",
 			cfg.ServiceName,
 			paths.ServiceWrapperPath,
-			"--bundle-dir", cfg.BundleDir,
-			"--config", paths.ClientTomlPath,
-			"--rathole-bin", paths.RatholePath,
+			"--bundle-dir", quoteWindowsCommandArg(cfg.BundleDir),
+			"--config", quoteWindowsCommandArg(paths.ClientTomlPath),
+			"--rathole-bin", quoteWindowsCommandArg(paths.RatholePath),
 			"--service-name", cfg.ServiceName,
 		},
 		{"set", cfg.ServiceName, "AppDirectory", cfg.BundleDir},
@@ -239,7 +239,7 @@ func BuildInstallCommands(cfg Config, paths BundlePaths, logRoot string) [][]str
 // BuildPgBouncerInstallCommands exposes deterministic NSSM command sequence for PgBouncer.
 func BuildPgBouncerInstallCommands(paths BundlePaths, logRoot string) [][]string {
 	return [][]string{
-		{"install", pgBouncerService, paths.PgBouncerPath, paths.PgBouncerIniPath},
+		{"install", pgBouncerService, paths.PgBouncerPath, quoteWindowsCommandArg(paths.PgBouncerIniPath)},
 		{"set", pgBouncerService, "AppDirectory", filepath.Dir(paths.PgBouncerPath)},
 		{"set", pgBouncerService, "Start", "SERVICE_AUTO_START"},
 		{"set", pgBouncerService, "DisplayName", "PgBouncer"},
@@ -1532,4 +1532,38 @@ func createShortcut(shortcutPath, targetPath, arguments, iconPath string) error 
 
 func escapePowerShellSingleQuoted(in string) string {
 	return strings.ReplaceAll(in, "'", "''")
+}
+
+func quoteWindowsCommandArg(arg string) string {
+	if arg == "" {
+		return `""`
+	}
+	if !strings.ContainsAny(arg, " \t\"") {
+		return arg
+	}
+
+	var b strings.Builder
+	b.WriteByte('"')
+	backslashes := 0
+	for _, r := range arg {
+		switch r {
+		case '\\':
+			backslashes++
+		case '"':
+			b.WriteString(strings.Repeat(`\`, backslashes*2+1))
+			b.WriteRune(r)
+			backslashes = 0
+		default:
+			if backslashes > 0 {
+				b.WriteString(strings.Repeat(`\`, backslashes))
+				backslashes = 0
+			}
+			b.WriteRune(r)
+		}
+	}
+	if backslashes > 0 {
+		b.WriteString(strings.Repeat(`\`, backslashes*2))
+	}
+	b.WriteByte('"')
+	return b.String()
 }
