@@ -40,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/pruedence21/easy-ipos5-tunnel/main/
 ### Opsi B — clone repo lalu jalankan
 
 ```bash
-git clone https://github.com/pruedence21/easy-ipos5-tunnel.git
+git clone https://github.com/EryrizalH/easy-ipos5-tunnel.git
 cd easy-ipos5-tunnel
 sudo bash install.sh
 ```
