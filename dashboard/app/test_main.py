@@ -81,7 +81,7 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         save_state(
             {
                 "public_ip": "10.10.10.10",
-                "rathole_control_port": 2333,
+                "rathole_control_port": 443,
             },
             self.state_path,
         )

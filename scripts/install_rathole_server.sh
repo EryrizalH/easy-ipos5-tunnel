@@ -35,14 +35,23 @@ main() {
   install -m 0644 "${PROJECT_ROOT}/templates/rathole/client.toml.tpl" "${resources_dir}/templates/rathole/client.toml.tpl"
 
   local control_port
+  local desired_control_port="${NUSA_TUNNEL_RATHOLE_CONTROL_PORT:-443}"
+  local previous_control_port
   local token
   local public_ip
 
-  control_port="$(state_get "$state_file" "rathole_control_port" "")"
+  if [[ ! "$desired_control_port" =~ ^[0-9]+$ ]] || (( 10#$desired_control_port < 1 || 10#$desired_control_port > 65535 )); then
+    fail "NUSA_TUNNEL_RATHOLE_CONTROL_PORT harus berupa port TCP 1-65535"
+  fi
+
+  previous_control_port="$(state_get "$state_file" "rathole_control_port" "")"
+  control_port="$desired_control_port"
   token="$(state_get "$state_file" "token" "")"
   public_ip="$(state_get "$state_file" "public_ip" "")"
 
-  [[ -n "$control_port" ]] || control_port="$(pick_random_free_port 20000 45000)"
+  if port_in_use "$control_port" && [[ "$previous_control_port" != "$control_port" ]]; then
+    fail "Port control rathole ${control_port} sedang dipakai. Hentikan service yang memakai port itu atau set NUSA_TUNNEL_RATHOLE_CONTROL_PORT ke port lain."
+  fi
   [[ -n "$token" ]] || token="$(random_string 40)"
   [[ -n "$public_ip" ]] || public_ip="$(detect_public_ip)"
 

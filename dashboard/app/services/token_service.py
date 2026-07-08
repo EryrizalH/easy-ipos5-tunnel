@@ -6,7 +6,7 @@ from typing import Any
 
 from ..db import set_setting
 from ..state import merge_state
-from .tunnel_ports import exposed_ports_from_service_ports, normalize_service_ports
+from .tunnel_ports import DEFAULT_RATHOLE_CONTROL_PORT, exposed_ports_from_service_ports, normalize_service_ports
 
 
 def validate_token(token: str) -> str:
@@ -77,7 +77,7 @@ def update_global_token(
     token = validate_token(token)
 
     config_path = Path(state.get("rathole_config_path", "/etc/nusatunnel/server.toml"))
-    control_port = int(state.get("rathole_control_port", 2333))
+    control_port = int(state.get("rathole_control_port", DEFAULT_RATHOLE_CONTROL_PORT))
     service_name = str(state.get("rathole_service_name", "rathole"))
     service_ports = normalize_service_ports(state.get("service_ports"))
 

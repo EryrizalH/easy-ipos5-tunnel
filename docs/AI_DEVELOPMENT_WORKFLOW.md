@@ -150,6 +150,7 @@ Use this checklist when a change touches ports, services, state, tokens, or bund
 - Server services: `rathole`, `nusatunnel-dashboard`.
 - Client services: `nusatunnel-client` on Linux, `NusaTunnelClient` on Windows.
 - PgBouncer service: `NusaTunnelDB`.
+- Default rathole control port: `443`.
 - Default remote ports: `5444`, `5480`, `5485`.
 - State: `/opt/nusatunnel/state/install-state.json`.
 - Server config: `/etc/nusatunnel/server.toml`.

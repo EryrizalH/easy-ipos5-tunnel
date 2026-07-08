@@ -56,7 +56,7 @@ sudo systemctl restart nusatunnel-dashboard
 ## Verifikasi port listening
 
 ```bash
-sudo ss -ltnp | grep -E ':5444|:5480|:5485|:8088'
+sudo ss -ltnp | grep -E ':443|:5444|:5480|:5485|:8088'
 ```
 
 Catatan alur database default:
@@ -66,7 +66,7 @@ Catatan alur database default:
 - Installer Windows juga membuat rule firewall inbound TCP `5444` untuk semua sumber.
 - Pastikan file Pengoptimal Database (`pgbouncer.ini` dan `userlist.txt`) tersimpan aman dan konsisten dengan kredensial PG lock.
 
-Untuk control port rathole, lihat dari state file:
+Control port rathole default `443`. State file tetap sumber kebenaran setelah override:
 
 ```bash
 python3 - <<'PY'

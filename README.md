@@ -7,7 +7,7 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
 - Install server sambungan + layanan (`rathole`)
 - Jalur forward TCP server (VPS): **5444**, **5480**, **5485**
 - Mapping database default: **VPS 5444 -> Client 127.0.0.1:5444 (NusaTunnelClient) -> Pengoptimal Database (NusaTunnelDB) 0.0.0.0:5444 -> Database 127.0.0.1:5445**
-- Jalur kontrol sambungan dipilih otomatis (random, port kosong)
+- Jalur kontrol client ke VPS default TCP **443** agar koneksi sambungan terlihat seperti akses HTTPS.
 - Dashboard NusaTunnel (HTTP + Basic Auth) untuk:
   - melihat status layanan dan status jalur forward
   - set/rotasi global token
@@ -59,7 +59,7 @@ Urutan default:
 2. Install dependency runtime.
 3. Install rathole server + layanan `rathole`.
 4. Install dashboard + layanan `nusatunnel-dashboard`.
-5. Buka firewall untuk jalur kontrol + remote bind ports sambungan (default 5444/5480/5485) + jalur dashboard.
+5. Buka firewall untuk jalur kontrol **443** + remote bind ports sambungan (default 5444/5480/5485) + jalur dashboard.
 
 ### Opsi environment (opsional)
 
@@ -81,6 +81,9 @@ sudo NUSA_TUNNEL_DASHBOARD_ALLOW_CIDR="1.2.3.4/32" bash install.sh
 
 # ganti port dashboard (default 8088)
 sudo NUSA_TUNNEL_PORT=9090 bash install.sh
+
+# ganti port kontrol rathole (default 443; selain 443 tidak lagi terlihat seperti HTTPS)
+sudo NUSA_TUNNEL_RATHOLE_CONTROL_PORT=8443 bash install.sh
 ```
 
 > ⚠️ `NUSA_TUNNEL_DISABLE_SSH_PASSWORD=1` hanya aman jika login SSH key-based sudah teruji. Script akan menolak jika `authorized_keys` tidak ditemukan.

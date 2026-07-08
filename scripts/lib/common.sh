@@ -100,23 +100,6 @@ port_in_use() {
   ss -ltnH "( sport = :${port} )" | grep -q .
 }
 
-pick_random_free_port() {
-  local start="${1:-20000}"
-  local end="${2:-45000}"
-  local attempts=0
-
-  while (( attempts < 200 )); do
-    local candidate
-    candidate="$(( RANDOM % (end - start + 1) + start ))"
-    if ! port_in_use "$candidate"; then
-      echo "$candidate"
-      return 0
-    fi
-    attempts=$((attempts + 1))
-  done
-
-  fail "Gagal menemukan port kosong pada rentang ${start}-${end}"
-}
 
 render_template() {
   local template_file="$1"

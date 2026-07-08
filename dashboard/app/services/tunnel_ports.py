@@ -3,6 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+DEFAULT_RATHOLE_CONTROL_PORT = 443
+
 DEFAULT_SERVICE_PORTS: list[dict[str, Any]] = [
     {
         "name": "db",

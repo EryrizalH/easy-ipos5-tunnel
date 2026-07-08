@@ -73,7 +73,6 @@ class BundleServiceTest(unittest.TestCase):
                 bundle_path = bundle_service.generate_windows_bundle(
                     {
                         "public_ip": "10.10.10.10",
-                        "rathole_control_port": 2333,
                         "pgbouncer_databases": [
                             {"name": "iposdb"},
                             {"name": "masterdb", "backend_dbname": "backend_master"},
@@ -110,6 +109,7 @@ class BundleServiceTest(unittest.TestCase):
                 },
             )
             self.assertIn("127.0.0.1:5444", client_toml)
+            self.assertIn("remote_addr=10.10.10.10:443", client_toml)
 
     def test_generate_windows7_bundle_excludes_gui_binary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -151,7 +151,7 @@ class BundleServiceTest(unittest.TestCase):
                 bundle_path = bundle_service.generate_windows7_bundle(
                     {
                         "public_ip": "10.10.10.10",
-                        "rathole_control_port": 2333,
+                        "rathole_control_port": 443,
                     },
                     token="demo-token",
                 )

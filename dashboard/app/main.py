@@ -33,7 +33,7 @@ from .services.bundle_service import (
     generate_windows7_bundle,
 )
 from .services.postgres_monitor_service import PostgresMonitorWorker
-from .services.tunnel_ports import exposed_ports_from_service_ports, normalize_service_ports
+from .services.tunnel_ports import DEFAULT_RATHOLE_CONTROL_PORT, exposed_ports_from_service_ports, normalize_service_ports
 from .services.token_service import update_global_token
 from .state import load_state
 
@@ -264,7 +264,7 @@ def dashboard(
     db_backend_local_addr = str(db_port_mapping.get("client_local_addr", "127.0.0.1:5444"))
     exposed_ports = exposed_ports_from_service_ports(service_ports)
     public_ip = str(state.get("public_ip", "<unknown>"))
-    control_port = str(state.get("rathole_control_port", "<unknown>"))
+    control_port = str(state.get("rathole_control_port", DEFAULT_RATHOLE_CONTROL_PORT))
 
     flash_message = message or notice
     flash_type = classify_flash_message(flash_message)

@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .tunnel_ports import normalize_service_ports
+from .tunnel_ports import DEFAULT_RATHOLE_CONTROL_PORT, normalize_service_ports
 
 WINDOWS_SERVICE_WRAPPER_NAME = "nusatunnel-service.exe"
 WINDOWS_RATHOLE_BINARY_NAME = "nusatunnel.exe"
@@ -72,7 +72,7 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
         raise FileNotFoundError(f"Client template not found: {template_path}")
 
     server_addr = str(state.get("public_ip", "127.0.0.1"))
-    control_port = str(state.get("rathole_control_port", "2333"))
+    control_port = str(state.get("rathole_control_port", DEFAULT_RATHOLE_CONTROL_PORT))
     service_ports = normalize_service_ports(state.get("service_ports"))
     by_name = {str(row.get("name", "")).strip(): row for row in service_ports}
     db = by_name.get("db", {})
