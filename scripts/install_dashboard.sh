@@ -5,6 +5,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
+build_windows_setup() {
+  local deploy_dir="$1"
+  local source_setup="$2"
+  local assets_dir="$3"
+  local target_setup="$4"
+  local includes_gui="$5"
+
+  PYTHONPATH="$deploy_dir" python3 -c '
+from pathlib import Path
+from app.services.bundle_service import build_windows_installer_payload
+import sys
+build_windows_installer_payload(
+    Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), includes_gui=sys.argv[4] == "true"
+)
+' "$source_setup" "$assets_dir" "$target_setup" "$includes_gui"
+}
+
 main() {
   require_root
   ensure_ubuntu_22_plus
@@ -46,8 +63,16 @@ main() {
   cp -R "${PROJECT_ROOT}/dashboard/app" "${deploy_dir}/app"
   cp "${PROJECT_ROOT}/dashboard/requirements.txt" "${deploy_dir}/requirements.txt"
 
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/setup.exe" "${resources_dir}/assets/windows/setup.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows7/setup.exe" "${resources_dir}/assets/windows7/setup.exe"
+  build_windows_setup "$deploy_dir" \
+    "${PROJECT_ROOT}/assets/windows/setup.exe" \
+    "${PROJECT_ROOT}/assets/windows" \
+    "${resources_dir}/assets/windows/setup.exe" \
+    true
+  build_windows_setup "$deploy_dir" \
+    "${PROJECT_ROOT}/assets/windows7/setup.exe" \
+    "${PROJECT_ROOT}/assets/windows7" \
+    "${resources_dir}/assets/windows7/setup.exe" \
+    false
   install -m 0644 "${PROJECT_ROOT}/assets/linux/install-client.sh.tpl" "${resources_dir}/assets/linux/install-client.sh.tpl"
   install -m 0644 "${PROJECT_ROOT}/templates/rathole/client.toml.tpl" "${resources_dir}/templates/rathole/client.toml.tpl"
 
