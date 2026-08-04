@@ -61,20 +61,11 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
     def write_windows7_assets(self) -> None:
         assets = self.resources / "assets" / "windows7"
         assets.mkdir(parents=True, exist_ok=True)
-        for name in (
-            bundle_service.WINDOWS_SERVICE_WRAPPER_NAME,
-            bundle_service.WINDOWS_RATHOLE_BINARY_NAME,
-            bundle_service.WINDOWS_UNIFIED_NAME,
-            bundle_service.WINDOWS_NSSM_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_BINARY_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_LIBEVENT_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_LIBSSL_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
-            bundle_service.WINDOWS_PGBOUNCER_USERLIST_NAME,
-        ):
-            (assets / name).write_bytes(b"x")
-        (assets / "pgbouncer.ini.tpl").write_text("[databases]\n", encoding="utf-8")
+        installer = assets / bundle_service.WINDOWS_UNIFIED_NAME
+        installer.write_bytes(b"MZstub")
+        with zipfile.ZipFile(installer, "a") as archive:
+            for name in bundle_service.WINDOWS_EMBEDDED_RUNTIME_NAMES:
+                archive.writestr(name, b"x")
 
     def write_state_and_db(self, *, token: str) -> None:
         init_db(str(self.db_path), "admin", "secret123", token)
@@ -104,8 +95,7 @@ class DashboardDownloadWindows7Test(unittest.TestCase):
         self.assertTrue(archive_path.exists())
         with zipfile.ZipFile(archive_path) as zf:
             names = set(zf.namelist())
-            self.assertIn("client.toml", names)
-            self.assertNotIn(bundle_service.WINDOWS_GUI_BINARY_NAME, names)
+            self.assertEqual(names, {bundle_service.WINDOWS_UNIFIED_NAME, "client.toml"})
 
     def test_download_windows7_rejects_when_token_missing(self) -> None:
         self.write_common_resources()

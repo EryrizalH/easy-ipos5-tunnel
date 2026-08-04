@@ -117,8 +117,8 @@ Touch `assets/windows*` and build scripts only when changing packaging or refres
 
 Guardrails:
 
-- Modern Windows bundle includes `setup.exe`, `nusatunnel-service.exe`, `nusatunnel.exe`, `nusatunnel-gui.exe`, `nssm.exe`, PgBouncer binary/libs, `client.toml`, `pgbouncer.ini`, `pgbouncer-databases.json`, and `userlist.sample.txt`.
-- Windows 7 bundle excludes `nusatunnel-gui.exe`.
+- Modern Windows bundle contains exactly `setup.exe` dan `client.toml`; runtime tunnel, GUI, NSSM, dan PgBouncer ada di dalam `setup.exe`.
+- Windows 7 bundle juga berisi tepat dua file dan payload-nya sengaja tanpa `nusatunnel-gui.exe`.
 - Do not alter binary assets accidentally during doc or source-only changes.
 
 Build commands:
@@ -138,7 +138,7 @@ Use this checklist when a change touches ports, services, state, tokens, or bund
 - Installer state JSON updated or migration-safe.
 - Rathole server/client templates updated.
 - Firewall opening still covers remote bind ports and dashboard port.
-- Windows and Windows 7 bundle generation still match required assets.
+- Windows and Windows 7 bundle generation produces exactly `setup.exe` dan `client.toml`, dengan payload internal sesuai varian.
 - Generated README/error messages still match actual bundle contents.
 - Tests cover normalization, rendering, or packaging behavior.
 - Final response states exactly what passed and what remains unverified.
@@ -156,4 +156,3 @@ Use this checklist when a change touches ports, services, state, tokens, or bund
 - Server config: `/etc/nusatunnel/server.toml`.
 - Dashboard DB: `/opt/nusatunnel/state/nusatunnel.db`.
 - Bundle output: `/opt/nusatunnel/bundles`.
-

@@ -25,6 +25,8 @@ Field penting:
 - `configPath`: lokasi `client.toml`
 - `autoStartEnabled`: status preferensi auto-start
 
+Installer Windows menjalankan GUI dengan `--config` ke runtime terkelola agar konfigurasi bundle lama tidak dipakai kembali.
+
 ## Development
 
 ```powershell
@@ -42,4 +44,3 @@ Installer service menulis log ke:
 `%ProgramData%\nusatunnel-client\logs\NusaTunnelClient.stderr.log`
 
 GUI menggunakan log tersebut (dan fallback event log Windows) untuk mendeteksi indikasi token mismatch/auth failure.
-

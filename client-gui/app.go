@@ -35,7 +35,7 @@ type App struct {
 	quitTrayFn  func()
 }
 
-func NewApp(startHidden bool) (*App, error) {
+func NewApp(startHidden bool, configOverride string) (*App, error) {
 	cfgStore, err := appcore.NewConfigStore()
 	if err != nil {
 		return nil, err
@@ -43,6 +43,9 @@ func NewApp(startHidden bool) (*App, error) {
 	cfg, err := cfgStore.Load()
 	if err != nil {
 		return nil, err
+	}
+	if configOverride != "" {
+		cfg.ConfigPath = configOverride
 	}
 
 	return &App{

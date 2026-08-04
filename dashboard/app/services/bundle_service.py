@@ -28,6 +28,18 @@ LINUX_SERVICE_NAME = "nusatunnel-client"
 WINDOWS_SERVICE_NAME = "NusaTunnelClient"
 WINDOWS_ASSET_DIRNAME = "windows"
 WINDOWS7_ASSET_DIRNAME = "windows7"
+PGBOUNCER_METADATA_PREFIX = "# nusatunnel-pgbouncer-databases: "
+
+WINDOWS_EMBEDDED_RUNTIME_NAMES = (
+    WINDOWS_NSSM_NAME,
+    WINDOWS_SERVICE_WRAPPER_NAME,
+    WINDOWS_RATHOLE_BINARY_NAME,
+    WINDOWS_PGBOUNCER_BINARY_NAME,
+    WINDOWS_PGBOUNCER_LIBEVENT_NAME,
+    WINDOWS_PGBOUNCER_LIBSSL_NAME,
+    WINDOWS_PGBOUNCER_LIBCRYPTO_NAME,
+    WINDOWS_PGBOUNCER_LIBWINPTH_NAME,
+)
 
 
 def timestamp_slug() -> str:
@@ -79,7 +91,7 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
     pos_http = by_name.get("pos_http", {})
     pos_worker = by_name.get("pos_worker", {})
 
-    return render_template(
+    client_toml = render_template(
         template_path,
         {
             "SERVER_ADDR": server_addr,
@@ -93,6 +105,12 @@ def render_client_toml(state: dict[str, Any], token: str) -> str:
             "POS_WORKER_CLIENT_LOCAL_ADDR": str(pos_worker.get("client_local_addr", "127.0.0.1:5485")),
         },
     )
+    metadata = json.dumps(
+        {"databases": normalize_pgbouncer_databases(state.get("pgbouncer_databases"))},
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return f"{client_toml.rstrip()}\n\n{PGBOUNCER_METADATA_PREFIX}{metadata}\n"
 
 
 def normalize_pgbouncer_databases(raw: Any) -> list[dict[str, str]]:
@@ -131,89 +149,34 @@ def render_pgbouncer_databases_json(state: dict[str, Any]) -> str:
     return json.dumps(payload, indent=2, sort_keys=True) + "\n"
 
 
+def require_windows_installer_payload(installer: Path, *, includes_gui: bool) -> None:
+    require_file(installer, WINDOWS_UNIFIED_NAME)
+    try:
+        with zipfile.ZipFile(installer) as payload:
+            names = set(payload.namelist())
+    except zipfile.BadZipFile as exc:
+        raise RuntimeError(f"{WINDOWS_UNIFIED_NAME} bukan installer mandiri yang valid") from exc
+
+    missing = [name for name in WINDOWS_EMBEDDED_RUNTIME_NAMES if name not in names]
+    if missing:
+        raise RuntimeError(f"payload {WINDOWS_UNIFIED_NAME} tidak lengkap: {', '.join(missing)}")
+    if includes_gui and WINDOWS_GUI_BINARY_NAME not in names:
+        raise RuntimeError(f"payload {WINDOWS_UNIFIED_NAME} tidak lengkap: {WINDOWS_GUI_BINARY_NAME}")
+    if not includes_gui and WINDOWS_GUI_BINARY_NAME in names:
+        raise RuntimeError(f"payload {WINDOWS_UNIFIED_NAME} Windows 7 tidak boleh memuat {WINDOWS_GUI_BINARY_NAME}")
+
+
 def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
-    windows_wrapper_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_SERVICE_WRAPPER_NAME)
-    windows_rathole_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_RATHOLE_BINARY_NAME)
-    windows_gui_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_GUI_BINARY_NAME)
     windows_unified_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_UNIFIED_NAME)
-    nssm_exe = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_NSSM_NAME)
-    pgbouncer_exe = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_BINARY_NAME)
-    pgbouncer_libevent = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-    pgbouncer_libssl = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBSSL_NAME)
-    pgbouncer_libcrypto = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-    pgbouncer_libwinpth = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-    pgbouncer_ini_tpl = windows_asset_path(WINDOWS_ASSET_DIRNAME, "pgbouncer.ini.tpl")
-    pgbouncer_userlist_sample = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_PGBOUNCER_USERLIST_NAME)
-    require_file(windows_wrapper_bin, WINDOWS_SERVICE_WRAPPER_NAME)
-    require_file(windows_rathole_bin, WINDOWS_RATHOLE_BINARY_NAME)
-    require_file(windows_gui_bin, WINDOWS_GUI_BINARY_NAME)
-    require_file(windows_unified_bin, WINDOWS_UNIFIED_NAME)
-    require_file(nssm_exe, WINDOWS_NSSM_NAME)
-    require_file(pgbouncer_exe, WINDOWS_PGBOUNCER_BINARY_NAME)
-    require_file(pgbouncer_libevent, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-    require_file(pgbouncer_libssl, WINDOWS_PGBOUNCER_LIBSSL_NAME)
-    require_file(pgbouncer_libcrypto, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-    require_file(pgbouncer_libwinpth, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-    require_file(pgbouncer_ini_tpl, "pgbouncer.ini.tpl")
-    require_file(pgbouncer_userlist_sample, WINDOWS_PGBOUNCER_USERLIST_NAME)
+    require_windows_installer_payload(windows_unified_bin, includes_gui=True)
 
     bundle_name = f"windows-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
 
     temp_dir = Path(tempfile.mkdtemp(prefix="nusatunnel-win-"))
     try:
-        shutil.copy2(windows_wrapper_bin, temp_dir / WINDOWS_SERVICE_WRAPPER_NAME)
-        shutil.copy2(windows_rathole_bin, temp_dir / WINDOWS_RATHOLE_BINARY_NAME)
-        shutil.copy2(windows_gui_bin, temp_dir / WINDOWS_GUI_BINARY_NAME)
         shutil.copy2(windows_unified_bin, temp_dir / WINDOWS_UNIFIED_NAME)
-        shutil.copy2(nssm_exe, temp_dir / WINDOWS_NSSM_NAME)
-        shutil.copy2(pgbouncer_exe, temp_dir / WINDOWS_PGBOUNCER_BINARY_NAME)
-        shutil.copy2(pgbouncer_libevent, temp_dir / WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-        shutil.copy2(pgbouncer_libssl, temp_dir / WINDOWS_PGBOUNCER_LIBSSL_NAME)
-        shutil.copy2(pgbouncer_libcrypto, temp_dir / WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
-        shutil.copy2(pgbouncer_userlist_sample, temp_dir / WINDOWS_PGBOUNCER_USERLIST_NAME)
-
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
-        (temp_dir / WINDOWS_PGBOUNCER_DATABASES_NAME).write_text(
-            render_pgbouncer_databases_json(state), encoding="utf-8"
-        )
-
-        (temp_dir / "README.txt").write_text(
-            "\n".join(
-                [
-                    "Nusa IPOS 5 Tunnel - Client Windows",
-                    "",
-                    "1) Ekstrak file ZIP ini.",
-                    "2) Jalankan setup.exe sebagai Administrator.",
-                    "3) Gunakan menu aplikasi untuk:",
-                    "   - Install Sambungan (tanpa Pengoptimal Database)",
-                    "   - Install Pengoptimal Database (meningkatkan performa)",
-                    "   - Uninstall Service Sambungan",
-                    "   - Kunci/Lepas Kunci pembuatan database baru",
-                    "4) Arsitektur DB forwarding terbaru:",
-                    "   - Sambungan Database lokal: 127.0.0.1:5444",
-                    "   - Pengoptimal Database (menu 2): listen 0.0.0.0:5444 -> Database 127.0.0.1:5445",
-                    "   - Keamanan Jaringan: port TCP 5444 dibuka",
-                    "5) Saat Install Service, aplikasi otomatis membuat shortcut desktop",
-                    "   'nusatunnel' untuk membuka GUI jendela utama dengan Run as Administrator (Izin Administrator).",
-                    "6) GUI tidak autostart saat login Windows; buka manual via shortcut desktop.",
-                    "7) Saat Uninstall Service, shortcut desktop GUI ikut dihapus.",
-                    f"8) Service default yang dipakai: {WINDOWS_SERVICE_NAME}",
-                    "9) setup.exe adalah installer interaktif; service Windows tidak menjalankan setup.exe.",
-                    f"10) Service wrapper {WINDOWS_SERVICE_WRAPPER_NAME} akan menjalankan {WINDOWS_RATHOLE_BINARY_NAME} dengan File Pengaturan.",
-                    "11) Script template lama (setup-client.cmd/install-service.cmd) bukan jalur utama bundle dashboard.",
-                    "12) Jika install PgBouncer (menu 2) gagal, proses dibatalkan (fail-fast).",
-                    "13) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
-                    "    Daftar database PgBouncer dibaca dari pgbouncer-databases.json bila tersedia.",
-                    "14) Paket ini wajib utuh:",
-                    "   setup.exe + nusatunnel-service.exe + nusatunnel.exe + nusatunnel-gui.exe + client.toml + file pendukung database",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
 
         with zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for child in temp_dir.iterdir():
@@ -225,72 +188,16 @@ def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
 
 
 def generate_windows7_bundle(state: dict[str, Any], token: str) -> Path:
-    windows_wrapper_bin = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_SERVICE_WRAPPER_NAME)
-    windows_rathole_bin = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_RATHOLE_BINARY_NAME)
     windows_unified_bin = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_UNIFIED_NAME)
-    nssm_exe = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_NSSM_NAME)
-    pgbouncer_exe = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_BINARY_NAME)
-    pgbouncer_libevent = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-    pgbouncer_libssl = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBSSL_NAME)
-    pgbouncer_libcrypto = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-    pgbouncer_libwinpth = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-    pgbouncer_ini_tpl = windows_asset_path(WINDOWS7_ASSET_DIRNAME, "pgbouncer.ini.tpl")
-    pgbouncer_userlist_sample = windows_asset_path(WINDOWS7_ASSET_DIRNAME, WINDOWS_PGBOUNCER_USERLIST_NAME)
-    require_file(windows_wrapper_bin, WINDOWS_SERVICE_WRAPPER_NAME)
-    require_file(windows_rathole_bin, WINDOWS_RATHOLE_BINARY_NAME)
-    require_file(windows_unified_bin, WINDOWS_UNIFIED_NAME)
-    require_file(nssm_exe, WINDOWS_NSSM_NAME)
-    require_file(pgbouncer_exe, WINDOWS_PGBOUNCER_BINARY_NAME)
-    require_file(pgbouncer_libevent, WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-    require_file(pgbouncer_libssl, WINDOWS_PGBOUNCER_LIBSSL_NAME)
-    require_file(pgbouncer_libcrypto, WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-    require_file(pgbouncer_libwinpth, WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-    require_file(pgbouncer_ini_tpl, "pgbouncer.ini.tpl")
-    require_file(pgbouncer_userlist_sample, WINDOWS_PGBOUNCER_USERLIST_NAME)
+    require_windows_installer_payload(windows_unified_bin, includes_gui=False)
 
     bundle_name = f"windows7-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
 
     temp_dir = Path(tempfile.mkdtemp(prefix="nusatunnel-win7-"))
     try:
-        shutil.copy2(windows_wrapper_bin, temp_dir / WINDOWS_SERVICE_WRAPPER_NAME)
-        shutil.copy2(windows_rathole_bin, temp_dir / WINDOWS_RATHOLE_BINARY_NAME)
         shutil.copy2(windows_unified_bin, temp_dir / WINDOWS_UNIFIED_NAME)
-        shutil.copy2(nssm_exe, temp_dir / WINDOWS_NSSM_NAME)
-        shutil.copy2(pgbouncer_exe, temp_dir / WINDOWS_PGBOUNCER_BINARY_NAME)
-        shutil.copy2(pgbouncer_libevent, temp_dir / WINDOWS_PGBOUNCER_LIBEVENT_NAME)
-        shutil.copy2(pgbouncer_libssl, temp_dir / WINDOWS_PGBOUNCER_LIBSSL_NAME)
-        shutil.copy2(pgbouncer_libcrypto, temp_dir / WINDOWS_PGBOUNCER_LIBCRYPTO_NAME)
-        shutil.copy2(pgbouncer_libwinpth, temp_dir / WINDOWS_PGBOUNCER_LIBWINPTH_NAME)
-        shutil.copy2(pgbouncer_ini_tpl, temp_dir / WINDOWS_PGBOUNCER_INI_NAME)
-        shutil.copy2(pgbouncer_userlist_sample, temp_dir / WINDOWS_PGBOUNCER_USERLIST_NAME)
-
         (temp_dir / "client.toml").write_text(render_client_toml(state, token), encoding="utf-8")
-        (temp_dir / WINDOWS_PGBOUNCER_DATABASES_NAME).write_text(
-            render_pgbouncer_databases_json(state), encoding="utf-8"
-        )
-
-        (temp_dir / "README.txt").write_text(
-            "\n".join(
-                [
-                    "Nusa IPOS 5 Tunnel - Client Windows 7",
-                    "",
-                    "1) Ekstrak file ZIP ini.",
-                    "2) Jalankan setup.exe sebagai Administrator.",
-                    "3) Paket Windows 7 ini fokus ke service tunnel dan kompatibilitas Win7.",
-                    "4) Bundle ini tidak menyertakan GUI desktop (nusatunnel-gui.exe).",
-                    "5) Installer/service Win7 harus berasal dari aset kompatibel di assets/windows7.",
-                    "6) Arsitektur DB forwarding terbaru:",
-                    "   - Sambungan Database lokal: 127.0.0.1:5444",
-                    "   - Pengoptimal Database (jika dipasang): listen 0.0.0.0:5444 -> Database 127.0.0.1:5445",
-                    "7) Runtime file pgbouncer.ini dan userlist.txt dibuat otomatis saat install.",
-                    "8) Paket ini wajib utuh:",
-                    "   setup.exe + nusatunnel-service.exe + nusatunnel.exe + client.toml + file pendukung database",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
 
         with zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for child in temp_dir.iterdir():
@@ -319,20 +226,6 @@ def generate_linux_bundle(state: dict[str, Any], token: str) -> Path:
         install_path = temp_dir / "install-client.sh"
         install_path.write_text(install_script, encoding="utf-8")
         install_path.chmod(0o755)
-
-        (temp_dir / "README.txt").write_text(
-            "\n".join(
-                [
-                    "Nusa IPOS 5 Tunnel - Client Linux",
-                    "",
-                    "1) Ekstrak paket ini di mesin client Linux.",
-                    "2) Jalankan: sudo ./install-client.sh",
-                    "3) Service client akan aktif otomatis saat boot.",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
 
         with zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for child in temp_dir.iterdir():

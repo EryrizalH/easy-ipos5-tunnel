@@ -1,6 +1,7 @@
 package winservice
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"errors"
 	"os"
@@ -11,6 +12,42 @@ import (
 
 	"github.com/lock-ipos/lock-ipos/internal/progress"
 )
+
+func writeSelfExtractingRuntime(t *testing.T, path string, includesGUI bool) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Write([]byte("MZstub")); err != nil {
+		t.Fatal(err)
+	}
+	archive := zip.NewWriter(f)
+	for _, name := range embeddedRuntimeFiles {
+		writer, err := archive.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := writer.Write([]byte("runtime")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if includesGUI {
+		writer, err := archive.Create(guiBinaryName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := writer.Write([]byte("gui")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestResolveBundlePaths_Success(t *testing.T) {
 	tmp := t.TempDir()
@@ -340,6 +377,71 @@ func TestEnsureDBForwardAddress_UpdatesLegacy6432(t *testing.T) {
 	}
 }
 
+func TestStageRuntimeCopiesConfigAndDatabaseMetadata(t *testing.T) {
+	tmp := t.TempDir()
+	installer := filepath.Join(tmp, "setup.exe")
+	writeSelfExtractingRuntime(t, installer, true)
+	configPath := filepath.Join(tmp, "client.toml")
+	config := "local_addr = \"127.0.0.1:6432\"\n" + pgBouncerMetadataPrefix + `{"databases":[{"name":"iposdb"}]}` + "\n"
+	if err := os.WriteFile(configPath, []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	staging, err := stageRuntime(Config{
+		BundleDir:        filepath.Join(tmp, "runtime"),
+		InstallerPath:    installer,
+		ConfigSourcePath: configPath,
+	})
+	if err != nil {
+		t.Fatalf("stageRuntime() error = %v", err)
+	}
+	defer os.RemoveAll(staging)
+
+	clientToml, err := os.ReadFile(filepath.Join(staging, "client.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(clientToml), "127.0.0.1:5444") {
+		t.Fatalf("expected staged config to use 5444, got %s", clientToml)
+	}
+	metadata, err := os.ReadFile(filepath.Join(staging, pgBouncerDBsName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(metadata), "iposdb") {
+		t.Fatalf("expected PgBouncer metadata, got %s", metadata)
+	}
+	if !fileExists(filepath.Join(staging, guiBinaryName)) {
+		t.Fatal("expected modern installer payload to include GUI")
+	}
+}
+
+func TestActivateStagedRuntimeReplacesPreviousRuntime(t *testing.T) {
+	tmp := t.TempDir()
+	runtimeDir := filepath.Join(tmp, "runtime")
+	stagingDir := filepath.Join(tmp, "staging")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(stagingDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(runtimeDir, "old.txt"))
+	if err := os.WriteFile(filepath.Join(stagingDir, "new.txt"), []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := activateStagedRuntime(stagingDir, runtimeDir); err != nil {
+		t.Fatalf("activateStagedRuntime() error = %v", err)
+	}
+	if fileExists(filepath.Join(runtimeDir, "old.txt")) {
+		t.Fatal("previous runtime file should be replaced")
+	}
+	if !fileExists(filepath.Join(runtimeDir, "new.txt")) {
+		t.Fatal("staged runtime file should be active")
+	}
+}
+
 func TestLoadPgBouncerDatabaseEntries_DefaultWhenMissing(t *testing.T) {
 	entries, err := loadPgBouncerDatabaseEntries(filepath.Join(t.TempDir(), pgBouncerDBsName))
 	if err != nil {
@@ -455,7 +557,7 @@ func TestBuildGUIShortcutSpec(t *testing.T) {
 }
 
 func TestBuildLauncherContent_NoHiddenModeAndUsesRunAs(t *testing.T) {
-	content := buildLauncherContent(`D:\bundle\nusatunnel-gui.exe`)
+	content := buildLauncherContent(`D:\bundle\nusatunnel-gui.exe`, `D:\bundle\client.toml`)
 	lower := strings.ToLower(content)
 	if strings.Contains(lower, "--hidden") {
 		t.Fatalf("launcher should not force hidden mode: %s", content)
@@ -465,6 +567,9 @@ func TestBuildLauncherContent_NoHiddenModeAndUsesRunAs(t *testing.T) {
 	}
 	if !strings.Contains(content, "nusatunnel-gui.exe") {
 		t.Fatalf("launcher must include GUI path: %s", content)
+	}
+	if !strings.Contains(content, "--config") || !strings.Contains(content, "client.toml") {
+		t.Fatalf("launcher must target the managed client config: %s", content)
 	}
 }
 

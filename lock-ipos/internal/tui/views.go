@@ -134,9 +134,9 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 		consequence = "Installer akan membuat service sambungan."
 		detailLines = []string{
 			"Service Name: " + serviceName,
-			"Bundle Dir : " + bundleDir,
-			"Wajib ada  : nssm.exe, nusatunnel-service.exe, nusatunnel.exe, client.toml",
-			"Opsional   : nusatunnel-gui.exe (jika ingin shortcut GUI desktop)",
+			"Runtime    : " + bundleDir,
+			"Wajib ada  : client.toml di folder yang sama dengan setup.exe",
+			"Runtime tunnel, GUI, dan service sudah ada di dalam setup.exe",
 		}
 	case 2:
 		actionTitle = "Install Pengoptimal Database"
@@ -144,8 +144,9 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 		consequence = "Installer akan migrasi PostgreSQL ke 127.0.0.1:5445, lalu Pengoptimal Database listen di 0.0.0.0:5444."
 		detailLines = []string{
 			"Service Name: NusaTunnelDB",
-			"Bundle Dir : " + bundleDir,
-			"Wajib ada  : pgbouncer.exe, libevent-7.dll, libssl-3-x64.dll, libcrypto-3-x64.dll, libwinpthread-1.dll, psql.exe",
+			"Runtime    : " + bundleDir,
+			"Wajib ada  : client.toml di folder yang sama dengan setup.exe, psql.exe",
+			"Runtime Pengoptimal Database sudah ada di dalam setup.exe",
 		}
 	case 3:
 		actionTitle = "Uninstall Service IP Public"

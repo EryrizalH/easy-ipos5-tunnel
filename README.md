@@ -14,7 +14,7 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
   - download bundle client Windows/Linux
 - Hardening baseline server saat install (UFW, fail2ban, unattended-upgrades, sysctl, baseline sshd)
 - Generator bundle client:
-  - **Windows**: ZIP berisi service installer + GUI tray auto-start
+  - **Windows**: ZIP dua file (`setup.exe` mandiri + `client.toml`)
   - **Linux**: ZIP berisi File Pengaturan (`client.toml`) + installer layanan
 
 ---
@@ -170,17 +170,15 @@ Environment variable monitor PostgreSQL (opsional):
 ### Isi bundle Windows (modern)
 
 - `setup.exe`
-- `nusatunnel-service.exe`
-- `nusatunnel.exe`
-- `nusatunnel-gui.exe`
 - `client.toml` (File Pengaturan)
-- file pendukung database
 
 ### Cara install (disarankan)
 
 1. Download bundle dari dashboard.
 2. Extract ZIP.
 3. Jalankan `setup.exe` sebagai Administrator (Izin Administrator).
+
+`setup.exe` memuat runtime offline dan akan menyalin File Pengaturan ke `%ProgramData%\nusatunnel-client\runtime`. Setelah instalasi berhasil, folder hasil extract boleh dihapus.
 
 `setup.exe` akan menyediakan menu untuk:
 
@@ -190,30 +188,26 @@ Environment variable monitor PostgreSQL (opsional):
 
 Catatan paket terbaru:
 - Entry point resmi installer Windows adalah `setup.exe` (menu interaktif).
-- `NusaTunnelClient` dijalankan lewat wrapper headless `nusatunnel-service.exe`, lalu wrapper itu mengeksekusi `nusatunnel.exe client.toml`.
-- Script template lama seperti `setup-client.cmd`/`install-service.cmd` bukan alur utama bundle dashboard saat ini.
+- Saat menjalankan installer, `client.toml` wajib berada di folder yang sama dengan `setup.exe`.
+- `NusaTunnelClient` tetap dijalankan lewat wrapper headless dengan config runtime yang tersalin.
 - Saat install sukses, shortcut desktop `nusatunnel` dibuat untuk membuka GUI jendela utama dengan Izin Administrator.
-- `setup.exe` akan auto-install service `NusaTunnelDB` dulu (fail-fast jika gagal), lalu install `NusaTunnelClient`.
+- Menu Pengoptimal Database memasang service `NusaTunnelDB` secara fail-fast bila preflight gagal.
 - Runtime file `pgbouncer.ini` dan `userlist.txt` dibuat otomatis saat install service.
 - Untuk menyiapkan asset Windows:
-  - `scripts/build_windows_unified.ps1` membangun `setup.exe`
   - `scripts/build_windows_service_wrapper.ps1` membangun `nusatunnel-service.exe`
   - `scripts/build_windows_gui.ps1` membangun `nusatunnel-gui.exe`
+  - `scripts/build_windows_unified.ps1` membangun dan menggabungkan runtime ke `setup.exe`
   - `assets/windows/nusatunnel.exe` tetap dipakai sebagai binary sambungan Windows custom milik repo ini
 
 ### Isi bundle Windows 7 (terpisah)
 
 - `setup.exe`
-- `nusatunnel-service.exe`
-- `nusatunnel.exe`
 - `client.toml` (File Pengaturan)
-- file pendukung database
 
 Catatan Windows 7:
 - Download melalui route `GET /download/windows7`.
-- Asset bundle dibaca dari folder terpisah `assets/windows7` lalu disalin ke `resources/assets/windows7`.
-- Varian Windows 7 sengaja **tanpa** `nusatunnel-gui.exe`.
-- Installer Win7 fokus ke service tunnel/kompatibilitas Win7; GUI desktop tidak termasuk di paket ini.
+- Varian Windows 7 sengaja tanpa GUI desktop; runtime tunnel dan Pengoptimal Database sudah ada di dalam `setup.exe`.
+- `client.toml` wajib berada di folder yang sama dengan `setup.exe` saat instalasi, lalu folder hasil extract boleh dihapus.
 
 ### Uninstall
 

@@ -1,8 +1,9 @@
 Folder ini disediakan untuk asset bundle client Windows 7 yang dipisah dari `assets/windows`.
 
-Ekspektasi file minimal untuk route `GET /download/windows7`:
+Route `GET /download/windows7` hanya memakai `setup.exe` mandiri; ZIP hasil download berisi `setup.exe` dan `client.toml`.
 
-- `setup.exe`
+Saat membangun `setup.exe`, file berikut digabungkan sebagai payload internal:
+
 - `nusatunnel-service.exe`
 - `nusatunnel.exe`
 - `nssm.exe`
