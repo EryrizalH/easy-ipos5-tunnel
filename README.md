@@ -197,7 +197,7 @@ Catatan paket terbaru:
   - `scripts/build_windows_service_wrapper.ps1` membangun `nusatunnel-service.exe`
   - `scripts/build_windows_gui.ps1` membangun `nusatunnel-gui.exe`
   - `scripts/build_windows_unified.ps1` membangun dan menggabungkan runtime ke `setup.exe`
-  - `assets/windows/nusatunnel.exe` tetap dipakai sebagai binary sambungan Windows custom milik repo ini
+  - `assets/windows/nusatunnel.exe` dan `assets/windows7/nusatunnel.exe` dibangun dari source resmi Rathole v0.5.0; build ini tidak mengimpor `VCRUNTIME140.dll`, dependensi yang memicu kegagalan service sebelumnya.
 
 ### Isi bundle Windows 7 (terpisah)
 
