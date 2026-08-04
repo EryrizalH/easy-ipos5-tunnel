@@ -22,6 +22,7 @@ import (
 	"github.com/lock-ipos/lock-ipos/internal/db"
 	"github.com/lock-ipos/lock-ipos/internal/pgadmin"
 	"github.com/lock-ipos/lock-ipos/internal/progress"
+	"github.com/lock-ipos/lock-ipos/internal/runtimebundle"
 )
 
 const (
@@ -52,7 +53,19 @@ const (
 	serviceStartWait          = 30 * time.Second
 	servicePollInterval       = 1 * time.Second
 	pgBouncerHealthWait       = 30 * time.Second
+	pgBouncerMetadataPrefix   = "# nusatunnel-pgbouncer-databases: "
 )
+
+var embeddedRuntimeFiles = []string{
+	"nssm.exe",
+	serviceWrapperBinary,
+	ratholeBinary,
+	pgBouncerBinary,
+	pgBouncerLibEvent,
+	pgBouncerLibSSL,
+	pgBouncerLibCrypto,
+	pgBouncerLibWinPth,
+}
 
 var scStatePattern = regexp.MustCompile(`STATE\s*:\s*\d+\s+([A-Z_]+)`)
 var clientDBAddrPattern = regexp.MustCompile(`127\.0\.0\.1:(6432|5444|5445)`)
@@ -66,10 +79,13 @@ const (
 
 // Config controls service install/uninstall behavior.
 type Config struct {
-	ServiceName string
-	BundleDir   string
-	PGBinPath   string
-	InstallMode InstallMode
+	ServiceName      string
+	BundleDir        string
+	PGBinPath        string
+	InstallMode      InstallMode
+	InstallerPath    string
+	ConfigSourcePath string
+	ManagedRuntime   bool
 }
 
 type commandRunner struct {
@@ -210,6 +226,157 @@ func resolveBundlePaths(bundleDir string, requirePgBouncer bool) (BundlePaths, e
 	}, nil
 }
 
+func stageRuntime(cfg Config) (string, error) {
+	if strings.TrimSpace(cfg.InstallerPath) == "" || strings.TrimSpace(cfg.ConfigSourcePath) == "" {
+		return "", nil
+	}
+
+	config, err := os.ReadFile(cfg.ConfigSourcePath)
+	if err != nil {
+		return "", fmt.Errorf("gagal membaca File Pengaturan %s: %w", cfg.ConfigSourcePath, err)
+	}
+	databaseConfig, err := pgBouncerDatabaseConfigFromClientToml(config)
+	if err != nil {
+		return "", err
+	}
+
+	parent := filepath.Dir(cfg.BundleDir)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return "", fmt.Errorf("gagal membuat folder runtime: %w", err)
+	}
+	staging, err := os.MkdirTemp(parent, ".nusatunnel-runtime-")
+	if err != nil {
+		return "", fmt.Errorf("gagal membuat staging runtime: %w", err)
+	}
+	if err := runtimebundle.Extract(cfg.InstallerPath, staging, embeddedRuntimeFiles, []string{guiBinaryName}); err != nil {
+		_ = os.RemoveAll(staging)
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(staging, "client.toml"), config, 0o644); err != nil {
+		_ = os.RemoveAll(staging)
+		return "", fmt.Errorf("gagal menyiapkan client.toml: %w", err)
+	}
+	if err := ensureDBForwardAddress(filepath.Join(staging, "client.toml")); err != nil {
+		_ = os.RemoveAll(staging)
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(staging, pgBouncerDBsName), databaseConfig, 0o644); err != nil {
+		_ = os.RemoveAll(staging)
+		return "", fmt.Errorf("gagal menyiapkan konfigurasi database PgBouncer: %w", err)
+	}
+	return staging, nil
+}
+
+func pgBouncerDatabaseConfigFromClientToml(config []byte) ([]byte, error) {
+	for _, line := range strings.Split(string(config), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, pgBouncerMetadataPrefix) {
+			continue
+		}
+		var metadata pgBouncerDatabasesFile
+		if err := json.Unmarshal([]byte(strings.TrimSpace(strings.TrimPrefix(line, pgBouncerMetadataPrefix))), &metadata); err != nil {
+			return nil, fmt.Errorf("metadata database PgBouncer pada client.toml tidak valid: %w", err)
+		}
+		return buildPgBouncerDatabasesJSON(metadata.Databases)
+	}
+	return buildPgBouncerDatabasesJSON(defaultPgBouncerDatabaseEntries())
+}
+
+func activateStagedRuntime(staging, runtimeDir string) error {
+	backup := runtimeDir + ".previous"
+	if err := os.RemoveAll(backup); err != nil {
+		return fmt.Errorf("gagal membersihkan backup runtime: %w", err)
+	}
+
+	hadRuntime := fileExists(runtimeDir)
+	if hadRuntime {
+		if err := os.Rename(runtimeDir, backup); err != nil {
+			return fmt.Errorf("gagal menyiapkan update runtime: %w", err)
+		}
+	}
+	if err := os.Rename(staging, runtimeDir); err != nil {
+		if hadRuntime {
+			_ = os.Rename(backup, runtimeDir)
+		}
+		return fmt.Errorf("gagal mengaktifkan runtime baru: %w", err)
+	}
+	if hadRuntime {
+		_ = os.RemoveAll(backup)
+	}
+	return nil
+}
+
+type runtimeUpdateState struct {
+	tunnelWasRunning    bool
+	pgBouncerWasRunning bool
+}
+
+func prepareManagedRuntime(cfg Config, runner commandRunner, reporter progress.Reporter) (runtimeUpdateState, error) {
+	if strings.TrimSpace(cfg.InstallerPath) == "" || strings.TrimSpace(cfg.ConfigSourcePath) == "" {
+		return runtimeUpdateState{}, nil
+	}
+	reporter.StartStep("stage-runtime", "Menyiapkan runtime internal")
+	staging, err := stageRuntime(cfg)
+	if err != nil {
+		reporter.FinishStep("stage-runtime", false, err.Error())
+		return runtimeUpdateState{}, err
+	}
+	defer os.RemoveAll(staging)
+	reporter.FinishStep("stage-runtime", true, "Payload setup.exe dan File Pengaturan tervalidasi")
+
+	reporter.StartStep("switch-runtime", "Mengganti runtime internal")
+	state := runtimeUpdateState{}
+	state.tunnelWasRunning, err = stopServiceForRuntimeUpdate(cfg.ServiceName, runner, reporter)
+	if err != nil {
+		reporter.FinishStep("switch-runtime", false, err.Error())
+		return runtimeUpdateState{}, err
+	}
+	state.pgBouncerWasRunning, err = stopServiceForRuntimeUpdate(pgBouncerService, runner, reporter)
+	if err != nil {
+		restoreStoppedService(cfg.ServiceName, state.tunnelWasRunning, runner, reporter)
+		reporter.FinishStep("switch-runtime", false, err.Error())
+		return runtimeUpdateState{}, err
+	}
+	if fileExists(filepath.Join(cfg.BundleDir, guiBinaryName)) {
+		_, _ = runner.run("taskkill", "/f", "/t", "/im", guiBinaryName)
+	}
+	if err := activateStagedRuntime(staging, cfg.BundleDir); err != nil {
+		restoreStoppedService(cfg.ServiceName, state.tunnelWasRunning, runner, reporter)
+		restoreStoppedService(pgBouncerService, state.pgBouncerWasRunning, runner, reporter)
+		reporter.FinishStep("switch-runtime", false, err.Error())
+		return runtimeUpdateState{}, err
+	}
+	reporter.FinishStep("switch-runtime", true, "Runtime baru aktif di "+cfg.BundleDir)
+	return state, nil
+}
+
+func stopServiceForRuntimeUpdate(serviceName string, runner commandRunner, reporter progress.Reporter) (bool, error) {
+	state, _, err := queryWindowsServiceState(serviceName)
+	if err != nil {
+		return false, err
+	}
+	if state == "NOT_FOUND" || state == "STOPPED" {
+		return false, nil
+	}
+	reporter.Log("Menghentikan service untuk update runtime: " + serviceName)
+	if _, err := runner.run("sc", "stop", serviceName); err != nil {
+		return false, fmt.Errorf("gagal menghentikan service %s: %w", serviceName, err)
+	}
+	if err := waitServiceStateWithProgress(serviceName, "STOPPED", serviceStartWait, reporter); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func restoreStoppedService(serviceName string, wasRunning bool, runner commandRunner, reporter progress.Reporter) {
+	if !wasRunning {
+		return
+	}
+	if _, err := runner.run("sc", "start", serviceName); err != nil {
+		reporter.Log("Gagal memulihkan service " + serviceName + ": " + err.Error())
+	}
+}
+
 // BuildInstallCommands exposes deterministic NSSM command sequence.
 func BuildInstallCommands(cfg Config, paths BundlePaths, logRoot string) [][]string {
 	cfg = cfg.normalized()
@@ -307,6 +474,11 @@ func InstallServiceWithProgress(cfg Config, reporter progress.Reporter) error {
 	}
 	reporter.FinishStep("validate-admin", true, "Hak Administrator terdeteksi")
 
+	runtimeState, err := prepareManagedRuntime(cfg, runner, reporter)
+	if err != nil {
+		return err
+	}
+
 	requirePgBouncerAssets := cfg.InstallMode == InstallModePgBouncerOnly
 	reporter.StartStep("resolve-bundle", "Validasi bundle installer")
 	paths, err := resolveBundlePaths(cfg.BundleDir, requirePgBouncerAssets)
@@ -337,11 +509,22 @@ func InstallServiceWithProgress(cfg Config, reporter progress.Reporter) error {
 	}
 	reporter.FinishStep("sync-client-config", true, "DB diarahkan ke 127.0.0.1:5444")
 
-	return executeInstallModeWithHandlers(cfg, paths, logRoot, reporter, runner, installModeHandlers{
+	err = executeInstallModeWithHandlers(cfg, paths, logRoot, reporter, runner, installModeHandlers{
 		installTunnelService: installOrUpdateTunnelServiceWithProgress,
 		installPgBouncer:     installOrUpdatePgBouncerWithProgress,
 		waitPgBouncerHealth:  waitPgBouncerHealthyWithProgress,
 	})
+	if err != nil {
+		restoreStoppedService(cfg.ServiceName, runtimeState.tunnelWasRunning, runner, reporter)
+		restoreStoppedService(pgBouncerService, runtimeState.pgBouncerWasRunning, runner, reporter)
+		return err
+	}
+	if cfg.InstallMode == InstallModeIPPublicOnly {
+		restoreStoppedService(pgBouncerService, runtimeState.pgBouncerWasRunning, runner, reporter)
+	} else {
+		restoreStoppedService(cfg.ServiceName, runtimeState.tunnelWasRunning, runner, reporter)
+	}
+	return nil
 }
 
 type installModeHandlers struct {
@@ -419,7 +602,7 @@ func installOrUpdateTunnelServiceWithProgress(cfg Config, paths BundlePaths, log
 		reporter.FinishStep("setup-gui-shortcut", true, "Bundle tanpa GUI; shortcut desktop dilewati")
 		return nil
 	}
-	if err := setupGUIShortcut(cfg.BundleDir, paths.GUIPath); err != nil {
+	if err := setupGUIShortcut(cfg.BundleDir, paths.GUIPath, paths.ClientTomlPath); err != nil {
 		reporter.FinishStep("setup-gui-shortcut", false, err.Error())
 		return err
 	}
@@ -515,6 +698,12 @@ func UninstallServiceWithProgress(cfg Config, reporter progress.Reporter) error 
 	reporter.StartStep("cleanup-artifacts", "Membersihkan artefak runtime dan shortcut")
 	_ = cleanupPgBouncerArtifacts(cfg.BundleDir)
 	_ = cleanupGUIShortcut(cfg.BundleDir)
+	if cfg.ManagedRuntime {
+		if err := os.RemoveAll(cfg.BundleDir); err != nil {
+			reporter.FinishStep("cleanup-artifacts", false, err.Error())
+			return fmt.Errorf("gagal menghapus runtime terkelola: %w", err)
+		}
+	}
 	reporter.FinishStep("cleanup-artifacts", true, "Artefak runtime dan shortcut sudah dibersihkan")
 	return nil
 }
@@ -1434,9 +1623,9 @@ func BuildGUIShortcutSpec(bundleDir, guiPath string) GUIShortcutSpec {
 	}
 }
 
-func setupGUIShortcut(bundleDir, guiPath string) error {
+func setupGUIShortcut(bundleDir, guiPath, configPath string) error {
 	spec := BuildGUIShortcutSpec(bundleDir, guiPath)
-	launcherContent := buildLauncherContent(guiPath)
+	launcherContent := buildLauncherContent(guiPath, configPath)
 	if err := os.WriteFile(spec.LauncherPath, []byte(launcherContent), 0o644); err != nil {
 		return fmt.Errorf("gagal menulis launcher GUI: %w", err)
 	}
@@ -1481,9 +1670,10 @@ func cleanupGUIShortcut(bundleDir string) error {
 	return firstErr
 }
 
-func buildLauncherContent(guiPath string) string {
-	escaped := strings.ReplaceAll(guiPath, "'", "''")
-	return "$ErrorActionPreference = 'Stop'\nStart-Process -FilePath '" + escaped + "' -Verb RunAs\n"
+func buildLauncherContent(guiPath, configPath string) string {
+	escapedGUI := strings.ReplaceAll(guiPath, "'", "''")
+	escapedConfig := strings.ReplaceAll(configPath, "'", "''")
+	return "$ErrorActionPreference = 'Stop'\nStart-Process -FilePath '" + escapedGUI + "' -ArgumentList @('--config', '" + escapedConfig + "') -Verb RunAs\n"
 }
 
 func verifyGUIArtifacts(spec GUIShortcutSpec, createdShortcuts []string) error {

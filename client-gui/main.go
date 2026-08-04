@@ -14,15 +14,16 @@ var assets embed.FS
 
 func main() {
 	startHidden := flag.Bool("hidden", false, "start window hidden")
+	configPath := flag.String("config", "", "override path to client.toml")
 	flag.Parse()
 
-	if err := run(*startHidden); err != nil {
+	if err := run(*startHidden, *configPath); err != nil {
 		handleFatalStartupError(err)
 	}
 }
 
-func run(startHidden bool) error {
-	app, err := NewApp(startHidden)
+func run(startHidden bool, configPath string) error {
+	app, err := NewApp(startHidden, configPath)
 	if err != nil {
 		return err
 	}

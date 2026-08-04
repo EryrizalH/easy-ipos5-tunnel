@@ -161,8 +161,10 @@ type model struct {
 	currentState state
 	styles       *tui.Styles
 
-	serviceName string
-	bundleDir   string
+	serviceName      string
+	bundleDir        string
+	installerPath    string
+	configSourcePath string
 
 	// Path detection
 	pgBinPath      string
@@ -256,7 +258,7 @@ func (m *model) updatePermission(allowCreateDB bool) tea.Cmd {
 
 func (m *model) installServiceCmd() tea.Cmd {
 	return func() tea.Msg {
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModeIPPublicOnly}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModeIPPublicOnly, InstallerPath: m.installerPath, ConfigSourcePath: m.configSourcePath, ManagedRuntime: true}
 		if err := winservice.InstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
@@ -266,7 +268,7 @@ func (m *model) installServiceCmd() tea.Cmd {
 
 func (m *model) installPgBouncerCmd() tea.Cmd {
 	return func() tea.Msg {
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModePgBouncerOnly}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModePgBouncerOnly, InstallerPath: m.installerPath, ConfigSourcePath: m.configSourcePath, ManagedRuntime: true}
 		if err := winservice.InstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
@@ -276,7 +278,7 @@ func (m *model) installPgBouncerCmd() tea.Cmd {
 
 func (m *model) uninstallServiceCmd() tea.Cmd {
 	return func() tea.Msg {
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, ManagedRuntime: true}
 		if err := winservice.UninstallService(cfg); err != nil {
 			return serviceActionCompletedMsg{success: false, err: err}
 		}
@@ -537,7 +539,7 @@ func (m *model) runProgressWorkflow(option int, ch chan any) {
 
 	switch option {
 	case optionInstallIPPublic:
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModeIPPublicOnly}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModeIPPublicOnly, InstallerPath: m.installerPath, ConfigSourcePath: m.configSourcePath, ManagedRuntime: true}
 		if err := winservice.InstallServiceWithProgress(cfg, reporter); err != nil {
 			sendServiceResult(false, "", err)
 			return
@@ -546,7 +548,7 @@ func (m *model) runProgressWorkflow(option int, ch chan any) {
 		reporter.Summary(summary)
 		sendServiceResult(true, summary, nil)
 	case optionInstallPgBouncer:
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModePgBouncerOnly}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, InstallMode: winservice.InstallModePgBouncerOnly, InstallerPath: m.installerPath, ConfigSourcePath: m.configSourcePath, ManagedRuntime: true}
 		if err := winservice.InstallServiceWithProgress(cfg, reporter); err != nil {
 			sendServiceResult(false, "", err)
 			return
@@ -555,7 +557,7 @@ func (m *model) runProgressWorkflow(option int, ch chan any) {
 		reporter.Summary(summary)
 		sendServiceResult(true, summary, nil)
 	case optionUninstallService:
-		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath}
+		cfg := winservice.Config{ServiceName: m.serviceName, BundleDir: m.bundleDir, PGBinPath: m.pgBinPath, ManagedRuntime: true}
 		if err := winservice.UninstallServiceWithProgress(cfg, reporter); err != nil {
 			sendServiceResult(false, "", err)
 			return
@@ -590,6 +592,8 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 	case optionInstallIPPublic:
 		return "Install IP Public", []progress.StepDefinition{
 			{ID: "validate-admin", Label: "Validasi hak Administrator"},
+			{ID: "stage-runtime", Label: "Menyiapkan runtime internal"},
+			{ID: "switch-runtime", Label: "Mengganti runtime internal"},
 			{ID: "resolve-bundle", Label: "Validasi bundle installer"},
 			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
 			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
@@ -601,6 +605,8 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 	case optionInstallPgBouncer:
 		return "Install Pengoptimal Database", []progress.StepDefinition{
 			{ID: "validate-admin", Label: "Validasi hak Administrator"},
+			{ID: "stage-runtime", Label: "Menyiapkan runtime internal"},
+			{ID: "switch-runtime", Label: "Mengganti runtime internal"},
 			{ID: "resolve-bundle", Label: "Validasi bundle Pengoptimal"},
 			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
 			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
@@ -733,17 +739,30 @@ func keyString(msg tea.KeyMsg) string {
 	return ""
 }
 
-func defaultBundleDir() string {
+func defaultInstallerPath() string {
 	exePath, err := os.Executable()
 	if err != nil {
-		return "."
+		return "setup.exe"
 	}
-	return filepath.Dir(exePath)
+	return exePath
+}
+
+func defaultConfigPath(installerPath string) string {
+	return filepath.Join(filepath.Dir(installerPath), "client.toml")
+}
+
+func defaultRuntimeDir() string {
+	programData := os.Getenv("ProgramData")
+	if programData == "" {
+		programData = `C:\ProgramData`
+	}
+	return filepath.Join(programData, "nusatunnel-client", "runtime")
 }
 
 func main() {
+	installerPath := defaultInstallerPath()
 	serviceName := flag.String("service-name", winservice.DefaultServiceName, "Windows service name")
-	bundleDir := flag.String("bundle-dir", defaultBundleDir(), "Directory containing sidecar files (nssm.exe, nusatunnel-service.exe, nusatunnel.exe, pgbouncer.exe, client.toml)")
+	configPath := flag.String("config", defaultConfigPath(installerPath), "Path to client.toml beside setup.exe")
 	flag.Parse()
 
 	if err := logger.Init(); err != nil {
@@ -761,15 +780,17 @@ func main() {
 	styles := tui.DefaultStyles()
 
 	m := &model{
-		currentState:   statePathDetect,
-		styles:         styles,
-		serviceName:    *serviceName,
-		bundleDir:      *bundleDir,
-		pathInput:      tui.NewTextInput("Masukkan path PostgreSQL...", 50),
-		pathStatus:     "Mencari PostgreSQL...",
-		pathError:      false,
-		selectedOption: optionInstallIPPublic,
-		quitting:       false,
+		currentState:     statePathDetect,
+		styles:           styles,
+		serviceName:      *serviceName,
+		bundleDir:        defaultRuntimeDir(),
+		installerPath:    installerPath,
+		configSourcePath: *configPath,
+		pathInput:        tui.NewTextInput("Masukkan path PostgreSQL...", 50),
+		pathStatus:       "Mencari PostgreSQL...",
+		pathError:        false,
+		selectedOption:   optionInstallIPPublic,
+		quitting:         false,
 	}
 
 	p := tea.NewProgram(

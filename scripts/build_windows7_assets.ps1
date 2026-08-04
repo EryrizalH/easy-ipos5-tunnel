@@ -4,6 +4,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $lockIposDir = Join-Path $repoRoot "lock-ipos"
 $serviceDir = Join-Path $lockIposDir "cmd\ipos5-rathole-service"
 $assets7Dir = Join-Path $repoRoot "assets\windows7"
+$payloadBuilder = Join-Path $PSScriptRoot "build_windows_installer_payload.ps1"
 
 $go120 = Join-Path $env:USERPROFILE "go\bin\go1.20.14.exe"
 
@@ -13,6 +14,9 @@ if (-not (Test-Path $go120)) {
 
 if (-not (Test-Path $lockIposDir)) {
     throw "Folder lock-ipos tidak ditemukan: $lockIposDir"
+}
+if (-not (Test-Path $payloadBuilder)) {
+    throw "Builder payload installer tidak ditemukan: $payloadBuilder"
 }
 
 if (-not (Test-Path $assets7Dir)) {
@@ -49,6 +53,11 @@ try {
 }
 finally {
     Pop-Location
+}
+
+& $payloadBuilder -SetupPath $setupOut -AssetsDir $assets7Dir
+if ($LASTEXITCODE -ne 0) {
+    throw "Gagal menggabungkan payload runtime Win7 ke setup.exe"
 }
 
 Write-Host "Sukses build asset Windows 7 ke $assets7Dir" -ForegroundColor Green

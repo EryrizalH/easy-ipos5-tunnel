@@ -39,40 +39,15 @@ main() {
   ensure_dir "$resources_dir/assets/linux" 755
   ensure_dir "$resources_dir/templates/rathole" 755
 
-  [[ -f "${PROJECT_ROOT}/assets/windows/pgbouncer.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/pgbouncer.exe"
-  [[ -f "${PROJECT_ROOT}/assets/windows/libevent-7.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libevent-7.dll"
-  [[ -f "${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll"
-  [[ -f "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll"
-  [[ -f "${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll"
-  [[ -f "${PROJECT_ROOT}/assets/windows/nusatunnel-service.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/nusatunnel-service.exe"
-  [[ -f "${PROJECT_ROOT}/assets/windows/nusatunnel.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/nusatunnel.exe"
+  [[ -f "${PROJECT_ROOT}/assets/windows/setup.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows/setup.exe"
+  [[ -f "${PROJECT_ROOT}/assets/windows7/setup.exe" ]] || fail "Asset wajib belum tersedia: ${PROJECT_ROOT}/assets/windows7/setup.exe"
 
   rm -rf "${deploy_dir}/app"
   cp -R "${PROJECT_ROOT}/dashboard/app" "${deploy_dir}/app"
   cp "${PROJECT_ROOT}/dashboard/requirements.txt" "${deploy_dir}/requirements.txt"
 
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/install-service.ps1.tpl" "${resources_dir}/assets/windows/install-service.ps1.tpl"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-service.ps1.tpl" "${resources_dir}/assets/windows/uninstall-service.ps1.tpl"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/install-service.cmd.tpl" "${resources_dir}/assets/windows/install-service.cmd.tpl"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-service.cmd.tpl" "${resources_dir}/assets/windows/uninstall-service.cmd.tpl"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/setup-client.cmd.tpl" "${resources_dir}/assets/windows/setup-client.cmd.tpl"
   install -m 0644 "${PROJECT_ROOT}/assets/windows/setup.exe" "${resources_dir}/assets/windows/setup.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/nusatunnel-service.exe" "${resources_dir}/assets/windows/nusatunnel-service.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/nusatunnel.exe" "${resources_dir}/assets/windows/nusatunnel.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/nusatunnel-gui.exe" "${resources_dir}/assets/windows/nusatunnel-gui.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/nssm.exe" "${resources_dir}/assets/windows/nssm.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.exe" "${resources_dir}/assets/windows/pgbouncer.exe"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/libevent-7.dll" "${resources_dir}/assets/windows/libevent-7.dll"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/libssl-3-x64.dll" "${resources_dir}/assets/windows/libssl-3-x64.dll"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/libcrypto-3-x64.dll" "${resources_dir}/assets/windows/libcrypto-3-x64.dll"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/libwinpthread-1.dll" "${resources_dir}/assets/windows/libwinpthread-1.dll"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/install-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/install-gui-autostart.ps1.tpl"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/uninstall-gui-autostart.ps1.tpl" "${resources_dir}/assets/windows/uninstall-gui-autostart.ps1.tpl"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/pgbouncer.ini.tpl" "${resources_dir}/assets/windows/pgbouncer.ini.tpl"
-  install -m 0644 "${PROJECT_ROOT}/assets/windows/userlist.sample.txt" "${resources_dir}/assets/windows/userlist.sample.txt"
-  if [[ -d "${PROJECT_ROOT}/assets/windows7" ]]; then
-    cp -R "${PROJECT_ROOT}/assets/windows7/." "${resources_dir}/assets/windows7/"
-  fi
+  install -m 0644 "${PROJECT_ROOT}/assets/windows7/setup.exe" "${resources_dir}/assets/windows7/setup.exe"
   install -m 0644 "${PROJECT_ROOT}/assets/linux/install-client.sh.tpl" "${resources_dir}/assets/linux/install-client.sh.tpl"
   install -m 0644 "${PROJECT_ROOT}/templates/rathole/client.toml.tpl" "${resources_dir}/templates/rathole/client.toml.tpl"
 

@@ -1,6 +1,7 @@
 package winservice
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -34,7 +35,11 @@ func (r *captureReporter) Summary(summary string) {}
 func TestRunWithReporter_StreamsCommandLogs(t *testing.T) {
 	reporter := &captureReporter{}
 
-	out, err := runWithReporter(reporter, "cmd", "/c", "echo hello && echo world 1>&2")
+	command, args := "cmd", []string{"/c", "echo hello && echo world 1>&2"}
+	if runtime.GOOS != "windows" {
+		command, args = "sh", []string{"-c", "echo hello; echo world >&2"}
+	}
+	out, err := runWithReporter(reporter, command, args...)
 	if err != nil {
 		t.Fatalf("runWithReporter() error = %v", err)
 	}
@@ -44,7 +49,7 @@ func TestRunWithReporter_StreamsCommandLogs(t *testing.T) {
 
 	joinedLogs := strings.Join(reporter.logs, "\n")
 	checks := []string{
-		"Menjalankan: cmd /c echo hello && echo world 1>&2",
+		"Menjalankan: " + command + " " + strings.Join(args, " "),
 		"hello",
 		"world",
 	}
@@ -59,7 +64,7 @@ func TestWaitServiceStateWithQuery_StillReusableWithProgressWrapper(t *testing.T
 	reporter := progress.NopReporter()
 	_ = reporter
 	calls := 0
-	err := waitServiceStateWithQuery("PgBouncer", "RUNNING", 50, 0,
+	err := waitServiceStateWithQuery("PgBouncer", "RUNNING", 50*time.Millisecond, 0,
 		func(_ string) (string, string, error) {
 			calls++
 			if calls < 2 {

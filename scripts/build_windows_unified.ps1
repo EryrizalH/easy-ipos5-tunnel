@@ -3,9 +3,13 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $unifiedDir = Join-Path $repoRoot "lock-ipos"
 $outPath = Join-Path $repoRoot "assets/windows/setup.exe"
+$payloadBuilder = Join-Path $PSScriptRoot "build_windows_installer_payload.ps1"
 
 if (-not (Test-Path $unifiedDir)) {
     throw "Folder lock-ipos tidak ditemukan: $unifiedDir"
+}
+if (-not (Test-Path $payloadBuilder)) {
+    throw "Builder payload installer tidak ditemukan: $payloadBuilder"
 }
 
 Write-Host "Building interactive Windows setup.exe..." -ForegroundColor Cyan
@@ -27,6 +31,11 @@ finally {
 
 if (-not (Test-Path $outPath)) {
     throw "Output setup.exe tidak ditemukan: $outPath"
+}
+
+& $payloadBuilder -SetupPath $outPath -AssetsDir (Join-Path $repoRoot "assets/windows") -IncludeGUI
+if ($LASTEXITCODE -ne 0) {
+    throw "Gagal menggabungkan payload runtime ke setup.exe"
 }
 
 $file = Get-Item $outPath
