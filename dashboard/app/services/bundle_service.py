@@ -166,6 +166,42 @@ def require_windows_installer_payload(installer: Path, *, includes_gui: bool) ->
         raise RuntimeError(f"payload {WINDOWS_UNIFIED_NAME} Windows 7 tidak boleh memuat {WINDOWS_GUI_BINARY_NAME}")
 
 
+def build_windows_installer_payload(
+    source_setup: Path,
+    assets_dir: Path,
+    target_setup: Path,
+    *,
+    includes_gui: bool,
+) -> None:
+    source_setup = Path(source_setup)
+    assets_dir = Path(assets_dir)
+    target_setup = Path(target_setup)
+    require_file(source_setup, WINDOWS_UNIFIED_NAME)
+    if source_setup.resolve() == target_setup.resolve():
+        raise ValueError("source dan tujuan setup.exe harus berbeda")
+
+    payload_names = list(WINDOWS_EMBEDDED_RUNTIME_NAMES)
+    if includes_gui:
+        payload_names.append(WINDOWS_GUI_BINARY_NAME)
+    for name in payload_names:
+        require_file(assets_dir / name, name)
+
+    target_setup.parent.mkdir(parents=True, exist_ok=True)
+    if zipfile.is_zipfile(source_setup):
+        require_windows_installer_payload(source_setup, includes_gui=includes_gui)
+        shutil.copy2(source_setup, target_setup)
+        return
+
+    with tempfile.TemporaryDirectory(prefix="nusatunnel-payload-") as temp_dir:
+        payload_path = Path(temp_dir) / "runtime.zip"
+        with zipfile.ZipFile(payload_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name in payload_names:
+                archive.write(assets_dir / name, arcname=name)
+        with source_setup.open("rb") as source, payload_path.open("rb") as payload, target_setup.open("wb") as target:
+            shutil.copyfileobj(source, target)
+            shutil.copyfileobj(payload, target)
+
+
 def generate_windows_bundle(state: dict[str, Any], token: str) -> Path:
     windows_unified_bin = windows_asset_path(WINDOWS_ASSET_DIRNAME, WINDOWS_UNIFIED_NAME)
     require_windows_installer_payload(windows_unified_bin, includes_gui=True)

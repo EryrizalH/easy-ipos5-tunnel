@@ -161,6 +161,22 @@ class BundleServiceTest(unittest.TestCase):
                 else:
                     os.environ["NUSA_TUNNEL_RESOURCES_DIR"] = previous_resources
 
+    def test_build_windows_installer_payload_from_raw_setup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            assets = root / "assets"
+            source = root / "setup-raw.exe"
+            target = root / "output" / bundle_service.WINDOWS_UNIFIED_NAME
+            assets.mkdir()
+            source.write_bytes(b"MZstub")
+            for name in (*bundle_service.WINDOWS_EMBEDDED_RUNTIME_NAMES, bundle_service.WINDOWS_GUI_BINARY_NAME):
+                (assets / name).write_bytes(b"runtime")
+
+            bundle_service.build_windows_installer_payload(source, assets, target, includes_gui=True)
+
+            self.assertTrue(target.read_bytes().startswith(b"MZstub"))
+            bundle_service.require_windows_installer_payload(target, includes_gui=True)
+
     def test_generate_linux_bundle_contains_two_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
