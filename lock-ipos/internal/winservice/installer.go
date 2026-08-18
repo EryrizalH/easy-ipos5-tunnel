@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/md5"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -41,6 +42,8 @@ const (
 	pgBouncerUserlist         = "userlist.txt"
 	launcherFileName          = "launch-gui-admin.ps1"
 	shortcutFileName          = "nusatunnel.lnk"
+	shellLinkHeaderSize       = 0x4c
+	shellLinkRunAsUserFlag    = 0x00002000
 	pgBouncerHost             = "127.0.0.1"
 	pgBouncerListenHost       = "0.0.0.0"
 	pgBouncerPort             = 5444
@@ -114,13 +117,14 @@ type pgBouncerDatabasesFile struct {
 	Databases []pgBouncerDatabaseEntry `json:"databases"`
 }
 
-// GUIShortcutSpec describes launcher and shortcut artifacts for GUI.
+// GUIShortcutSpec describes the direct Windows shortcut to the installed GUI.
 type GUIShortcutSpec struct {
-	LauncherPath      string
-	ShortcutName      string
-	PowerShellPath    string
-	PowerShellArgs    string
-	GUIExecutablePath string
+	LegacyLauncherPath string
+	ShortcutName       string
+	TargetPath         string
+	Arguments          string
+	IconPath           string
+	WorkingDirectory   string
 }
 
 func (c Config) normalized() Config {
@@ -1610,25 +1614,19 @@ func BundleIncludesGUI(bundleDir string) bool {
 	return fileExists(filepath.Join(cleanDir, guiBinaryName))
 }
 
-func BuildGUIShortcutSpec(bundleDir, guiPath string) GUIShortcutSpec {
-	launcherPath := filepath.Join(bundleDir, launcherFileName)
-	psPath := "powershell.exe"
-	psArgs := fmt.Sprintf(`-NoProfile -ExecutionPolicy Bypass -File "%s"`, launcherPath)
+func BuildGUIShortcutSpec(bundleDir, guiPath, configPath string) GUIShortcutSpec {
 	return GUIShortcutSpec{
-		LauncherPath:      launcherPath,
-		ShortcutName:      shortcutFileName,
-		PowerShellPath:    psPath,
-		PowerShellArgs:    psArgs,
-		GUIExecutablePath: guiPath,
+		LegacyLauncherPath: filepath.Join(bundleDir, launcherFileName),
+		ShortcutName:       shortcutFileName,
+		TargetPath:         guiPath,
+		Arguments:          "--config " + quoteWindowsCommandArg(configPath),
+		IconPath:           guiPath,
+		WorkingDirectory:   filepath.Dir(guiPath),
 	}
 }
 
 func setupGUIShortcut(bundleDir, guiPath, configPath string) error {
-	spec := BuildGUIShortcutSpec(bundleDir, guiPath)
-	launcherContent := buildLauncherContent(guiPath, configPath)
-	if err := os.WriteFile(spec.LauncherPath, []byte(launcherContent), 0o644); err != nil {
-		return fmt.Errorf("gagal menulis launcher GUI: %w", err)
-	}
+	spec := BuildGUIShortcutSpec(bundleDir, guiPath, configPath)
 
 	createdShortcuts := make([]string, 0, 2)
 	for _, desktopDir := range desktopShortcutDirs() {
@@ -1639,7 +1637,7 @@ func setupGUIShortcut(bundleDir, guiPath, configPath string) error {
 			continue
 		}
 		shortcutPath := filepath.Join(desktopDir, spec.ShortcutName)
-		if err := createShortcut(shortcutPath, spec.PowerShellPath, spec.PowerShellArgs, spec.GUIExecutablePath); err != nil {
+		if err := createShortcut(shortcutPath, spec); err != nil {
 			return err
 		}
 		createdShortcuts = append(createdShortcuts, shortcutPath)
@@ -1654,7 +1652,7 @@ func setupGUIShortcut(bundleDir, guiPath, configPath string) error {
 
 func cleanupGUIShortcut(bundleDir string) error {
 	var firstErr error
-	spec := BuildGUIShortcutSpec(bundleDir, filepath.Join(bundleDir, guiBinaryName))
+	spec := BuildGUIShortcutSpec(bundleDir, filepath.Join(bundleDir, guiBinaryName), filepath.Join(bundleDir, "client.toml"))
 	for _, desktopDir := range desktopShortcutDirs() {
 		if strings.TrimSpace(desktopDir) == "" {
 			continue
@@ -1664,21 +1662,15 @@ func cleanupGUIShortcut(bundleDir string) error {
 			firstErr = err
 		}
 	}
-	if err := os.Remove(spec.LauncherPath); err != nil && !errors.Is(err, os.ErrNotExist) && firstErr == nil {
+	if err := os.Remove(spec.LegacyLauncherPath); err != nil && !errors.Is(err, os.ErrNotExist) && firstErr == nil {
 		firstErr = err
 	}
 	return firstErr
 }
 
-func buildLauncherContent(guiPath, configPath string) string {
-	escapedGUI := strings.ReplaceAll(guiPath, "'", "''")
-	escapedConfig := strings.ReplaceAll(configPath, "'", "''")
-	return "$ErrorActionPreference = 'Stop'\nStart-Process -FilePath '" + escapedGUI + "' -ArgumentList @('--config', '" + escapedConfig + "') -Verb RunAs\n"
-}
-
 func verifyGUIArtifacts(spec GUIShortcutSpec, createdShortcuts []string) error {
-	if !fileExists(spec.LauncherPath) {
-		return fmt.Errorf("launcher GUI tidak ditemukan setelah dibuat: %s", spec.LauncherPath)
+	if !fileExists(spec.TargetPath) {
+		return fmt.Errorf("GUI tidak ditemukan setelah shortcut dibuat: %s", spec.TargetPath)
 	}
 	if len(createdShortcuts) == 0 {
 		return errors.New("shortcut desktop GUI tidak berhasil dibuat (desktop user/public tidak tersedia atau gagal ditulis)")
@@ -1704,20 +1696,45 @@ func desktopShortcutDirs() []string {
 	return candidates
 }
 
-func createShortcut(shortcutPath, targetPath, arguments, iconPath string) error {
+func createShortcut(shortcutPath string, spec GUIShortcutSpec) error {
 	command := fmt.Sprintf(
 		"$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut('%s'); $s.TargetPath='%s'; $s.Arguments='%s'; $s.IconLocation='%s'; $s.WorkingDirectory='%s'; $s.Save()",
 		escapePowerShellSingleQuoted(shortcutPath),
-		escapePowerShellSingleQuoted(targetPath),
-		escapePowerShellSingleQuoted(arguments),
-		escapePowerShellSingleQuoted(iconPath),
-		escapePowerShellSingleQuoted(filepath.Dir(iconPath)),
+		escapePowerShellSingleQuoted(spec.TargetPath),
+		escapePowerShellSingleQuoted(spec.Arguments),
+		escapePowerShellSingleQuoted(spec.IconPath),
+		escapePowerShellSingleQuoted(spec.WorkingDirectory),
 	)
 	_, err := run("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command)
 	if err != nil {
 		return fmt.Errorf("gagal membuat shortcut desktop: %w", err)
 	}
+	if err := markShortcutRunAs(shortcutPath); err != nil {
+		return fmt.Errorf("gagal mengaktifkan Izin Administrator pada shortcut: %w", err)
+	}
 	return nil
+}
+
+func markShortcutRunAs(shortcutPath string) error {
+	content, err := os.ReadFile(shortcutPath)
+	if err != nil {
+		return err
+	}
+	content, err = shortcutContentWithRunAs(content)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(shortcutPath, content, 0o644)
+}
+
+func shortcutContentWithRunAs(content []byte) ([]byte, error) {
+	if len(content) < shellLinkHeaderSize || binary.LittleEndian.Uint32(content[:4]) != shellLinkHeaderSize {
+		return nil, errors.New("format file shortcut Windows tidak valid")
+	}
+	updated := append([]byte(nil), content...)
+	flags := binary.LittleEndian.Uint32(updated[0x14:0x18])
+	binary.LittleEndian.PutUint32(updated[0x14:0x18], flags|shellLinkRunAsUserFlag)
+	return updated, nil
 }
 
 func escapePowerShellSingleQuoted(in string) string {

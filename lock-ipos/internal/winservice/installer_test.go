@@ -2,6 +2,7 @@ package winservice
 
 import (
 	"archive/zip"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"os"
@@ -541,46 +542,73 @@ func TestBuildPgBouncerUserlist(t *testing.T) {
 }
 
 func TestBuildGUIShortcutSpec(t *testing.T) {
-	spec := BuildGUIShortcutSpec(`D:\bundle`, `D:\bundle\nusatunnel-gui.exe`)
-	if !strings.Contains(spec.LauncherPath, launcherFileName) {
-		t.Fatalf("launcher path mismatch: %s", spec.LauncherPath)
+	bundleDir := filepath.Join("testdata", "bundle")
+	guiPath := filepath.Join(bundleDir, guiBinaryName)
+	configPath := filepath.Join(bundleDir, "client.toml")
+	spec := BuildGUIShortcutSpec(bundleDir, guiPath, configPath)
+	if spec.TargetPath != guiPath {
+		t.Fatalf("shortcut target mismatch: %s", spec.TargetPath)
 	}
 	if spec.ShortcutName != shortcutFileName {
 		t.Fatalf("shortcut name mismatch: %s", spec.ShortcutName)
 	}
-	if !strings.Contains(strings.ToLower(spec.PowerShellArgs), "executionpolicy bypass") {
-		t.Fatalf("powershell args mismatch: %s", spec.PowerShellArgs)
+	if !strings.Contains(spec.Arguments, "--config") || !strings.Contains(spec.Arguments, "client.toml") {
+		t.Fatalf("shortcut arguments mismatch: %s", spec.Arguments)
 	}
-	if strings.Contains(strings.ToLower(spec.PowerShellArgs), "--hidden") {
-		t.Fatalf("powershell args should not force hidden mode: %s", spec.PowerShellArgs)
+	if strings.Contains(strings.ToLower(spec.Arguments), "--hidden") {
+		t.Fatalf("shortcut arguments should not force hidden mode: %s", spec.Arguments)
+	}
+	if spec.WorkingDirectory != bundleDir {
+		t.Fatalf("shortcut working directory mismatch: %s", spec.WorkingDirectory)
+	}
+	if spec.IconPath != spec.TargetPath {
+		t.Fatalf("shortcut icon must use GUI executable: %s", spec.IconPath)
 	}
 }
 
-func TestBuildLauncherContent_NoHiddenModeAndUsesRunAs(t *testing.T) {
-	content := buildLauncherContent(`D:\bundle\nusatunnel-gui.exe`, `D:\bundle\client.toml`)
-	lower := strings.ToLower(content)
-	if strings.Contains(lower, "--hidden") {
-		t.Fatalf("launcher should not force hidden mode: %s", content)
+func TestBuildGUIShortcutSpec_QuotesConfigPathWithSpaces(t *testing.T) {
+	spec := BuildGUIShortcutSpec(
+		`C:\ProgramData\nusatunnel-client\runtime`,
+		`C:\ProgramData\nusatunnel-client\runtime\nusatunnel-gui.exe`,
+		`D:\Nusa Tunnel\client.toml`,
+	)
+	if spec.Arguments != `--config "D:\Nusa Tunnel\client.toml"` {
+		t.Fatalf("shortcut arguments mismatch: %s", spec.Arguments)
 	}
-	if !strings.Contains(lower, "-verb runas") {
-		t.Fatalf("launcher must use RunAs: %s", content)
+}
+
+func TestShortcutContentWithRunAs(t *testing.T) {
+	content := make([]byte, shellLinkHeaderSize)
+	binary.LittleEndian.PutUint32(content[:4], shellLinkHeaderSize)
+	binary.LittleEndian.PutUint32(content[0x14:0x18], 0x00000080)
+
+	updated, err := shortcutContentWithRunAs(content)
+	if err != nil {
+		t.Fatalf("shortcutContentWithRunAs() unexpected error: %v", err)
 	}
-	if !strings.Contains(content, "nusatunnel-gui.exe") {
-		t.Fatalf("launcher must include GUI path: %s", content)
+	flags := binary.LittleEndian.Uint32(updated[0x14:0x18])
+	if flags&shellLinkRunAsUserFlag == 0 {
+		t.Fatalf("RunAsUser flag not set: %#x", flags)
 	}
-	if !strings.Contains(content, "--config") || !strings.Contains(content, "client.toml") {
-		t.Fatalf("launcher must target the managed client config: %s", content)
+	if binary.LittleEndian.Uint32(content[0x14:0x18]) != 0x00000080 {
+		t.Fatal("input shortcut content must not be mutated")
+	}
+}
+
+func TestShortcutContentWithRunAs_RejectsInvalidShortcut(t *testing.T) {
+	if _, err := shortcutContentWithRunAs([]byte("not-a-shortcut")); err == nil {
+		t.Fatal("expected invalid shortcut error")
 	}
 }
 
 func TestVerifyGUIArtifacts_Success(t *testing.T) {
 	tmp := t.TempDir()
-	launcher := filepath.Join(tmp, launcherFileName)
+	guiPath := filepath.Join(tmp, guiBinaryName)
 	shortcut := filepath.Join(tmp, shortcutFileName)
-	mustWrite(t, launcher)
+	mustWrite(t, guiPath)
 	mustWrite(t, shortcut)
 
-	spec := GUIShortcutSpec{LauncherPath: launcher, ShortcutName: shortcutFileName}
+	spec := GUIShortcutSpec{TargetPath: guiPath, ShortcutName: shortcutFileName}
 	if err := verifyGUIArtifacts(spec, []string{shortcut}); err != nil {
 		t.Fatalf("verifyGUIArtifacts() unexpected error: %v", err)
 	}
@@ -588,9 +616,9 @@ func TestVerifyGUIArtifacts_Success(t *testing.T) {
 
 func TestVerifyGUIArtifacts_FailsWithoutShortcut(t *testing.T) {
 	tmp := t.TempDir()
-	launcher := filepath.Join(tmp, launcherFileName)
-	mustWrite(t, launcher)
-	spec := GUIShortcutSpec{LauncherPath: launcher, ShortcutName: shortcutFileName}
+	guiPath := filepath.Join(tmp, guiBinaryName)
+	mustWrite(t, guiPath)
+	spec := GUIShortcutSpec{TargetPath: guiPath, ShortcutName: shortcutFileName}
 
 	err := verifyGUIArtifacts(spec, nil)
 	if err == nil {
