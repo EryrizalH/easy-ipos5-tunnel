@@ -2,6 +2,7 @@ package pgpath
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +17,7 @@ var defaultPaths = []string{
 // FindPostgreSQLBin searches for PostgreSQL binary in default locations
 func FindPostgreSQLBin() (string, error) {
 	for _, path := range defaultPaths {
-		if fileExists(filepath.Join(path, "psql.exe")) {
+		if regularFileExists(filepath.Join(path, "psql.exe")) {
 			return path, nil
 		}
 	}
@@ -25,35 +26,86 @@ func FindPostgreSQLBin() (string, error) {
 
 // FindPostgreSQLBinInPath searches for psql.exe in a specific path
 func FindPostgreSQLBinInPath(customPath string) (string, error) {
-	// Clean and validate the path
-	cleanPath := strings.TrimSpace(customPath)
-	if cleanPath == "" {
-		return "", errors.New("Path tidak boleh kosong")
+	cleanPath, err := normalizeInputPath(customPath)
+	if err != nil {
+		return "", err
 	}
 
-	// Check if psql.exe exists in the provided path
-	psqlPath := filepath.Join(cleanPath, "psql.exe")
-	if !fileExists(psqlPath) {
-		// Also check if the path already includes psql.exe
-		if strings.HasSuffix(strings.ToLower(cleanPath), "psql.exe") {
-			if fileExists(cleanPath) {
-				return filepath.Dir(cleanPath), nil
-			}
+	info, statErr := os.Stat(cleanPath)
+	if statErr != nil {
+		return "", fmt.Errorf("path tidak ditemukan atau tidak dapat dibaca: %w", statErr)
+	}
+
+	if !info.IsDir() {
+		if strings.EqualFold(filepath.Base(cleanPath), "psql.exe") && info.Mode().IsRegular() {
+			return filepath.Dir(cleanPath), nil
 		}
-		return "", errors.New("psql.exe tidak ditemukan di path yang diberikan")
+		return "", errors.New("file yang dipilih bukan psql.exe")
 	}
 
-	return cleanPath, nil
+	if regularFileExists(filepath.Join(cleanPath, "psql.exe")) {
+		return cleanPath, nil
+	}
+
+	binPath := filepath.Join(cleanPath, "bin")
+	if regularFileExists(filepath.Join(binPath, "psql.exe")) {
+		return binPath, nil
+	}
+
+	entries, err := os.ReadDir(cleanPath)
+	if err != nil {
+		return "", fmt.Errorf("folder tidak dapat dibaca: %w", err)
+	}
+
+	var matches []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		candidate := filepath.Join(cleanPath, entry.Name(), "bin")
+		if regularFileExists(filepath.Join(candidate, "psql.exe")) {
+			matches = append(matches, candidate)
+		}
+	}
+
+	switch len(matches) {
+	case 1:
+		return matches[0], nil
+	case 0:
+		return "", errors.New("psql.exe tidak ditemukan; pilih folder Server IPOS, root PostgreSQL, folder bin, atau file psql.exe")
+	default:
+		return "", errors.New("lebih dari satu instalasi PostgreSQL ditemukan; pilih folder bin yang digunakan IPOS 5")
+	}
 }
 
-// fileExists checks if a file exists
-func fileExists(filename string) bool {
-	info, err := filepath.Abs(filename)
-	if err != nil {
-		return false
+func normalizeInputPath(input string) (string, error) {
+	cleanPath := strings.TrimSpace(input)
+	if cleanPath == "" {
+		return "", errors.New("path tidak boleh kosong")
 	}
-	_, err = os.Stat(info)
-	return err == nil
+
+	for len(cleanPath) >= 2 {
+		first := cleanPath[0]
+		last := cleanPath[len(cleanPath)-1]
+		if (first != '"' || last != '"') && (first != '\'' || last != '\'') {
+			break
+		}
+		cleanPath = strings.TrimSpace(cleanPath[1 : len(cleanPath)-1])
+	}
+	if cleanPath == "" {
+		return "", errors.New("path tidak boleh kosong")
+	}
+
+	absPath, err := filepath.Abs(filepath.Clean(cleanPath))
+	if err != nil {
+		return "", fmt.Errorf("path tidak valid: %w", err)
+	}
+	return filepath.Clean(absPath), nil
+}
+
+func regularFileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	return err == nil && info.Mode().IsRegular()
 }
 
 // GetDefaultPaths returns the list of default PostgreSQL bin paths

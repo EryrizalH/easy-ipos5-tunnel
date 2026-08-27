@@ -64,3 +64,50 @@ func TestMainMenu_ArrowNavigationLimits(t *testing.T) {
 		t.Fatalf("expected stay at last option, got %d", m.selectedOption)
 	}
 }
+
+func TestPathInput_AllowsQWithoutQuitting(t *testing.T) {
+	m := &model{
+		currentState:   statePathDetect,
+		pathManualMode: true,
+		pathInput:      tui.NewTextInput("", 50),
+	}
+
+	_, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+
+	if m.quitting {
+		t.Fatal("expected q to be inserted while editing path, but model is quitting")
+	}
+	if got := m.pathInput.GetValue(); got != "q" {
+		t.Fatalf("expected path input %q, got %q", "q", got)
+	}
+}
+
+func TestPathInput_EmptyEnterShowsValidationError(t *testing.T) {
+	m := &model{
+		currentState:   statePathDetect,
+		pathManualMode: true,
+		pathInput:      tui.NewTextInput("", 50),
+	}
+
+	_, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyEnter})
+
+	if !m.pathError {
+		t.Fatal("expected empty path to set validation error")
+	}
+	if m.pathStatus == "" {
+		t.Fatal("expected empty path validation message")
+	}
+}
+
+func TestMainMenu_QStillQuits(t *testing.T) {
+	m := &model{currentState: stateMainMenu}
+
+	_, cmd := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+
+	if !m.quitting {
+		t.Fatal("expected q to quit outside path editing")
+	}
+	if cmd == nil {
+		t.Fatal("expected quit command")
+	}
+}

@@ -333,7 +333,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.Type == tea.KeyCtrlC || keyString(msg) == "q" {
+	if msg.Type == tea.KeyCtrlC || (keyString(msg) == "q" && !m.isEditingPath()) {
 		m.quitting = true
 		return m, tea.Quit
 	}
@@ -346,17 +346,15 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 			if msg.Type == tea.KeyEnter {
 				inputPath := m.pathInput.GetValue()
-				if inputPath != "" {
-					path, err := pgpath.FindPostgreSQLBinInPath(inputPath)
-					if err != nil {
-						m.pathStatus = "Path tidak valid: " + err.Error()
-						m.pathError = true
-					} else {
-						m.pgBinPath = path
-						m.pathStatus = "Path ditemukan!"
-						m.pathError = false
-						return m, m.checkCurrentPermission()
-					}
+				path, err := pgpath.FindPostgreSQLBinInPath(inputPath)
+				if err != nil {
+					m.pathStatus = "Path tidak valid: " + err.Error()
+					m.pathError = true
+				} else {
+					m.pgBinPath = path
+					m.pathStatus = "PostgreSQL ditemukan di: " + path
+					m.pathError = false
+					return m, m.checkCurrentPermission()
 				}
 			}
 
@@ -451,6 +449,10 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *model) isEditingPath() bool {
+	return m.currentState == statePathDetect && m.pathManualMode
 }
 
 func (m *model) handlePathFound(msg pgPathFoundMsg) (tea.Model, tea.Cmd) {
@@ -786,7 +788,7 @@ func main() {
 		bundleDir:        defaultRuntimeDir(),
 		installerPath:    installerPath,
 		configSourcePath: *configPath,
-		pathInput:        tui.NewTextInput("Masukkan path PostgreSQL...", 50),
+		pathInput:        tui.NewTextInput("Tempel path Server IPOS/PostgreSQL...", 68),
 		pathStatus:       "Mencari PostgreSQL...",
 		pathError:        false,
 		selectedOption:   optionInstallIPPublic,

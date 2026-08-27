@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"unicode"
 
 	"github.com/charmbracelet/bubbletea"
 )
@@ -27,7 +28,7 @@ func NewTextInput(placeholder string, width int) *TextInput {
 // SetValue sets the input value
 func (t *TextInput) SetValue(value string) {
 	t.value = value
-	t.cursor = len(value)
+	t.cursor = len([]rune(value))
 }
 
 // GetValue returns the current input value
@@ -49,10 +50,18 @@ func (t *TextInput) Blur() {
 func (t *TextInput) Update(msg tea.Msg) (*TextInput, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		valueRunes := []rune(t.value)
+		if t.cursor < 0 {
+			t.cursor = 0
+		}
+		if t.cursor > len(valueRunes) {
+			t.cursor = len(valueRunes)
+		}
+
 		switch msg.Type {
 		case tea.KeyBackspace:
-			if len(t.value) > 0 && t.cursor > 0 {
-				t.value = t.value[:t.cursor-1] + t.value[t.cursor:]
+			if t.cursor > 0 {
+				valueRunes = append(valueRunes[:t.cursor-1], valueRunes[t.cursor:]...)
 				t.cursor--
 			}
 		case tea.KeyLeft:
@@ -60,49 +69,78 @@ func (t *TextInput) Update(msg tea.Msg) (*TextInput, tea.Cmd) {
 				t.cursor--
 			}
 		case tea.KeyRight:
-			if t.cursor < len(t.value) {
+			if t.cursor < len(valueRunes) {
 				t.cursor++
 			}
 		case tea.KeyHome:
 			t.cursor = 0
 		case tea.KeyEnd:
-			t.cursor = len(t.value)
+			t.cursor = len(valueRunes)
 		case tea.KeyDelete:
-			if t.cursor < len(t.value) {
-				t.value = t.value[:t.cursor] + t.value[t.cursor+1:]
+			if t.cursor < len(valueRunes) {
+				valueRunes = append(valueRunes[:t.cursor], valueRunes[t.cursor+1:]...)
 			}
 		default:
-			// Handle character input - any non-special key
-			if len(msg.Runes) > 0 {
-				char := msg.Runes[0]
-				// Filter for printable ASCII characters
-				if char >= 32 && char <= 126 {
-					t.value = t.value[:t.cursor] + string(char) + t.value[t.cursor:]
-					t.cursor++
+			var inputRunes []rune
+			for _, char := range msg.Runes {
+				if unicode.IsPrint(char) {
+					inputRunes = append(inputRunes, char)
 				}
 			}
+			if len(inputRunes) > 0 {
+				updated := make([]rune, 0, len(valueRunes)+len(inputRunes))
+				updated = append(updated, valueRunes[:t.cursor]...)
+				updated = append(updated, inputRunes...)
+				updated = append(updated, valueRunes[t.cursor:]...)
+				valueRunes = updated
+				t.cursor += len(inputRunes)
+			}
 		}
+
+		t.value = string(valueRunes)
 	}
 	return t, nil
 }
 
+func (t *TextInput) visibleValue() string {
+	displayValue := t.value
+	displayCursor := t.cursor
+	if displayValue == "" && !t.focused {
+		displayValue = t.placeholder
+		displayCursor = 0
+	}
+
+	displayRunes := []rune(displayValue)
+	if t.width <= 0 || len(displayRunes) <= t.width {
+		return displayValue
+	}
+
+	if displayCursor < 0 {
+		displayCursor = 0
+	}
+	if displayCursor > len(displayRunes) {
+		displayCursor = len(displayRunes)
+	}
+
+	start := 0
+	if displayCursor >= t.width {
+		start = displayCursor - t.width + 1
+	}
+	if start+t.width > len(displayRunes) {
+		start = len(displayRunes) - t.width
+	}
+
+	return string(displayRunes[start : start+t.width])
+}
+
 // View renders the text input
 func (t *TextInput) View(styles *Styles) string {
-	var displayValue string
-	if t.value == "" && !t.focused {
-		displayValue = t.placeholder
-	} else {
-		displayValue = t.value
-	}
-
-	// Truncate if too long
-	if t.width > 0 && len(displayValue) > t.width {
-		displayValue = displayValue[:t.width]
-	}
+	displayValue := t.visibleValue()
 
 	// Add padding
-	if len(displayValue) < t.width {
-		displayValue += strings.Repeat(" ", t.width-len(displayValue))
+	displayWidth := len([]rune(displayValue))
+	if displayWidth < t.width {
+		displayValue += strings.Repeat(" ", t.width-displayWidth)
 	}
 
 	if t.focused {

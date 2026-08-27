@@ -39,11 +39,13 @@ func RenderPathDetect(styles *Styles, pgBinPath string, testingPath string, inpu
 			"\n" +
 			styles.MutedText.Render("  2. D:\\Server System 1.0\\pgsql9.5\\bin") +
 			"\n\n" +
-			styles.NormalText.Render("Path PostgreSQL: ") +
+			styles.NormalText.Render("Path Server IPOS/PostgreSQL:") +
+			"\n" +
+			styles.MutedText.Render("Bisa tempel folder Server IPOS, root PostgreSQL, folder bin, atau file psql.exe.") +
 			"\n" +
 			input.View(styles) +
 			"\n\n" +
-			styles.HelpText.Render("[Enter] Gunakan path ini  [Esc] Keluar"),
+			styles.HelpText.Render("[Enter] Validasi path  [Esc] Keluar"),
 	))
 
 	return b.String()
