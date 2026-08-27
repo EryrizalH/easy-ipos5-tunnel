@@ -17,6 +17,7 @@ func TestFindPostgreSQLBinInPathAcceptsCommonPathLevels(t *testing.T) {
 		name  string
 		input string
 	}{
+		{name: "installation parent", input: filepath.Dir(serverRoot)},
 		{name: "server root", input: serverRoot},
 		{name: "postgres root", input: filepath.Dir(binPath)},
 		{name: "bin folder", input: binPath},
@@ -36,16 +37,6 @@ func TestFindPostgreSQLBinInPathAcceptsCommonPathLevels(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestDefaultPathsIncludeIPOSDataLocation(t *testing.T) {
-	want := `D:\IPOS 5 data\Server System 1.0\pgsql9.5\bin`
-	for _, path := range GetDefaultPaths() {
-		if path == want {
-			return
-		}
-	}
-	t.Fatalf("expected default PostgreSQL path %q", want)
 }
 
 func TestFindPostgreSQLBinInPathRejectsAmbiguousRoot(t *testing.T) {

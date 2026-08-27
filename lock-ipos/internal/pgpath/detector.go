@@ -12,8 +12,12 @@ import (
 var defaultPaths = []string{
 	`C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\bin`,
 	`D:\Server System 1.0\pgsql9.5\bin`,
-	`D:\IPOS 5 data\Server System 1.0\pgsql9.5\bin`,
 }
+
+const (
+	maxNestedSearchDepth       = 3
+	maxNestedSearchDirectories = 512
+)
 
 // FindPostgreSQLBin searches for PostgreSQL binary in default locations
 func FindPostgreSQLBin() (string, error) {
@@ -53,20 +57,9 @@ func FindPostgreSQLBinInPath(customPath string) (string, error) {
 		return binPath, nil
 	}
 
-	entries, err := os.ReadDir(cleanPath)
-	if err != nil {
-		return "", fmt.Errorf("folder tidak dapat dibaca: %w", err)
-	}
-
-	var matches []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		candidate := filepath.Join(cleanPath, entry.Name(), "bin")
-		if regularFileExists(filepath.Join(candidate, "psql.exe")) {
-			matches = append(matches, candidate)
-		}
+	matches, searchLimitReached := findNestedPostgreSQLBins(cleanPath)
+	if searchLimitReached {
+		return "", errors.New("folder terlalu luas untuk dipindai; pilih folder yang lebih dekat ke instalasi PostgreSQL")
 	}
 
 	switch len(matches) {
@@ -81,6 +74,52 @@ func FindPostgreSQLBinInPath(customPath string) (string, error) {
 	default:
 		return "", errors.New("lebih dari satu instalasi PostgreSQL ditemukan; pilih folder bin yang digunakan IPOS 5")
 	}
+}
+
+type nestedSearchDir struct {
+	path  string
+	depth int
+}
+
+func findNestedPostgreSQLBins(root string) ([]string, bool) {
+	queue := []nestedSearchDir{{path: root}}
+	matches := make([]string, 0, 1)
+	searchedDirectories := 0
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		if current.depth > 0 {
+			candidate := filepath.Join(current.path, "bin")
+			if regularFileExists(filepath.Join(candidate, "psql.exe")) {
+				matches = append(matches, candidate)
+			}
+		}
+		if current.depth >= maxNestedSearchDepth {
+			continue
+		}
+
+		entries, err := os.ReadDir(current.path)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			searchedDirectories++
+			if searchedDirectories > maxNestedSearchDirectories {
+				return matches, true
+			}
+			queue = append(queue, nestedSearchDir{
+				path:  filepath.Join(current.path, entry.Name()),
+				depth: current.depth + 1,
+			})
+		}
+	}
+
+	return matches, false
 }
 
 func normalizeInputPath(input string) (string, error) {

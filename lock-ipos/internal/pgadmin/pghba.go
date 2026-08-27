@@ -39,7 +39,6 @@ func FindPgHbaConf(pgBinPath string) (string, error) {
 		filepath.Join(serverDir, "pgsql9.5", "data", "pg_hba.conf"),
 		// Try D: drive variant
 		`D:\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
-		`D:\IPOS 5 data\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
 	}
 
 	for i, pgHbaPath := range possiblePaths {
@@ -95,7 +94,6 @@ func FindPgHbaConfDirectly() (string, error) {
 	commonPaths := []string{
 		`C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
 		`D:\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
-		`D:\IPOS 5 data\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
 		`C:\Program Files (x86)\PostgreSQL\9.5\data\pg_hba.conf`,
 		`C:\Program Files\PostgreSQL\9.5\data\pg_hba.conf`,
 		`D:\PostgreSQL\9.5\data\pg_hba.conf`,
