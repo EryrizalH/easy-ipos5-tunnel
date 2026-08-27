@@ -44,3 +44,12 @@ func TestTextInputVisibleValueFollowsCursor(t *testing.T) {
 		t.Fatalf("expected cursor-following viewport %q, got %q", "12345", got)
 	}
 }
+
+func TestTextInputInsertFiltersControlCharacters(t *testing.T) {
+	input := NewTextInput("", 80)
+	input.Insert("  D:\\IPOS 5 data\\pgsql9.5\r\n")
+
+	if got := input.GetValue(); got != `  D:\IPOS 5 data\pgsql9.5` {
+		t.Fatalf("expected printable clipboard text, got %q", got)
+	}
+}

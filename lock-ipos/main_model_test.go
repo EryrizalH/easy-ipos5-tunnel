@@ -111,3 +111,24 @@ func TestMainMenu_QStillQuits(t *testing.T) {
 		t.Fatal("expected quit command")
 	}
 }
+
+func TestPathInput_CtrlVPastesClipboardText(t *testing.T) {
+	m := &model{
+		currentState:   statePathDetect,
+		pathManualMode: true,
+		pathInput:      tui.NewTextInput("", 80),
+		readClipboard: func() (string, error) {
+			return `D:\IPOS 5 data\Server System 1.0\pgsql9.5`, nil
+		},
+	}
+
+	_, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyCtrlV})
+
+	want := `D:\IPOS 5 data\Server System 1.0\pgsql9.5`
+	if got := m.pathInput.GetValue(); got != want {
+		t.Fatalf("expected pasted path %q, got %q", want, got)
+	}
+	if m.pathError {
+		t.Fatalf("expected successful paste status, got %q", m.pathStatus)
+	}
+}

@@ -18,27 +18,28 @@ func FindPgHbaConf(pgBinPath string) (string, error) {
 	// pg_hba.conf is typically in the data directory, which is a sibling of bin
 	// Bin path pattern: .../pgsql9.5/bin
 	// Data path pattern: .../pgsql9.5/data
-	binDir := filepath.Dir(pgBinPath)
-	parentDir := filepath.Dir(binDir)
-	dataDir := filepath.Join(parentDir, "data")
+	postgresDir := filepath.Clean(pgBinPath)
+	if strings.EqualFold(filepath.Base(postgresDir), "bin") {
+		postgresDir = filepath.Dir(postgresDir)
+	}
+	serverDir := filepath.Dir(postgresDir)
+	dataDir := filepath.Join(postgresDir, "data")
 
-	logger.Debugf("Bin dir: %s", binDir)
-	logger.Debugf("Parent dir: %s", parentDir)
+	logger.Debugf("PostgreSQL dir: %s", postgresDir)
+	logger.Debugf("Server dir: %s", serverDir)
 	logger.Debugf("Data dir: %s", dataDir)
 
 	// List of possible paths to check, in order of preference
 	possiblePaths := []string{
 		filepath.Join(dataDir, "pg_hba.conf"),
-		filepath.Join(parentDir, "data", "pg_hba.conf"),
-		filepath.Join(binDir, "..", "data", "pg_hba.conf"),
-		filepath.Join(binDir, "..", "..", "data", "pg_hba.conf"),
-		// Also try directly in parentDir
-		filepath.Join(parentDir, "pg_hba.conf"),
+		filepath.Join(serverDir, "data", "pg_hba.conf"),
+		filepath.Join(postgresDir, "pg_hba.conf"),
+		filepath.Join(serverDir, "pg_hba.conf"),
 		// Try with pgsql9.5 as the base
-		filepath.Join(parentDir, "..", "pgsql9.5", "data", "pg_hba.conf"),
+		filepath.Join(serverDir, "pgsql9.5", "data", "pg_hba.conf"),
 		// Try D: drive variant
 		`D:\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
-		`D:\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
+		`D:\IPOS 5 data\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
 	}
 
 	for i, pgHbaPath := range possiblePaths {
@@ -93,8 +94,8 @@ func FindPgHbaConfDirectly() (string, error) {
 	// Common PostgreSQL data directory locations on Windows
 	commonPaths := []string{
 		`C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
-		`C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
 		`D:\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
+		`D:\IPOS 5 data\Server System 1.0\pgsql9.5\data\pg_hba.conf`,
 		`C:\Program Files (x86)\PostgreSQL\9.5\data\pg_hba.conf`,
 		`C:\Program Files\PostgreSQL\9.5\data\pg_hba.conf`,
 		`D:\PostgreSQL\9.5\data\pg_hba.conf`,

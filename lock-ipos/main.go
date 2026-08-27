@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/lock-ipos/lock-ipos/internal/clipboard"
 	"github.com/lock-ipos/lock-ipos/internal/db"
 	"github.com/lock-ipos/lock-ipos/internal/logger"
 	"github.com/lock-ipos/lock-ipos/internal/pgadmin"
@@ -165,6 +167,7 @@ type model struct {
 	bundleDir        string
 	installerPath    string
 	configSourcePath string
+	readClipboard    func() (string, error)
 
 	// Path detection
 	pgBinPath      string
@@ -341,6 +344,11 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.currentState {
 	case statePathDetect:
 		if m.pathManualMode {
+			if msg.Type == tea.KeyCtrlV {
+				m.pastePathFromClipboard()
+				return m, nil
+			}
+
 			var cmd tea.Cmd
 			m.pathInput, cmd = m.pathInput.Update(msg)
 
@@ -453,6 +461,31 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) isEditingPath() bool {
 	return m.currentState == statePathDetect && m.pathManualMode
+}
+
+func (m *model) pastePathFromClipboard() {
+	reader := m.readClipboard
+	if reader == nil {
+		reader = clipboard.ReadText
+	}
+
+	value, err := reader()
+	if err != nil {
+		m.pathStatus = "Gagal membaca clipboard: " + err.Error()
+		m.pathError = true
+		return
+	}
+
+	value = strings.TrimSpace(value)
+	if value == "" {
+		m.pathStatus = "Clipboard kosong. Salin path folder PostgreSQL lalu tekan Ctrl+V."
+		m.pathError = true
+		return
+	}
+
+	m.pathInput.Insert(value)
+	m.pathStatus = "Path ditempel. Tekan Enter untuk validasi."
+	m.pathError = false
 }
 
 func (m *model) handlePathFound(msg pgPathFoundMsg) (tea.Model, tea.Cmd) {
@@ -788,6 +821,7 @@ func main() {
 		bundleDir:        defaultRuntimeDir(),
 		installerPath:    installerPath,
 		configSourcePath: *configPath,
+		readClipboard:    clipboard.ReadText,
 		pathInput:        tui.NewTextInput("Tempel path Server IPOS/PostgreSQL...", 68),
 		pathStatus:       "Mencari PostgreSQL...",
 		pathError:        false,
@@ -798,7 +832,6 @@ func main() {
 	p := tea.NewProgram(
 		m,
 		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
 	)
 
 	if _, err := p.Run(); err != nil {

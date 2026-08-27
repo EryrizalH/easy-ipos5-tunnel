@@ -12,6 +12,7 @@ import (
 var defaultPaths = []string{
 	`C:\Program Files (x86)\Inspirasibiz\Server System 1.0\pgsql9.5\bin`,
 	`D:\Server System 1.0\pgsql9.5\bin`,
+	`D:\IPOS 5 data\Server System 1.0\pgsql9.5\bin`,
 }
 
 // FindPostgreSQLBin searches for PostgreSQL binary in default locations
@@ -33,7 +34,7 @@ func FindPostgreSQLBinInPath(customPath string) (string, error) {
 
 	info, statErr := os.Stat(cleanPath)
 	if statErr != nil {
-		return "", fmt.Errorf("path tidak ditemukan atau tidak dapat dibaca: %w", statErr)
+		return "", fmt.Errorf("path tidak ditemukan atau tidak dapat dibaca: %s (%w)", cleanPath, statErr)
 	}
 
 	if !info.IsDir() {
@@ -72,7 +73,11 @@ func FindPostgreSQLBinInPath(customPath string) (string, error) {
 	case 1:
 		return matches[0], nil
 	case 0:
-		return "", errors.New("psql.exe tidak ditemukan; pilih folder Server IPOS, root PostgreSQL, folder bin, atau file psql.exe")
+		return "", fmt.Errorf(
+			"psql.exe tidak ditemukan; sudah dicek %s dan %s",
+			filepath.Join(cleanPath, "psql.exe"),
+			filepath.Join(cleanPath, "bin", "psql.exe"),
+		)
 	default:
 		return "", errors.New("lebih dari satu instalasi PostgreSQL ditemukan; pilih folder bin yang digunakan IPOS 5")
 	}
@@ -116,13 +121,12 @@ func GetDefaultPaths() []string {
 // FindPostgreSQLData searches for PostgreSQL data directory
 func FindPostgreSQLData(binPath string) (string, error) {
 	// The data directory is typically a sibling of the bin directory
-	binDir := binPath
-	if strings.HasSuffix(strings.ToLower(binDir), "bin") {
-		binDir = filepath.Dir(binPath)
+	postgresDir := filepath.Clean(binPath)
+	if strings.EqualFold(filepath.Base(postgresDir), "bin") {
+		postgresDir = filepath.Dir(postgresDir)
 	}
 
-	parentDir := filepath.Dir(binDir)
-	dataDir := filepath.Join(parentDir, "data")
+	dataDir := filepath.Join(postgresDir, "data")
 
 	// Check if data directory exists
 	if _, err := os.Stat(dataDir); err != nil {

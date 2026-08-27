@@ -36,6 +36,19 @@ func (t *TextInput) GetValue() string {
 	return t.value
 }
 
+// Insert adds printable text at the current cursor position.
+func (t *TextInput) Insert(value string) {
+	valueRunes := []rune(t.value)
+	if t.cursor < 0 {
+		t.cursor = 0
+	}
+	if t.cursor > len(valueRunes) {
+		t.cursor = len(valueRunes)
+	}
+	valueRunes, t.cursor = insertPrintableRunes(valueRunes, t.cursor, []rune(value))
+	t.value = string(valueRunes)
+}
+
 // Focus sets focus on the input
 func (t *TextInput) Focus() {
 	t.focused = true
@@ -81,25 +94,30 @@ func (t *TextInput) Update(msg tea.Msg) (*TextInput, tea.Cmd) {
 				valueRunes = append(valueRunes[:t.cursor], valueRunes[t.cursor+1:]...)
 			}
 		default:
-			var inputRunes []rune
-			for _, char := range msg.Runes {
-				if unicode.IsPrint(char) {
-					inputRunes = append(inputRunes, char)
-				}
-			}
-			if len(inputRunes) > 0 {
-				updated := make([]rune, 0, len(valueRunes)+len(inputRunes))
-				updated = append(updated, valueRunes[:t.cursor]...)
-				updated = append(updated, inputRunes...)
-				updated = append(updated, valueRunes[t.cursor:]...)
-				valueRunes = updated
-				t.cursor += len(inputRunes)
-			}
+			valueRunes, t.cursor = insertPrintableRunes(valueRunes, t.cursor, msg.Runes)
 		}
 
 		t.value = string(valueRunes)
 	}
 	return t, nil
+}
+
+func insertPrintableRunes(valueRunes []rune, cursor int, input []rune) ([]rune, int) {
+	var inputRunes []rune
+	for _, char := range input {
+		if unicode.IsPrint(char) {
+			inputRunes = append(inputRunes, char)
+		}
+	}
+	if len(inputRunes) == 0 {
+		return valueRunes, cursor
+	}
+
+	updated := make([]rune, 0, len(valueRunes)+len(inputRunes))
+	updated = append(updated, valueRunes[:cursor]...)
+	updated = append(updated, inputRunes...)
+	updated = append(updated, valueRunes[cursor:]...)
+	return updated, cursor + len(inputRunes)
 }
 
 func (t *TextInput) visibleValue() string {

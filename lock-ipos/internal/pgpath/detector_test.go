@@ -8,7 +8,7 @@ import (
 )
 
 func TestFindPostgreSQLBinInPathAcceptsCommonPathLevels(t *testing.T) {
-	serverRoot := filepath.Join(t.TempDir(), "Server System 1.0")
+	serverRoot := filepath.Join(t.TempDir(), "IPOS 5 data", "Server System 1.0")
 	binPath := filepath.Join(serverRoot, "pgsql9.5", "bin")
 	psqlPath := filepath.Join(binPath, "psql.exe")
 	writeTestFile(t, psqlPath)
@@ -36,6 +36,16 @@ func TestFindPostgreSQLBinInPathAcceptsCommonPathLevels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDefaultPathsIncludeIPOSDataLocation(t *testing.T) {
+	want := `D:\IPOS 5 data\Server System 1.0\pgsql9.5\bin`
+	for _, path := range GetDefaultPaths() {
+		if path == want {
+			return
+		}
+	}
+	t.Fatalf("expected default PostgreSQL path %q", want)
 }
 
 func TestFindPostgreSQLBinInPathRejectsAmbiguousRoot(t *testing.T) {
@@ -75,6 +85,26 @@ func TestFindPostgreSQLBinInPathRejectsDirectoryNamedPsql(t *testing.T) {
 
 	if _, err := FindPostgreSQLBinInPath(binPath); err == nil {
 		t.Fatal("expected directory named psql.exe to be rejected")
+	}
+}
+
+func TestFindPostgreSQLDataUsesSiblingOfBin(t *testing.T) {
+	postgresDir := filepath.Join(t.TempDir(), "Server System 1.0", "pgsql9.5")
+	binPath := filepath.Join(postgresDir, "bin")
+	dataPath := filepath.Join(postgresDir, "data")
+	if err := os.MkdirAll(binPath, 0o755); err != nil {
+		t.Fatalf("create bin directory: %v", err)
+	}
+	if err := os.MkdirAll(dataPath, 0o755); err != nil {
+		t.Fatalf("create data directory: %v", err)
+	}
+
+	got, err := FindPostgreSQLData(binPath)
+	if err != nil {
+		t.Fatalf("FindPostgreSQLData() error: %v", err)
+	}
+	if got != dataPath {
+		t.Fatalf("expected data path %q, got %q", dataPath, got)
 	}
 }
 
