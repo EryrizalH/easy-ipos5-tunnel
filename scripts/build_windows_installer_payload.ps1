@@ -31,6 +31,25 @@ foreach ($name in $payloadFiles) {
     }
 }
 
+if ($IncludeGUI) {
+    # --help exits before Wails starts, so this checks the CLI without opening a GUI.
+    $guiExe = (Resolve-Path (Join-Path $AssetsDir "nusatunnel-gui.exe")).Path
+    $helpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("nusatunnel-gui-help-" + [System.Guid]::NewGuid().ToString())
+    New-Item -ItemType Directory -Path $helpDir | Out-Null
+    try {
+        $stdoutPath = Join-Path $helpDir "stdout.txt"
+        $stderrPath = Join-Path $helpDir "stderr.txt"
+        $process = Start-Process -FilePath $guiExe -ArgumentList "--help" -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+        $helpText = [System.IO.File]::ReadAllText($stdoutPath) + [System.IO.File]::ReadAllText($stderrPath)
+        if ($process.ExitCode -ne 0 -or $helpText -notmatch '(?m)^\s+-config\s+string(?:\s|$)') {
+            throw "GUI belum mendukung --config yang dipakai shortcut. Jalankan scripts/build_windows_gui.ps1 lalu ulangi build installer."
+        }
+    }
+    finally {
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $helpDir
+    }
+}
+
 $tempZip = Join-Path ([System.IO.Path]::GetTempPath()) ("nusatunnel-payload-" + [System.Guid]::NewGuid().ToString() + ".zip")
 try {
     $zipStream = [System.IO.File]::Open($tempZip, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write)

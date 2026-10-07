@@ -130,6 +130,14 @@ powershell -ExecutionPolicy Bypass -File scripts/build_windows_gui.ps1
 powershell -ExecutionPolicy Bypass -File scripts/build_windows7_assets.ps1
 ```
 
+Build modern `build_windows_unified.ps1` otomatis membangun ulang GUI dari source sebelum menggabungkan payload. Builder payload memeriksa output `nusatunnel-gui.exe --help` untuk memastikan argumen `--config` tersedia; GUI lama dapat langsung keluar saat dibuka lewat shortcut yang memakai argumen tersebut. Setelah build, gunakan `setup.exe` yang baru dan jalankan ulang instalasi pada client agar runtime terkelola ikut diperbarui.
+
+Tes packaging memakai fixture CLI Go di folder sementara, tanpa menjalankan instalasi atau mengubah asset repo:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test_windows_installer_payload.ps1
+```
+
 ## Cross-Surface Checklist
 
 Use this checklist when a change touches ports, services, state, tokens, or bundles:
