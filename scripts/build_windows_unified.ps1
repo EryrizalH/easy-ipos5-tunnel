@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $unifiedDir = Join-Path $repoRoot "lock-ipos"
 $outPath = Join-Path $repoRoot "assets/windows/setup.exe"
+$guiBuilder = Join-Path $PSScriptRoot "build_windows_gui.ps1"
 $payloadBuilder = Join-Path $PSScriptRoot "build_windows_installer_payload.ps1"
 
 if (-not (Test-Path $unifiedDir)) {
@@ -11,12 +12,21 @@ if (-not (Test-Path $unifiedDir)) {
 if (-not (Test-Path $payloadBuilder)) {
     throw "Builder payload installer tidak ditemukan: $payloadBuilder"
 }
+if (-not (Test-Path $guiBuilder)) {
+    throw "Builder GUI tidak ditemukan: $guiBuilder"
+}
 
 Write-Host "Building interactive Windows setup.exe..." -ForegroundColor Cyan
 
 $env:GOOS = "windows"
 $env:GOARCH = "amd64"
 $env:CGO_ENABLED = "1"
+
+# Shortcut setup.exe passes --config; always package a GUI built from the same source.
+& $guiBuilder
+if ($LASTEXITCODE -ne 0) {
+    throw "Gagal membangun GUI sebelum menggabungkan payload installer"
+}
 
 Push-Location $unifiedDir
 try {
