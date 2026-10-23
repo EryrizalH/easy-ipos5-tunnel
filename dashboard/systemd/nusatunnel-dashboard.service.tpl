@@ -11,6 +11,7 @@ Environment=NUSA_TUNNEL_DB_PATH={{DB_PATH}}
 Environment=NUSA_TUNNEL_BUNDLES_DIR={{BUNDLES_DIR}}
 Environment=NUSA_TUNNEL_CACHE_DIR={{CACHE_DIR}}
 Environment=NUSA_TUNNEL_RESOURCES_DIR={{RESOURCES_DIR}}
+EnvironmentFile="{{MONITOR_ENV_FILE}}"
 ExecStart={{DASHBOARD_VENV}}/bin/uvicorn app.main:app --host 0.0.0.0 --port {{DASHBOARD_PORT}}
 Restart=always
 RestartSec=3

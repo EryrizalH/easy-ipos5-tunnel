@@ -13,6 +13,9 @@ main() {
   ensure_command python3
   ensure_command ss
   ensure_command systemctl
+  require_release_python
+  load_release_metadata "$PROJECT_ROOT"
+  python3 "$PROJECT_ROOT/scripts/release.py" preflight --root "$PROJECT_ROOT"
 
   local easy_root="${NUSA_TUNNEL_ROOT:-/opt/nusatunnel}"
   local config_dir="${NUSA_TUNNEL_CONFIG_DIR:-/etc/nusatunnel}"
@@ -57,29 +60,15 @@ main() {
 
   local arch
   arch="$(detect_arch)"
-  local release_json
-  release_json="$(fetch_latest_rathole_release_json)"
-
-  local release_tag
-  release_tag="$(echo "$release_json" | get_release_tag)"
-  [[ -n "$release_tag" ]] || fail "Tidak dapat menentukan tag rilis rathole"
-
+  local release_tag="$NUSA_TUNNEL_RATHOLE_VERSION"
   local asset_name
   asset_name="$(asset_name_for_linux_arch "$arch")"
-
-  local asset_url
-  asset_url="$(echo "$release_json" | get_release_asset_url "$asset_name")"
-  [[ -n "$asset_url" ]] || fail "Tidak menemukan URL asset rilis untuk ${asset_name}"
-
-  local zip_file="${cache_dir}/${asset_name}"
+  local zip_file="${PROJECT_ROOT}/assets/linux/${asset_name}"
   local temp_extract
   temp_extract="$(mktemp -d)"
-
-  log INFO "Mengunduh ${asset_name} (${release_tag})"
-  curl -fL "$asset_url" -o "$zip_file"
+  log INFO "Memasang ${asset_name} dari NusaTunnel ${NUSA_TUNNEL_VERSION}"
   unzip -qo "$zip_file" -d "$temp_extract"
-
-  [[ -f "${temp_extract}/rathole" ]] || fail "Downloaded archive does not contain rathole binary"
+  [[ -f "${temp_extract}/rathole" ]] || fail "Arsip runtime tidak memuat binary rathole"
   install -m 0755 "${temp_extract}/rathole" "$rathole_bin"
   rm -rf "$temp_extract"
 
@@ -271,6 +260,8 @@ EOF
     \"dashboard_port\": ${dashboard_port}, \
     \"rathole_control_port\": ${control_port}, \
     \"token\": \"${token}\", \
+    \"nusatunnel_release\": \"${NUSA_TUNNEL_VERSION}\", \
+    \"release_repository\": \"${NUSA_TUNNEL_RELEASE_REPOSITORY}\", \
     \"rathole_release\": \"${release_tag}\", \
     \"rathole_asset\": \"${asset_name}\", \
     \"rathole_config_path\": \"${config_file}\", \

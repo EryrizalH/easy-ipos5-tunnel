@@ -72,16 +72,19 @@ def read_monitor_config() -> dict[str, Any]:
     host = os.environ.get("NUSA_TUNNEL_PG_MONITOR_HOST", "127.0.0.1").strip() or "127.0.0.1"
     default_port = str(resolve_default_monitor_port())
     port = int(os.environ.get("NUSA_TUNNEL_PG_MONITOR_PORT", default_port))
-    user = os.environ.get("NUSA_TUNNEL_PG_MONITOR_USER", "sysi5adm").strip()
-    password = os.environ.get("NUSA_TUNNEL_PG_MONITOR_PASSWORD", "u&aV23cc.o82dtr1x89c").strip()
+    user = os.environ.get("NUSA_TUNNEL_PG_MONITOR_USER", "").strip()
+    password = os.environ.get("NUSA_TUNNEL_PG_MONITOR_PASSWORD", "")
     dbname = os.environ.get("NUSA_TUNNEL_PG_MONITOR_DBNAME", "postgres").strip()
     connect_timeout = max(1, int(os.environ.get("NUSA_TUNNEL_PG_MONITOR_TIMEOUT_SEC", "3")))
 
     if not dsn:
+        def quote(value: str) -> str:
+            return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
         dsn = (
-            f"host={host} port={port} dbname={dbname} user={user} "
-            f"password={password} connect_timeout={connect_timeout}"
+            f"host={quote(host)} port={port} dbname={quote(dbname)} user={quote(user)} "
+            f"password={quote(password)} connect_timeout={connect_timeout}"
         )
+        enabled = enabled and bool(user and password)
 
     return {
         "enabled": enabled,
@@ -90,6 +93,7 @@ def read_monitor_config() -> dict[str, Any]:
         "host": host,
         "port": port,
         "connect_timeout": connect_timeout,
+        "password": password,
     }
 
 
@@ -200,6 +204,8 @@ def run_postgres_probe(cfg: dict[str, Any]) -> dict[str, Any]:
                     base["cache_hit_ratio"] = round((blks_hit / total) * 100, 2)
     except Exception as exc:  # pragma: no cover
         err_msg = str(exc)
+        if cfg.get("password"):
+            err_msg = err_msg.replace(cfg["password"], "[REDACTED]")
     finally:
         if conn is not None:
             conn.close()

@@ -31,25 +31,25 @@ Installer otomatis berbasis Bash untuk **Ubuntu 22+** agar IPOS 5 bisa diakses v
 
 ## 1) Install Server (Ubuntu 22+)
 
-### Opsi A — langsung dari repo publik (paling cepat)
+### Install dari GitHub Release
+
+Prasyarat: Ubuntu 22+ dengan **Python 3.11+** dan `curl`. Python bawaan Ubuntu 22 belum memenuhi kebutuhan dashboard; siapkan Python 3.11+ sebelum instalasi. Pemeriksaan dilakukan sebelum hardening.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pruedence21/easy-ipos5-tunnel/main/public-install.sh | sudo bash
+curl -fsSL https://github.com/EryrizalH/easy-ipos5-tunnel/releases/latest/download/public-install.sh | sudo bash
 ```
 
-### Opsi B — clone repo lalu jalankan
+Bootstrap memilih satu tag stabil, memeriksa checksum dan kelengkapan paket, lalu menjalankan installer. Source branch `main` tidak digunakan sebagai distribusi. Paket server sudah membawa setup Windows/Windows 7 dan runtime Linux versi release tersebut.
+
+Untuk mengunci versi:
 
 ```bash
-git clone https://github.com/EryrizalH/easy-ipos5-tunnel.git
-cd easy-ipos5-tunnel
-sudo bash install.sh
+curl -fsSL https://github.com/EryrizalH/easy-ipos5-tunnel/releases/latest/download/public-install.sh | sudo NUSA_TUNNEL_VERSION=v1.0.0 bash
 ```
 
-### Opsi C — jika source sudah ada di folder lokal
+Installer meminta username dan password database IPOS 5 melalui terminal; password tidak ditampilkan. Kredensial monitor disimpan di `/etc/nusatunnel/postgres-monitor.env` dengan permission `0600`, lalu dipakai ulang saat instalasi berikutnya. File tersebut tidak ikut bundle client atau paket Python publik. Instalasi tanpa terminal wajib menyediakan `NUSA_TUNNEL_PG_MONITOR_USER` dan `NUSA_TUNNEL_PG_MONITOR_PASSWORD` melalui environment privat.
 
-```bash
-sudo bash install.sh
-```
+Checkout Git tetap untuk pengembangan. `install.sh` memerlukan paket deployment lengkap beserta `release.json`, bukan checkout source biasa.
 
 ### Apa yang dilakukan installer
 
@@ -88,15 +88,14 @@ sudo NUSA_TUNNEL_RATHOLE_CONTROL_PORT=8443 bash install.sh
 
 > ⚠️ `NUSA_TUNNEL_DISABLE_SSH_PASSWORD=1` hanya aman jika login SSH key-based sudah teruji. Script akan menolak jika `authorized_keys` tidak ditemukan.
 
-### Opsi untuk `public-install.sh` (advanced)
+### Opsi untuk `public-install.sh`
 
-```bash
-# contoh install dari branch selain main
-curl -fsSL https://raw.githubusercontent.com/pruedence21/easy-ipos5-tunnel/main/public-install.sh \
-| sudo REPO_BRANCH=feature-branch bash
-```
+- `NUSA_TUNNEL_VERSION`: tag stabil `vX.Y.Z`; default release stabil terbaru.
+- `REPO_URL`: default `https://github.com/EryrizalH/easy-ipos5-tunnel`.
+- `REPO_BASE_DIR`: direktori staging/source, default `/opt/nusatunnel`. Root runtime tetap mengikuti `NUSA_TUNNEL_ROOT` (default `/opt/nusatunnel`).
+- `REPO_BRANCH`: sudah dihentikan; gunakan tag release.
 
-Variabel yang didukung: `REPO_URL`, `REPO_BRANCH`, `REPO_BASE_DIR`.
+Setiap instalasi memakai staging baru di `releases/<tag>/install-*`. State dan checkout Git lama tetap dipertahankan. Runtime Linux client dipin ke release server saat bundle dibuat.
 
 ### Output akhir installer
 
@@ -159,8 +158,8 @@ Environment variable monitor PostgreSQL (opsional):
 - Jika `DSN` tidak diisi, fallback:
   - `NUSA_TUNNEL_PG_MONITOR_HOST` (default `127.0.0.1`)
   - `NUSA_TUNNEL_PG_MONITOR_PORT` (default mengikuti `service_ports.db.remote_bind_port`, biasanya `5444`)
-  - `NUSA_TUNNEL_PG_MONITOR_USER` (default `sysi5adm`)
-  - `NUSA_TUNNEL_PG_MONITOR_PASSWORD` (default `u&aV23cc.o82dtr1x89c`)
+- `NUSA_TUNNEL_PG_MONITOR_USER` (diisi saat instalasi VPS; tanpa default)
+- `NUSA_TUNNEL_PG_MONITOR_PASSWORD` (diisi saat instalasi VPS; tanpa default)
   - `NUSA_TUNNEL_PG_MONITOR_DBNAME` (default `postgres`)
   - `NUSA_TUNNEL_PG_MONITOR_TIMEOUT_SEC` (default `3`)
 
@@ -272,3 +271,9 @@ sudo ss -ltnp | grep -E ':5444|:5480|:5485|:8088'
 ```
 
 Lihat panduan operasional lanjutan di: `docs/OPERATIONS.md`.
+
+## Workflow release dan kredensial Windows
+
+Push tag `vX.Y.Z` menjalankan CI/build dan menerbitkan GitHub Release. Detail aset, tracking Git, verifikasi, dan prosedur rotasi ada di [docs/RELEASE.md](docs/RELEASE.md).
+
+Build Windows mengambil `IPOS5_DB_USERNAME` dan `IPOS5_DB_PASSWORD` dari GitHub Secrets. Nilainya tidak disimpan di source baru, tetapi **tetap dapat diekstrak dari installer Windows publik**. Kredensial yang pernah masuk riwayat Git perlu dianggap terekspos dan dirotasi pada database terkait.

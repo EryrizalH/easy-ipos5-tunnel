@@ -187,3 +187,11 @@ Use this checklist when a change touches ports, services, state, tokens, or bund
 - Server config: `/etc/nusatunnel/server.toml`.
 - Dashboard DB: `/opt/nusatunnel/state/nusatunnel.db`.
 - Bundle output: `/opt/nusatunnel/bundles`.
+
+## GitHub Release distribution
+
+Deployment is built from a tag, not a Git checkout. Read `docs/RELEASE.md` when editing installer/package behavior. The allowlist and dependency lock are in `scripts/release.py` and `scripts/release-dependencies.json`. Generated setup/GUI/wrapper/SYSO files are ignored; vendored third-party Windows runtime remains tracked. GUI frontend `dist` remains source and must not be ignored or restored automatically.
+
+Release Windows builds generate ignored Go credentials from `IPOS5_DB_USERNAME` and `IPOS5_DB_PASSWORD`; production release fails if either is unavailable. Do not print values, put them on command lines, cache generated build outputs, or pass secrets to PR workflows. Public Windows installers still embed those credentials intentionally. Python deployment uses a root-only monitor environment file collected via `/dev/tty`, never build-time defaults.
+
+Run both dashboard discovery commands: `python -m unittest discover -s app` and `python -m unittest discover -s app/services` from `dashboard`. Run `python -m unittest discover -s tests` from root for release/HTTP/bootstrap/credential tests. Unix terminal and permission tests require Linux. Full root installer scripts still require a disposable target.

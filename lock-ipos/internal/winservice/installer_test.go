@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lock-ipos/lock-ipos/internal/db"
 	"github.com/lock-ipos/lock-ipos/internal/progress"
 )
 
@@ -533,8 +534,11 @@ func TestBuildPgBouncerDatabasesJSON(t *testing.T) {
 }
 
 func TestBuildPgBouncerUserlist(t *testing.T) {
+	previousUser, previousPassword := db.User, db.Password
+	db.User, db.Password = "test-user", "test-password"
+	t.Cleanup(func() { db.User, db.Password = previousUser, previousPassword })
 	got := buildPgBouncerUserlist()
-	if !strings.Contains(got, "\"sysi5adm\"") {
+	if !strings.Contains(got, "\"test-user\"") {
 		t.Fatalf("expected user in userlist, got %s", got)
 	}
 	if !strings.Contains(got, "md5") {

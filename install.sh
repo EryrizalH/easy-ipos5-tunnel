@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/scripts/lib/common.sh"
+source "${SCRIPT_DIR}/scripts/lib/monitor_credentials.sh"
 
 configure_firewall_ports() {
   local state_file="$1"
@@ -93,6 +94,11 @@ main() {
   export NUSA_TUNNEL_ROOT="${NUSA_TUNNEL_ROOT:-/opt/nusatunnel}"
   export NUSA_TUNNEL_CONFIG_DIR="${NUSA_TUNNEL_CONFIG_DIR:-/etc/nusatunnel}"
   export NUSA_TUNNEL_STATE_FILE="${NUSA_TUNNEL_STATE_FILE:-${NUSA_TUNNEL_ROOT}/state/install-state.json}"
+
+  require_release_python
+  load_release_metadata "$SCRIPT_DIR"
+  python3 "$SCRIPT_DIR/scripts/release.py" preflight --root "$SCRIPT_DIR"
+  collect_monitor_credentials
 
   log INFO "Menyiapkan baseline keamanan server..."
   bash "${SCRIPT_DIR}/scripts/prepare_server.sh"

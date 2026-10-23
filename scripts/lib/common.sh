@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NUSA_TUNNEL_RELEASE_API="https://api.github.com/repos/rathole-org/rathole/releases/latest"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/release.sh"
 
 log() {
   local level="$1"
@@ -74,25 +74,6 @@ detect_public_ip() {
   fi
   [[ -n "$ip" ]] || fail "Gagal mendeteksi public IP. Isi manual di state file."
   echo "$ip"
-}
-
-fetch_latest_rathole_release_json() {
-  curl -fsSL "$NUSA_TUNNEL_RELEASE_API"
-}
-
-get_release_tag() {
-  python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get("tag_name", ""))'
-}
-
-get_release_asset_url() {
-  local asset_name="$1"
-  python3 -c 'import json,sys
-target=sys.argv[1]
-data=json.load(sys.stdin)
-for a in data.get("assets", []):
-    if a.get("name") == target:
-        print(a.get("browser_download_url", ""))
-        break' "$asset_name"
 }
 
 port_in_use() {

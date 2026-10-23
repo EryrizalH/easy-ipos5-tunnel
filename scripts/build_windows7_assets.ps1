@@ -1,3 +1,5 @@
+param([string]$GoCommand = "")
+
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -7,9 +9,15 @@ $assets7Dir = Join-Path $repoRoot "assets\windows7"
 $payloadBuilder = Join-Path $PSScriptRoot "build_windows_installer_payload.ps1"
 
 $go120 = Join-Path $env:USERPROFILE "go\bin\go1.20.14.exe"
+if (-not [string]::IsNullOrWhiteSpace($GoCommand)) {
+    $go120 = (Get-Command $GoCommand -ErrorAction Stop).Source
+}
 
 if (-not (Test-Path $go120)) {
     throw "Go 1.20.14 compiler tidak ditemukan di $go120. Silakan install dengan running: go install golang.org/dl/go1.20.14@latest; & `"\$env:USERPROFILE/go/bin/go1.20.14`" download"
+}
+if ((& $go120 version) -notmatch 'go1\.20\.14\s') {
+    throw "Build Windows 7 wajib memakai Go 1.20.14"
 }
 
 if (-not (Test-Path $lockIposDir)) {

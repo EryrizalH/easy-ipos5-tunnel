@@ -8,6 +8,22 @@ from app.services import postgres_monitor_service as svc
 
 
 class PostgresMonitorServiceTest(unittest.TestCase):
+    def test_missing_credentials_disable_monitor_without_secret_defaults(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            cfg = svc.read_monitor_config()
+        self.assertFalse(cfg["enabled"])
+
+    def test_password_characters_are_preserved_in_dsn(self) -> None:
+        from psycopg2.extensions import parse_dsn
+        password = " 'quote\\ dollar$ # unicode-雪 "
+        with mock.patch.dict(os.environ, {
+            "NUSA_TUNNEL_PG_MONITOR_USER": "test-user",
+            "NUSA_TUNNEL_PG_MONITOR_PASSWORD": password,
+        }, clear=True):
+            cfg = svc.read_monitor_config()
+        self.assertTrue(cfg["enabled"])
+        self.assertEqual(parse_dsn(cfg["dsn"])["password"], password)
+
     def test_classify_status_thresholds(self) -> None:
         self.assertEqual(svc.classify_status(50.0, ""), "Healthy")
         self.assertEqual(svc.classify_status(150.0, ""), "Warning")

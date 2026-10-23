@@ -1,0 +1,76 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard-and-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11.14'
+      - run: python -m pip install -r dashboard/requirements.txt
+      - name: Dashboard tests
+        working-directory: dashboard
+        run: |
+          python -m unittest discover -s app
+          python -m unittest discover -s app/services
+      - name: Release and installer tests
+        run: python -m unittest discover -s tests
+      - name: Bash syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' path; do bash -n "$path"; done < <(find scripts -name '*.sh' -print0)
+          for path in install.sh public-install.sh assets/linux/install-client.sh.tpl; do bash -n "$path"; done
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.3'
+          cache: false
+      - name: Check GUI source and test Go
+        shell: pwsh
+        run: |
+          foreach ($name in @('index.html', 'app.js', 'style.css')) {
+            if (-not (Test-Path "client-gui/frontend/dist/$name")) { throw "Source frontend wajib tersedia: $name" }
+          }
+          Push-Location lock-ipos
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Tes lock-ipos gagal' }
+          Pop-Location
+          Push-Location client-gui
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Tes GUI gagal' }
+          Pop-Location
+          ./scripts/test_windows_installer_payload.ps1
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.20.14'
+          cache: false
+      - name: Windows 7 compatibility
+        shell: pwsh
+        working-directory: lock-ipos
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Tes Go 1.20.14 gagal' }
+          go build -o "$env:RUNNER_TEMP/setup-win7.exe" .
+          if ($LASTEXITCODE -ne 0) { throw 'Build setup Win7 gagal' }
+          go build -o "$env:RUNNER_TEMP/wrapper-win7.exe" ./cmd/ipos5-rathole-service
+          if ($LASTEXITCODE -ne 0) { throw 'Build wrapper Win7 gagal' }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import tempfile
 import unittest
 import zipfile
@@ -188,14 +189,25 @@ class BundleServiceTest(unittest.TestCase):
             linux_assets.mkdir(parents=True, exist_ok=True)
             bundles.mkdir(parents=True, exist_ok=True)
             (templates / "client.toml.tpl").write_text("remote_addr={{SERVER_ADDR}}:{{RATHOLE_CONTROL_PORT}}\n", encoding="utf-8")
-            (linux_assets / "install-client.sh.tpl").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            template = Path(__file__).resolve().parents[3] / "assets/linux/install-client.sh.tpl"
+            (linux_assets / "install-client.sh.tpl").write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+            (resources / "release.json").write_text(json.dumps({
+                "version": "v1.2.3", "repository": "example/tunnel",
+                "linux_assets": {
+                    "rathole-x86_64-unknown-linux-gnu.zip": {"sha256": "a" * 64},
+                    "rathole-aarch64-unknown-linux-musl.zip": {"sha256": "b" * 64},
+                },
+            }), encoding="utf-8")
 
             previous_resources = os.environ.get("NUSA_TUNNEL_RESOURCES_DIR")
             previous_bundles = os.environ.get("NUSA_TUNNEL_BUNDLES_DIR")
             os.environ["NUSA_TUNNEL_RESOURCES_DIR"] = str(resources)
             os.environ["NUSA_TUNNEL_BUNDLES_DIR"] = str(bundles)
             try:
-                bundle_path = bundle_service.generate_linux_bundle({"public_ip": "10.10.10.10"}, token="demo-token")
+                bundle_path = bundle_service.generate_linux_bundle({
+                    "public_ip": "10.10.10.10", "nusatunnel_release": "v1.2.3",
+                    "release_repository": "example/tunnel",
+                }, token="demo-token")
             finally:
                 if previous_resources is None:
                     os.environ.pop("NUSA_TUNNEL_RESOURCES_DIR", None)
@@ -208,6 +220,21 @@ class BundleServiceTest(unittest.TestCase):
 
             with zipfile.ZipFile(bundle_path) as archive:
                 self.assertEqual(set(archive.namelist()), {"client.toml", "install-client.sh"})
+                installer = archive.read("install-client.sh").decode("utf-8")
+            self.assertIn("https://github.com/example/tunnel/releases/download/v1.2.3/$asset", installer)
+            self.assertIn("a" * 64, installer)
+            self.assertNotIn("{{", installer)
+            self.assertNotIn("/releases/latest", installer)
+
+    def test_complete_setup_does_not_require_loose_runtime_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for gui in (True, False):
+                source = root / f"source-{gui}.exe"
+                target = root / f"target-{gui}.exe"
+                write_self_extracting_installer(source, includes_gui=gui)
+                bundle_service.build_windows_installer_payload(source, root / "absent", target, includes_gui=gui)
+                self.assertEqual(source.read_bytes(), target.read_bytes())
 
 
 if __name__ == "__main__":

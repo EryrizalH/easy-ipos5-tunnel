@@ -1,0 +1,99 @@
+{
+  "rathole_version": "v0.5.0",
+  "linux_assets": {
+    "rathole-x86_64-unknown-linux-gnu.zip": {
+      "url": "https://github.com/rathole-org/rathole/releases/download/v0.5.0/rathole-x86_64-unknown-linux-gnu.zip",
+      "sha256": "3e7d0d0f365120cd3cd351d147d1a12ee960c8068b464d4dd533a3821873b80e"
+    },
+    "rathole-aarch64-unknown-linux-musl.zip": {
+      "url": "https://github.com/rathole-org/rathole/releases/download/v0.5.0/rathole-aarch64-unknown-linux-musl.zip",
+      "sha256": "fa4a6fc63d86f8f1faa7c103a845e4715ce79a048455c0eec897b27237576564"
+    }
+  },
+  "windows_vendor": [
+    {
+      "path": "assets/windows/libcrypto-3-x64.dll",
+      "sha256": "05f49fb7d9271917e374e7d6149509f5e635c82f19361fc02fbb98d31ae27a53",
+      "source": "https://packages.msys2.org/packages/mingw-w64-x86_64-openssl",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows/libevent-7.dll",
+      "sha256": "657471a45bd7feb817e3eadf255226106f2d86df3cd571f3674f0ffa787c191d",
+      "source": "https://packages.msys2.org/packages/mingw-w64-x86_64-libevent",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows/libssl-3-x64.dll",
+      "sha256": "81bfa12c6e158bcb84d0f2943cba5380472a9f1e66343b31be3d5a91796c64a1",
+      "source": "https://packages.msys2.org/packages/mingw-w64-x86_64-openssl",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows/libwinpthread-1.dll",
+      "sha256": "67a8ebf011133c6413cc68e59eeeefa5860c416334b96fc527c7d2e6b86a98cf",
+      "source": "https://packages.msys2.org/packages/mingw-w64-x86_64-libwinpthread-git",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows/nssm.exe",
+      "sha256": "f689ee9af94b00e9e3f0bb072b34caaf207f32dcb4f5782fc9ca351df9a06c97",
+      "source": "https://nssm.cc/",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows/nusatunnel.exe",
+      "sha256": "438da3bb542a30cb576719bc37db269235eb38ad99966825f7303bff608c1be7",
+      "source": "https://github.com/rathole-org/rathole/tree/v0.5.0",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows/pgbouncer.exe",
+      "sha256": "db1267501538f5e8659cd50a70e8677f8fa369a076db492daec206e3d845038e",
+      "source": "https://github.com/pgbouncer/pgbouncer",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows7/libcrypto-3-x64.dll",
+      "sha256": "05f49fb7d9271917e374e7d6149509f5e635c82f19361fc02fbb98d31ae27a53",
+      "source": "https://packages.msys2.org/packages/mingw-w64-x86_64-openssl",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows7/libevent-7.dll",
+      "sha256": "657471a45bd7feb817e3eadf255226106f2d86df3cd571f3674f0ffa787c191d",
+      "source": "https://packages.msys2.org/packages/mingw-w64-x86_64-libevent",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows7/libssl-3-x64.dll",
+      "sha256": "81bfa12c6e158bcb84d0f2943cba5380472a9f1e66343b31be3d5a91796c64a1",
+      "source": "https://packages.msys2.org/packages/mingw-w64-x86_64-openssl",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows7/libwinpthread-1.dll",
+      "sha256": "67a8ebf011133c6413cc68e59eeeefa5860c416334b96fc527c7d2e6b86a98cf",
+      "source": "https://packages.msys2.org/packages/mingw-w64-x86_64-libwinpthread-git",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows7/nssm.exe",
+      "sha256": "f689ee9af94b00e9e3f0bb072b34caaf207f32dcb4f5782fc9ca351df9a06c97",
+      "source": "https://nssm.cc/",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows7/nusatunnel.exe",
+      "sha256": "438da3bb542a30cb576719bc37db269235eb38ad99966825f7303bff608c1be7",
+      "source": "https://github.com/rathole-org/rathole/tree/v0.5.0",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    },
+    {
+      "path": "assets/windows7/pgbouncer.exe",
+      "sha256": "db1267501538f5e8659cd50a70e8677f8fa369a076db492daec206e3d845038e",
+      "source": "https://github.com/pgbouncer/pgbouncer",
+      "provenance": "Existing vendored runtime; exact fingerprint retained. DLLs were packaged from MSYS2; see scripts/build_pgbouncer_windows.ps1."
+    }
+  ]
+}

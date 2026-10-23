@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"github.com/lock-ipos/lock-ipos/internal/db"
+	"time"
+)
 
 // Config holds the application configuration
 type Config struct {
@@ -23,8 +26,8 @@ func NewConfig() *Config {
 	return &Config{
 		Host:     "localhost",
 		Port:     "5444",
-		User:     "sysi5adm",
-		Password: "u&aV23cc.o82dtr1x89c",
+		User:     db.User,
+		Password: db.Password,
 		Database: "postgres",
 	}
 }

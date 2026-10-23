@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPT_DIR}/lib/monitor_credentials.sh"
 
 build_windows_setup() {
   local deploy_dir="$1"
@@ -27,11 +28,15 @@ main() {
   ensure_ubuntu_22_plus
   ensure_command python3
   ensure_command systemctl
+  require_release_python
+  load_release_metadata "$PROJECT_ROOT"
+  collect_monitor_credentials
 
   local easy_root="${NUSA_TUNNEL_ROOT:-/opt/nusatunnel}"
   local state_file="${NUSA_TUNNEL_STATE_FILE:-${easy_root}/state/install-state.json}"
   local deploy_dir="${easy_root}/dashboard"
   local resources_dir="${easy_root}/resources"
+  local monitor_env="${NUSA_TUNNEL_CONFIG_DIR:-/etc/nusatunnel}/postgres-monitor.env"
   local db_path="${easy_root}/state/nusatunnel.db"
   local bundles_dir="${easy_root}/bundles"
   local cache_dir="${easy_root}/cache"
@@ -62,6 +67,7 @@ main() {
   rm -rf "${deploy_dir}/app"
   cp -R "${PROJECT_ROOT}/dashboard/app" "${deploy_dir}/app"
   cp "${PROJECT_ROOT}/dashboard/requirements.txt" "${deploy_dir}/requirements.txt"
+  install -m 0644 "${PROJECT_ROOT}/release.json" "${resources_dir}/release.json"
 
   build_windows_setup "$deploy_dir" \
     "${PROJECT_ROOT}/assets/windows/setup.exe" \
@@ -109,6 +115,7 @@ main() {
   chmod 0600 "$credentials_file"
 
   service_file="/etc/systemd/system/nusatunnel-dashboard.service"
+  save_monitor_credentials "$PROJECT_ROOT" "$monitor_env"
   render_template "${PROJECT_ROOT}/dashboard/systemd/nusatunnel-dashboard.service.tpl" "$service_file" \
     DASHBOARD_WORKDIR "$deploy_dir" \
     DASHBOARD_VENV "$venv_dir" \
@@ -117,7 +124,8 @@ main() {
     DB_PATH "$db_path" \
     BUNDLES_DIR "$bundles_dir" \
     CACHE_DIR "$cache_dir" \
-    RESOURCES_DIR "$resources_dir"
+    RESOURCES_DIR "$resources_dir" \
+    MONITOR_ENV_FILE "$monitor_env"
 
   systemctl daemon-reload
   systemctl enable nusatunnel-dashboard >/dev/null

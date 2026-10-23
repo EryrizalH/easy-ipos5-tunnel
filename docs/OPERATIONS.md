@@ -105,3 +105,11 @@ Jika ingin menjalankan dengan `NUSA_TUNNEL_DISABLE_SSH_PASSWORD=1`, pastikan:
 2. Minimal ada satu file `authorized_keys` valid
 3. Jangan menutup sesi SSH aktif sampai verifikasi login sesi baru berhasil
 
+
+## Release dan monitor database
+
+Instalasi resmi memakai GitHub Release, dengan Python 3.11+ sebagai prasyarat. Pin versi melalui `NUSA_TUNNEL_VERSION=vX.Y.Z`. Bootstrap memeriksa checksum sebelum hardening dan memakai staging baru tanpa menghapus state atau source checkout lama. State menyimpan `nusatunnel_release`, `release_repository`, dan versi upstream pada `rathole_release`.
+
+Installer meminta kredensial database lewat `/dev/tty`, termasuk pada alur `curl | bash`. Kredensial monitor disimpan sebagai environment systemd di `/etc/nusatunnel/postgres-monitor.env`, milik root dengan mode `0600`. Jangan menyalin file tersebut ke repo atau bundle. Instalasi ulang memakainya kembali; untuk mengganti nilai, berikan kedua variabel `NUSA_TUNNEL_PG_MONITOR_USER` dan `NUSA_TUNNEL_PG_MONITOR_PASSWORD` melalui environment privat saat menjalankan installer. Jangan menulis password langsung ke shell history.
+
+Monitor tanpa konfigurasi kredensial/DSN tidak dijalankan. Token tunnel dan password dashboard tetap dikelola secara terpisah. Rotasi kredensial database dilakukan pada instance PostgreSQL terkait, lalu GitHub Secrets untuk build Windows dan environment monitor VPS diperbarui. Lihat [RELEASE.md](RELEASE.md) untuk batas perlindungan binary publik dan aset lama.

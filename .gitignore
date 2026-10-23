@@ -8,3 +8,34 @@ state/
 bundles/
 cache/
 tmp/
+
+# Generated first-party Windows outputs (vendor EXE/DLL files stay tracked)
+assets/windows/setup*.exe
+assets/windows/nusatunnel-gui.exe
+assets/windows/nusatunnel-service.exe
+assets/windows7/setup*.exe
+assets/windows7/nusatunnel-service.exe
+*.syso
+*.log
+log.txt
+release-dist/
+assets/linux/rathole-*.zip
+lock-ipos/internal/db/credentials_generated.go
+lock-ipos/*.exe
+client-gui/*.exe
+
+# Local configuration and credentials; keep templates and safe examples
+.env
+.env.*
+!.env.example
+client.toml
+server.toml
+pgbouncer.ini
+userlist.txt
+postgres-monitor.env
+dashboard-credentials.txt
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3

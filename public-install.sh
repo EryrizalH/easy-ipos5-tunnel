@@ -1,98 +1,84 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Nusa IPOS 5 Tunnel public bootstrap installer
-# Usage (recommended):
-#   curl -fsSL https://raw.githubusercontent.com/pruedence21/easy-ipos5-tunnel/main/public-install.sh | sudo bash
-
-REPO_URL="${REPO_URL:-https://github.com/pruedence21/easy-ipos5-tunnel}"
-REPO_BRANCH="${REPO_BRANCH:-main}"
+REPO_URL="${REPO_URL:-https://github.com/EryrizalH/easy-ipos5-tunnel}"
 REPO_BASE_DIR="${REPO_BASE_DIR:-/opt/nusatunnel}"
 
-log() {
-  printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*"
-}
+log() { printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*"; }
+fail() { log "ERROR: $*" >&2; exit 1; }
+require_root() { [[ "$EUID" -eq 0 ]] || fail "Jalankan dengan sudo/root."; }
 
-fail() {
-  log "ERROR: $*"
-  exit 1
-}
-
-require_root() {
-  [[ "$EUID" -eq 0 ]] || fail "Jalankan dengan sudo/root. Contoh: curl ... | sudo bash"
-}
-
-ensure_git() {
-  if command -v git >/dev/null 2>&1; then
-    return 0
-  fi
-
-  if command -v apt-get >/dev/null 2>&1; then
-    log "git belum terpasang, mencoba install via apt-get..."
-    apt-get update -y
-    DEBIAN_FRONTEND=noninteractive apt-get install -y git
-    command -v git >/dev/null 2>&1 || fail "Gagal install git via apt-get"
-    return 0
-  fi
-
-  fail "git tidak ditemukan. Install git terlebih dahulu lalu jalankan ulang script."
-}
-
-parse_repo() {
-  local cleaned="$1"
-  cleaned="${cleaned%.git}"
-  cleaned="${cleaned%/}"
-
-  if [[ "$cleaned" =~ github.com/([^/]+)/([^/]+)$ ]]; then
-    printf '%s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
-    return 0
-  fi
-
-  fail "REPO_URL harus format GitHub valid, contoh: https://github.com/owner/repo"
+ensure_prerequisites() {
+  command -v curl >/dev/null 2>&1 || fail "curl wajib tersedia."
+  command -v python3 >/dev/null 2>&1 || fail "Python 3.11+ wajib tersedia sebelum instalasi."
+  python3 -c 'import sys; sys.exit(sys.version_info < (3,11))' || fail "Python 3.11+ wajib tersedia; siapkan runtime sebelum menjalankan installer pada Ubuntu 22."
 }
 
 main() {
   require_root
-
-  command -v curl >/dev/null 2>&1 || fail "curl tidak ditemukan"
-  ensure_git
-
-  local owner repo
-  mapfile -t parsed < <(parse_repo "$REPO_URL")
-  owner="${parsed[0]}"
-  repo="${parsed[1]}"
-
-  local work_tree="${REPO_BASE_DIR}/src/${repo}"
-  mkdir -p "$(dirname "$work_tree")"
-
-  if [[ -d "${work_tree}/.git" ]]; then
-    local current_origin=""
-    current_origin="$(git -C "$work_tree" remote get-url origin 2>/dev/null || true)"
-    if [[ -n "$current_origin" && "$current_origin" != "$REPO_URL" && "$current_origin" != "${REPO_URL%.git}" && "$current_origin" != "${REPO_URL%.git}.git" ]]; then
-      fail "Direktori ${work_tree} sudah berisi repo lain (origin: ${current_origin}). Hapus/ubah REPO_BASE_DIR dulu."
-    fi
-
-    log "Repo sudah ada, mengambil pembaruan terbaru (git pull)..."
-    git -C "$work_tree" fetch --prune origin
-    git -C "$work_tree" checkout "$REPO_BRANCH"
-    git -C "$work_tree" pull --ff-only origin "$REPO_BRANCH"
-  else
-    if [[ -e "$work_tree" && ! -d "$work_tree/.git" ]]; then
-      fail "Path ${work_tree} sudah ada tapi bukan git repo. Pindahkan/hapus dulu, atau ganti REPO_BASE_DIR."
-    fi
-
-    log "Meng-clone source dari ${REPO_URL} (branch: ${REPO_BRANCH})"
-    git clone --branch "$REPO_BRANCH" --single-branch "$REPO_URL" "$work_tree"
+  [[ -z "${REPO_BRANCH:-}" ]] || fail "REPO_BRANCH tidak didukung lagi. Gunakan NUSA_TUNNEL_VERSION=vX.Y.Z."
+  ensure_prerequisites
+  local repository="${REPO_URL%/}"
+  repository="${repository%.git}"
+  [[ "$repository" =~ ^https://github.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$ ]] || fail "REPO_URL harus https://github.com/owner/repo"
+  repository="${BASH_REMATCH[1]}"
+  local version="${NUSA_TUNNEL_VERSION:-}" info
+  if [[ -z "$version" ]]; then
+    info="$(curl -fsSL --retry 3 "${NUSA_TUNNEL_RELEASE_API_URL:-https://api.github.com/repos/$repository/releases/latest}")" || fail "Tidak dapat mengambil release stabil terbaru."
+    version="$(printf '%s' "$info" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert not d.get("draft") and not d.get("prerelease"); print(d["tag_name"])')" || fail "Metadata latest tidak valid."
   fi
-
-  [[ -f "${work_tree}/install.sh" ]] || fail "install.sh tidak ditemukan dalam repo"
-
-  local deployed_commit
-  deployed_commit="$(git -C "$work_tree" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
-  log "Menggunakan commit source: ${deployed_commit} (branch: ${REPO_BRANCH})"
-
-  log "Menjalankan installer dari ${work_tree}"
-  bash "${work_tree}/install.sh"
+  [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "Versi harus berformat vX.Y.Z."
+  case "$(uname -m)" in x86_64|aarch64|arm64) ;; *) fail "Arsitektur tidak didukung: $(uname -m)" ;; esac
+  local release_parent="$REPO_BASE_DIR/releases/$version" staging url name
+  mkdir -p "$release_parent"
+  staging="$(mktemp -d "$release_parent/install-XXXXXXXX")"
+  url="${NUSA_TUNNEL_DOWNLOAD_BASE:-https://github.com/$repository/releases/download}/$version"
+  for name in SHA256SUMS release.json nusatunnel-server.tar.gz; do
+    curl -fsSL --retry 3 "$url/$name" -o "$staging/$name" || fail "Gagal mengunduh $name ($version). Staging: $staging"
+  done
+  python3 - "$staging" "$version" "$repository" <<'PY'
+import hashlib, json, pathlib, re, shutil, sys, tarfile
+root = pathlib.Path(sys.argv[1])
+checksums = {}
+for line in (root / 'SHA256SUMS').read_text(encoding='utf-8').splitlines():
+    match = re.fullmatch(r'([0-9a-f]{64})  ([A-Za-z0-9_.-]+)', line)
+    if not match or match[2] in checksums:
+        raise SystemExit('Daftar checksum tidak valid.')
+    checksums[match[2]] = match[1]
+for name in ('release.json', 'nusatunnel-server.tar.gz'):
+    with (root / name).open('rb') as stream:
+        actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+    if actual != checksums.get(name):
+        raise SystemExit('Checksum tidak cocok: ' + name)
+data = json.loads((root / 'release.json').read_text(encoding='utf-8'))
+if data.get('version') != sys.argv[2] or data.get('repository') != sys.argv[3]:
+    raise SystemExit('Metadata berbeda dari release terpilih.')
+destination = root / 'source'
+destination.mkdir()
+with tarfile.open(root / 'nusatunnel-server.tar.gz', 'r:gz') as archive:
+    seen = set()
+    members = archive.getmembers()
+    for member in members:
+        path = pathlib.PurePosixPath(member.name)
+        if (not member.isfile() or path.is_absolute() or '..' in path.parts
+            or '\\' in member.name or ':' in member.name or member.name in seen):
+            raise SystemExit('Isi arsip tidak aman.')
+        seen.add(member.name)
+    for member in members:
+        target = destination.joinpath(*pathlib.PurePosixPath(member.name).parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with archive.extractfile(member) as source, target.open('xb') as output:
+            shutil.copyfileobj(source, output)
+        target.chmod(member.mode & 0o755)
+if json.loads((destination / 'release.json').read_text(encoding='utf-8')) != data:
+    raise SystemExit('Manifest dalam paket berbeda dari release.')
+PY
+  local work_tree="$staging/source"
+  python3 "$work_tree/scripts/release.py" preflight --root "$work_tree" || fail "Paket deployment tidak lengkap."
+  export NUSA_TUNNEL_VERSION="$version"
+  export NUSA_TUNNEL_ROOT="${NUSA_TUNNEL_ROOT:-/opt/nusatunnel}"
+  log "Menggunakan release $version dari $repository"
+  bash "$work_tree/install.sh"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; fi

@@ -25,24 +25,17 @@ detect_arch() {
 download_rathole() {
   local asset
   asset="$(detect_arch)"
-  local api="https://api.github.com/repos/rathole-org/rathole/releases/latest"
-  local url
-  url="$(curl -fsSL "$api" | python3 -c 'import json,sys
-asset=sys.argv[1]
-data=json.load(sys.stdin)
-for item in data.get("assets", []):
-    if item.get("name") == asset:
-        print(item.get("browser_download_url", ""))
-        break' "$asset")"
-
-  [[ -n "$url" ]] || {
-    echo "Gagal mendapatkan URL unduhan rathole"
-    exit 1
-  }
+  local url="https://github.com/{{RELEASE_REPOSITORY}}/releases/download/{{RELEASE_VERSION}}/$asset"
+  local expected
+  case "$asset" in
+    rathole-x86_64-unknown-linux-gnu.zip) expected="{{LINUX_X64_SHA256}}" ;;
+    rathole-aarch64-unknown-linux-musl.zip) expected="{{LINUX_ARM64_SHA256}}" ;;
+  esac
 
   local tmp
   tmp="$(mktemp -d)"
   curl -fL "$url" -o "$tmp/rathole.zip"
+  printf '%s  %s\n' "$expected" "$tmp/rathole.zip" | sha256sum -c - >/dev/null
   unzip -qo "$tmp/rathole.zip" -d "$tmp"
   install -m 0755 "$tmp/rathole" "$BIN_PATH"
   rm -rf "$tmp"
@@ -80,15 +73,10 @@ main() {
     apt-get update -y
     apt-get install -y unzip
   fi
-  if ! command -v python3 >/dev/null 2>&1; then
-    apt-get update -y
-    apt-get install -y python3
-  fi
 
   install -d -m 755 "$INSTALL_ROOT"
-  install -m 0644 "${WORK_DIR}/client.toml" "$CONFIG_PATH"
-
   download_rathole
+  install -m 0644 "${WORK_DIR}/client.toml" "$CONFIG_PATH"
   install_service
   echo "Service berhasil diinstal dan dijalankan: ${SERVICE_NAME}"
 }

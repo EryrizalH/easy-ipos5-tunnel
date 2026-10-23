@@ -12,7 +12,7 @@ Saat membangun `setup.exe`, file berikut digabungkan sebagai payload internal:
 - `libssl-3-x64.dll`
 - `libcrypto-3-x64.dll`
 - `libwinpthread-1.dll`
-- `pgbouncer.ini.tpl`
-- `userlist.sample.txt`
 
 Varian ini sengaja tanpa `nusatunnel-gui.exe`.
+
+`setup.exe` dan wrapper adalah output build yang di-ignore. GitHub Actions membangunnya dengan Go 1.20.14; runtime pihak ketiga tetap dilacak dan fingerprint-nya dikunci dalam `scripts/release-dependencies.json`. Distribusi resmi diambil dari GitHub Release. Kredensial build berasal dari GitHub Secrets dan tetap dapat diekstrak dari executable publik; lihat `docs/RELEASE.md`.

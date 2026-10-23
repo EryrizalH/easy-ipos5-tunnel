@@ -19,13 +19,15 @@ Tools kecil berbasis TUI (Terminal User Interface) dengan Golang untuk Windows. 
 - Go 1.23+ (untuk build)
 - PostgreSQL 9.5+ dengan akses ke psql.exe
 
-## Connection Data (Hardcoded)
+## Connection Data
 
 - **Host**: `localhost`
 - **Port**: `5444`
-- **User**: `sysi5adm`
-- **Password**: `u&aV23cc.o82dtr1x89c`
+- **User**: `<IPOS5_DB_USERNAME>`
+- **Password**: `<IPOS5_DB_PASSWORD>`
 - **Database**: `postgres`
+
+Username/password release dihasilkan dari GitHub Secrets saat build, bukan literal di source. Nilainya tetap ada dalam executable publik dan dapat diekstrak. Build pengembangan tanpa file kredensial hasil generate tidak memiliki default login database. Lihat [alur release](../docs/RELEASE.md).
 
 ## PostgreSQL Binary Locations (Auto-Detect)
 
@@ -127,13 +129,13 @@ lock-ipos/
 
 5. **Test Lock Permission**
    - Pilih opsi 1 (Lock)
-   - Confirm preview SQL shows `ALTER USER sysi5adm NOCREATEDB`
+   - Confirm preview SQL shows `ALTER USER <IPOS5_DB_USERNAME> NOCREATEDB`
    - Verify success message
    - Verify status berubah ke "TIDAK BOLEH Buat DB"
 
 6. **Test Allow Permission**
    - Pilih opsi 2 (Allow)
-   - Confirm preview SQL shows `ALTER USER sysi5adm CREATEDB`
+   - Confirm preview SQL shows `ALTER USER <IPOS5_DB_USERNAME> CREATEDB`
    - Verify success message
    - Verify status berubah ke "BOLEH Buat DB"
 
@@ -165,7 +167,7 @@ lock-ipos/
 
 ## Security Considerations
 
-- **Password tidak hardcoded di source code** → Simpan di struct
+- Password build berasal dari GitHub Secrets; executable publik tetap menyimpan nilainya.
 - PSQL connection menggunakan environment variable `PGPASSWORD`
 - Password tidak ditampilkan di terminal (PSQL handles this)
 - Confirmation dialog sebelum ALTER USER

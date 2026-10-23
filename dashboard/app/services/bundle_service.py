@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import os
 import shutil
 import tempfile
@@ -180,6 +181,12 @@ def build_windows_installer_payload(
     if source_setup.resolve() == target_setup.resolve():
         raise ValueError("source dan tujuan setup.exe harus berbeda")
 
+    if zipfile.is_zipfile(source_setup):
+        require_windows_installer_payload(source_setup, includes_gui=includes_gui)
+        target_setup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_setup, target_setup)
+        return
+
     payload_names = list(WINDOWS_EMBEDDED_RUNTIME_NAMES)
     if includes_gui:
         payload_names.append(WINDOWS_GUI_BINARY_NAME)
@@ -187,10 +194,6 @@ def build_windows_installer_payload(
         require_file(assets_dir / name, name)
 
     target_setup.parent.mkdir(parents=True, exist_ok=True)
-    if zipfile.is_zipfile(source_setup):
-        require_windows_installer_payload(source_setup, includes_gui=includes_gui)
-        shutil.copy2(source_setup, target_setup)
-        return
 
     with tempfile.TemporaryDirectory(prefix="nusatunnel-payload-") as temp_dir:
         payload_path = Path(temp_dir) / "runtime.zip"
@@ -245,6 +248,16 @@ def generate_windows7_bundle(state: dict[str, Any], token: str) -> Path:
 
 
 def generate_linux_bundle(state: dict[str, Any], token: str) -> Path:
+    release = json.loads((resources_dir() / "release.json").read_text(encoding="utf-8"))
+    version = str(state.get("nusatunnel_release", ""))
+    repository = str(state.get("release_repository", ""))
+    if (
+        not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", version)
+        or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository)
+        or version != release.get("version") or repository != release.get("repository")
+    ):
+        raise RuntimeError("Metadata release Linux tidak tersedia atau berbeda dari server")
+    hashes = release["linux_assets"]
     bundle_name = f"linux-client-{timestamp_slug()}.zip"
     out_path = bundles_dir() / bundle_name
 
@@ -257,6 +270,10 @@ def generate_linux_bundle(state: dict[str, Any], token: str) -> Path:
             install_tpl,
             {
                 "LINUX_SERVICE_NAME": LINUX_SERVICE_NAME,
+                "RELEASE_VERSION": version,
+                "RELEASE_REPOSITORY": repository,
+                "LINUX_X64_SHA256": hashes["rathole-x86_64-unknown-linux-gnu.zip"]["sha256"],
+                "LINUX_ARM64_SHA256": hashes["rathole-aarch64-unknown-linux-musl.zip"]["sha256"],
             },
         )
         install_path = temp_dir / "install-client.sh"

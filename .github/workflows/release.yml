@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Accept stable tags only
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: '[[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+
+  verify:
+    needs: version
+    uses: ./.github/workflows/ci.yml
+
+  windows:
+    needs: verify
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11.14'
+      - name: Isolate release compile cache
+        shell: pwsh
+        run: '"GOCACHE=$(Join-Path $env:RUNNER_TEMP release-go-cache)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.3'
+          cache: false
+      - name: Verify vendor inputs
+        run: python scripts/release.py fetch-runtime
+      - name: Generate release credentials
+        env:
+          IPOS5_DB_USERNAME: ${{ secrets.IPOS5_DB_USERNAME }}
+          IPOS5_DB_PASSWORD: ${{ secrets.IPOS5_DB_PASSWORD }}
+        run: python scripts/generate_release_credentials.py
+      - name: Build modern Windows
+        shell: pwsh
+        run: |
+          ./scripts/build_windows_service_wrapper.ps1
+          ./scripts/build_windows_unified.ps1
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.20.14'
+          cache: false
+      - name: Build Windows 7
+        shell: pwsh
+        run: ./scripts/build_windows7_assets.ps1 -GoCommand go
+      - name: Validate installers
+        run: |
+          python -c "import sys; from pathlib import Path; sys.path.insert(0,'scripts'); from release import check_setup; check_setup(Path('assets/windows/setup.exe'),True); check_setup(Path('assets/windows7/setup.exe'),False)"
+      - name: Remove generated credential source
+        if: always()
+        shell: pwsh
+        run: Remove-Item -LiteralPath lock-ipos/internal/db/credentials_generated.go -Force -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-installers
+          path: |
+            assets/windows/setup.exe
+            assets/windows7/setup.exe
+          if-no-files-found: error
+          retention-days: 1
+
+  package:
+    needs: windows
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11.14'
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: windows-installers
+          path: assets
+      - run: python scripts/release.py fetch-runtime
+      - name: Build public allowlist
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: python scripts/release.py package --tag "$RELEASE_TAG" --repository "$RELEASE_REPOSITORY" --commit "$RELEASE_COMMIT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-assets
+          path: release-dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: release-assets
+          path: release-dist
+      - name: Publish complete draft
+        working-directory: release-dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check SHA256SUMS
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            draft="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)"
+            [[ "$draft" == true ]] || { echo 'Release sudah diterbitkan; buat tag versi baru.' >&2; exit 1; }
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "NusaTunnel $RELEASE_TAG" --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" ./* --clobber
+          diff <(find . -maxdepth 1 -type f -printf '%f\n' | sort) <(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort)
+          gh release edit "$RELEASE_TAG" --draft=false --latest

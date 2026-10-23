@@ -26,7 +26,7 @@ foreach ($name in @("index.html", "app.js", "style.css")) {
 }
 
 Write-Host "Generating Windows resource (.syso) from icon..." -ForegroundColor Cyan
-& go install github.com/akavel/rsrc@latest
+& go install github.com/akavel/rsrc@v0.10.2
 if ($LASTEXITCODE -ne 0) {
     throw "Gagal install tool rsrc"
 }
