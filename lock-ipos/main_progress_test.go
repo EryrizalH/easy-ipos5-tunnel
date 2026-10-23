@@ -1,6 +1,8 @@
 package main
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/lock-ipos/lock-ipos/internal/progress"
@@ -16,6 +18,29 @@ func TestProgressPlan_InstallIPPublic_DoesNotIncludeLegacyPgBouncer(t *testing.T
 	for _, step := range steps {
 		if step.ID == "legacy-pgbouncer" {
 			t.Fatalf("install IP public plan should not include legacy PgBouncer step")
+		}
+	}
+}
+
+func TestProgressPlan_InstallIPPublic_TunesBeforeTunnelService(t *testing.T) {
+	_, steps := progressPlan(optionInstallIPPublic)
+	var tuningAndService []string
+	for _, step := range steps {
+		if strings.HasPrefix(step.ID, "tune-postgres-") || step.ID == "remove-tunnel-service" || step.ID == "install-tunnel-service" {
+			tuningAndService = append(tuningAndService, step.ID)
+		}
+	}
+	want := []string{"tune-postgres-detect", "tune-postgres-backup", "tune-postgres-apply", "tune-postgres-restart", "tune-postgres-verify", "remove-tunnel-service", "install-tunnel-service"}
+	if !reflect.DeepEqual(tuningAndService, want) {
+		t.Fatalf("unexpected tuning/service order: got %v, want %v", tuningAndService, want)
+	}
+}
+
+func TestProgressPlan_PgBouncerDoesNotTunePostgreSQL(t *testing.T) {
+	_, steps := progressPlan(optionInstallPgBouncer)
+	for _, step := range steps {
+		if strings.HasPrefix(step.ID, "tune-postgres-") {
+			t.Fatalf("PgBouncer plan must not include tuning step %s", step.ID)
 		}
 	}
 }

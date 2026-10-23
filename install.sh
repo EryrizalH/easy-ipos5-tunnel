@@ -122,6 +122,7 @@ main() {
   local control_port
   local dashboard_port
   local admin_username
+  local admin_password
   local credentials_file
   local hardening_applied
   local hardening_ssh_port
@@ -131,6 +132,7 @@ main() {
   control_port="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "rathole_control_port" "<unknown>")"
   dashboard_port="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "dashboard_port" "8088")"
   admin_username="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "admin_username" "admin")"
+  admin_password="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "admin_password" "")"
   credentials_file="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "credentials_file" "${NUSA_TUNNEL_ROOT}/state/dashboard-credentials.txt")"
   hardening_applied="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "hardening_applied" "false")"
   hardening_ssh_port="$(state_get "${NUSA_TUNNEL_STATE_FILE}" "hardening_ssh_port" "22")"
@@ -181,7 +183,8 @@ Instalasi Nusa IPOS 5 Tunnel selesai.
 
 URL Dashboard     : http://${public_ip}:${dashboard_port}
 Pengguna Dashboard: ${admin_username}
-Sumber Password   : ${credentials_file}
+Password Dashboard: ${admin_password:-lihat file kredensial}
+File Kredensial   : ${credentials_file}
 
 Control Rathole   : ${control_port}
 Port Forward      : ${forward_ports}

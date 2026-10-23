@@ -11,12 +11,30 @@ git status --short
 rg --files
 ```
 
-If dependencies are missing:
+Read the root `AGENTS.md`, the project skill, and any nested instruction files for the affected folders. `AGENTS.md` is the canonical filename; do not create a competing `AGENT.md`. Preserve existing changes, including deleted frontend files and modified binary assets.
+
+Check available runtimes from the repo root:
+
+```powershell
+python --version
+go version
+Test-Path .venv/Scripts/python.exe
+Test-Path client-gui/frontend/dist/index.html
+```
+
+- Dashboard requires Python 3.11+ because it imports `datetime.UTC`. The Ubuntu 22+ OS check alone does not guarantee this runtime; the installer currently invokes the target's `python3`.
+- Modern Go development requires Go 1.23+ (`client-gui/go.mod`); `lock-ipos/go.mod` targets Go 1.20. Windows 7 releases specifically use Go 1.20.14 at `%USERPROFILE%\go\bin\go1.20.14.exe`.
+- GUI tests/builds embed the tracked `client-gui/frontend/dist` files. There is currently no `package.json` or `wails.json` frontend generation workflow. If those files are locally deleted, report the prerequisite failure and preserve the deletions.
+- If `go` is unavailable, report Go verification as not run; installing a system toolchain is separate from preparing project dependencies.
+
+If dashboard dependencies are missing, create `.venv` only when it does not already exist, then install the pinned project requirements:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\pip.exe install -r dashboard\requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r dashboard\requirements.txt
 ```
+
+When Go is available, download module dependencies without rewriting `go.mod`/`go.sum` with `go mod tidy`:
 
 ```powershell
 Push-Location client-gui
@@ -41,7 +59,7 @@ Touch `dashboard/app/*` when changing:
 Guardrails:
 
 - Keep tests isolated with temp dirs and env overrides.
-- If bundle files change, update error hints and generated README text.
+- If bundle files change, update dashboard instructions/error hints and operator docs. Current bundles do not contain a generated README.
 - If service status changes, keep Linux service names aligned with installer state.
 
 Verification:
@@ -82,6 +100,9 @@ Guardrails:
 - Lock/allow semantics affect PostgreSQL ownership/permissions and should not break ordinary client access.
 - PgBouncer mode must keep `0.0.0.0:5444` as the exposed listener and PostgreSQL on `127.0.0.1:5445`.
 - Installer copy should make consequences visible before execution.
+- Install IP Public tunes PostgreSQL before installing the tunnel: backup the active config, preserve unrelated settings/ports, restart only when effective values differ, and verify via a fresh SQL connection. Failures restore the changed files; a failed restart also triggers service recovery.
+- Resolve the selected PostgreSQL instance from Windows service/postmaster metadata; do not guess a global data path. Tuning uses 25% RAM bounded to 128–512 MB for shared buffers and Windows-compatible keepalive count `0`.
+- The tuning block persists after tunnel uninstall. Windows 7 binaries are updated separately; source changes do not refresh that packaged installer automatically.
 
 Verification:
 
@@ -121,12 +142,11 @@ Guardrails:
 - Windows 7 bundle juga berisi tepat dua file dan payload-nya sengaja tanpa `nusatunnel-gui.exe`.
 - Do not alter binary assets accidentally during doc or source-only changes.
 
-Build commands:
+Build commands, only for an explicitly requested binary refresh. Build the wrapper before unified setup: `build_windows_unified.ps1` rebuilds the GUI and embeds the runtime in `assets/windows`. The Windows 7 script builds its own setup and wrapper before embedding assets from `assets/windows7`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build_windows_unified.ps1
 powershell -ExecutionPolicy Bypass -File scripts/build_windows_service_wrapper.ps1
-powershell -ExecutionPolicy Bypass -File scripts/build_windows_gui.ps1
+powershell -ExecutionPolicy Bypass -File scripts/build_windows_unified.ps1
 powershell -ExecutionPolicy Bypass -File scripts/build_windows7_assets.ps1
 ```
 
@@ -137,6 +157,9 @@ Tes packaging memakai fixture CLI Go di folder sementara, tanpa menjalankan inst
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/test_windows_installer_payload.ps1
 ```
+Payload packaging also requires the runtime files listed in `scripts/build_windows_installer_payload.ps1` (NSSM, tunnel, PgBouncer and DLLs). The GUI script uses `go build -tags production`; it does not require the Wails CLI. None of these build commands is part of routine workflow initialization.
+
+`scripts/verify_windows_gui_cli.ps1 -GUIPath assets/windows/nusatunnel-gui.exe` checks the CLI with `--help` without opening the application. Windows 7 has no GUI and does not need this check. To build from a complete staging copy while preserving local frontend deletions, pass `-GUISourceDir <staged-client-gui>` to the unified builder (or `-SourceDir` to the standalone GUI builder).
 
 ## Cross-Surface Checklist
 
@@ -147,14 +170,14 @@ Use this checklist when a change touches ports, services, state, tokens, or bund
 - Rathole server/client templates updated.
 - Firewall opening still covers remote bind ports and dashboard port.
 - Windows and Windows 7 bundle generation produces exactly `setup.exe` dan `client.toml`, dengan payload internal sesuai varian.
-- Generated README/error messages still match actual bundle contents.
+- Operator docs and dashboard instructions/error messages still match actual bundle contents.
 - Tests cover normalization, rendering, or packaging behavior.
 - Final response states exactly what passed and what remains unverified.
 
 ## Current Default Contract
 
 - Server OS: Ubuntu 22+.
-- Dashboard port: `8088` unless `NUSA_TUNNEL_PORT` overrides it.
+- Dashboard port: initially `8088`, configurable with `DASHBOARD_PORT` during server installation, then persisted as `dashboard_port` in install state and rendered into the systemd Uvicorn command. `NUSA_TUNNEL_PORT` is not consumed by the current installer.
 - Server services: `rathole`, `nusatunnel-dashboard`.
 - Client services: `nusatunnel-client` on Linux, `NusaTunnelClient` on Windows.
 - PgBouncer service: `NusaTunnelDB`.

@@ -276,6 +276,7 @@ func TestExecuteInstallModeWithHandlers_IPPublicOnlySkipsPgBouncerFlow(t *testin
 		progress.NopReporter(),
 		commandRunner{},
 		installModeHandlers{
+			tunePostgres: func(string, progress.Reporter) error { return nil },
 			installTunnelService: func(Config, BundlePaths, string, progress.Reporter, commandRunner) error {
 				tunnelCalls++
 				return nil

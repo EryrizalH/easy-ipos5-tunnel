@@ -80,7 +80,7 @@ sudo NUSA_TUNNEL_SSH_ALLOW_CIDR="1.2.3.4/32" bash install.sh
 sudo NUSA_TUNNEL_DASHBOARD_ALLOW_CIDR="1.2.3.4/32" bash install.sh
 
 # ganti port dashboard (default 8088)
-sudo NUSA_TUNNEL_PORT=9090 bash install.sh
+sudo DASHBOARD_PORT=9090 bash install.sh
 
 # ganti port kontrol rathole (default 443; selain 443 tidak lagi terlihat seperti HTTPS)
 sudo NUSA_TUNNEL_RATHOLE_CONTROL_PORT=8443 bash install.sh
@@ -104,6 +104,7 @@ Setelah install selesai, installer menampilkan:
 
 - URL dashboard
 - username dashboard
+- password dashboard langsung di terminal
 - lokasi file password dashboard
 - control port rathole
 - daftar port forward aktif
@@ -123,7 +124,7 @@ Setelah install selesai, installer menampilkan:
 
 ## 3) Dashboard
 
-Default berjalan di port `8088` (atau sesuai `NUSA_TUNNEL_PORT`).
+Default berjalan di port `8088` (atau sesuai `DASHBOARD_PORT` saat instalasi, lalu tersimpan sebagai `dashboard_port` pada state).
 
 Fitur utama:
 
@@ -191,12 +192,16 @@ Catatan paket terbaru:
 - Saat menjalankan installer, `client.toml` wajib berada di folder yang sama dengan `setup.exe`.
 - `NusaTunnelClient` tetap dijalankan lewat wrapper headless dengan config runtime yang tersalin.
 - Saat install sukses, shortcut desktop `nusatunnel` dibuat untuk membuka GUI jendela utama dengan Izin Administrator.
+- Menu **Install IP Public** menyesuaikan PostgreSQL sebelum memasang service tunnel: `max_connections=200`, keepalive `60/10/0` (count `0` untuk Windows/PostgreSQL 9.5), `work_mem=8MB`, serta logging koneksi/diskoneksi dengan waktu, PID, user, database, dan alamat client. `shared_buffers` dihitung sebesar 25% RAM Windows, minimum 128 MB dan maksimum 512 MB.
+- Installer mencocokkan instance aktif dengan service dan instalasi PostgreSQL yang dipilih, lalu membackup konfigurasi sebelum tuning. Override parameter tuning di `postgresql.auto.conf` dibersihkan tanpa mengubah pengaturan lain. Jika deteksi ambigu, proses dihentikan; jika penerapan, restart, atau verifikasi gagal, konfigurasi dipulihkan dan pemasangan tunnel dibatalkan.
+- PostgreSQL direstart bila diperlukan dan koneksi database akan terputus sementara. Restart dilewati jika seluruh nilai efektif sudah sesuai. Instalasi lama mendapat tuning dengan menjalankan ulang **Install IP Public**; menu Pengoptimal Database tetap memakai alurnya sendiri.
 - Menu Pengoptimal Database memasang service `NusaTunnelDB` secara fail-fast bila preflight gagal.
 - Runtime file `pgbouncer.ini` dan `userlist.txt` dibuat otomatis saat install service.
 - Untuk menyiapkan asset Windows:
   - `scripts/build_windows_service_wrapper.ps1` membangun `nusatunnel-service.exe`
   - `scripts/build_windows_gui.ps1` membangun `nusatunnel-gui.exe`
   - `scripts/build_windows_unified.ps1` membangun ulang GUI terlebih dahulu, lalu membangun dan menggabungkan runtime ke `setup.exe`; payload modern diverifikasi mendukung argumen `--config` yang dipakai shortcut
+  - `scripts/build_windows7_assets.ps1` membangun installer dan wrapper Windows 7 dengan Go 1.20.14, tanpa GUI desktop
   - `assets/windows/nusatunnel.exe` dan `assets/windows7/nusatunnel.exe` dibangun dari source resmi Rathole v0.5.0; build ini tidak mengimpor `VCRUNTIME140.dll`, dependensi yang memicu kegagalan service sebelumnya.
 
 ### Isi bundle Windows 7 (terpisah)
@@ -212,6 +217,7 @@ Catatan Windows 7:
 ### Uninstall
 
 - Jalankan `setup.exe` sebagai Administrator (Izin Administrator) lalu pilih menu uninstall/cleanup service.
+- Tuning PostgreSQL dari menu **Install IP Public** tetap tersimpan setelah uninstall tunnel.
 
 ---
 

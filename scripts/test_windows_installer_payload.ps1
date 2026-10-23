@@ -1,6 +1,7 @@
 param([string]$GoCommand = "go")
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $builder = Join-Path $PSScriptRoot "build_windows_installer_payload.ps1"
@@ -104,5 +105,10 @@ finally {
     $env:GOOS = $savedGOOS
     $env:GOARCH = $savedGOARCH
     $env:CGO_ENABLED = $savedCGO
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $testDir
+    $resolvedTestDir = [System.IO.Path]::GetFullPath($testDir)
+    $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\', '/')
+    if ((Split-Path -Parent $resolvedTestDir).TrimEnd('\', '/') -ne $tempRoot -or (Split-Path -Leaf $resolvedTestDir) -notlike 'nusatunnel payload test *') {
+        throw "Lokasi cleanup fixture tidak valid: $resolvedTestDir"
+    }
+    Remove-Item -LiteralPath $resolvedTestDir -Recurse -Force -ErrorAction SilentlyContinue
 }

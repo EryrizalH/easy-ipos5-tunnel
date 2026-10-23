@@ -22,11 +22,13 @@ This repo is a mixed deployment project for Nusa IPOS 5 Tunnel / NusaTunnel. Tre
 ## Workflow
 
 1. Start with `git status --short`; do not revert unrelated user changes.
-2. Read the files for the surface being changed plus any generated bundle/template counterpart.
-3. Keep changes scoped. If ports, service names, bundle contents, or state keys change, update all dependent code paths and tests.
-4. Prefer existing helpers such as `normalize_service_ports`, `render_template`, state helpers, and appcore services instead of ad hoc parsing.
-5. Keep operator-facing copy concise and mostly Indonesian, matching the existing dashboard and README tone.
-6. Run the smallest verification set that covers the change and report any platform flow that was not tested.
+2. Read this `AGENTS.md` (the canonical instruction file), the project skill, and `docs/AI_DEVELOPMENT_WORKFLOW.md`. Check for nested instruction files in the affected folders.
+3. Check prerequisites before verification: dashboard needs Python 3.11+ and `.venv` dependencies; modern Go work needs Go 1.23+; Windows 7 builds use the separate Go 1.20.14 compiler. GUI tests/builds require the tracked `client-gui/frontend/dist` files. Report missing prerequisites without restoring user deletions or rebuilding binary assets automatically.
+4. Read the files for the surface being changed plus any generated bundle/template counterpart.
+5. Keep changes scoped. If ports, service names, bundle contents, or state keys change, update all dependent code paths and tests.
+6. Prefer existing helpers such as `normalize_service_ports`, `render_template`, state helpers, and appcore services instead of ad hoc parsing.
+7. Keep operator-facing copy concise and mostly Indonesian, matching the existing dashboard and README tone.
+8. Run the smallest verification set that covers the change and report any platform flow that was not tested.
 
 ## Verification Commands
 
@@ -54,12 +56,11 @@ go test ./...
 Pop-Location
 ```
 
-Windows binary refresh, only when requested:
+Windows binary refresh, only when requested. Build the wrapper first; unified setup automatically rebuilds the GUI before embedding the refreshed runtime:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build_windows_unified.ps1
 powershell -ExecutionPolicy Bypass -File scripts/build_windows_service_wrapper.ps1
-powershell -ExecutionPolicy Bypass -File scripts/build_windows_gui.ps1
+powershell -ExecutionPolicy Bypass -File scripts/build_windows_unified.ps1
 powershell -ExecutionPolicy Bypass -File scripts/build_windows7_assets.ps1
 ```
 

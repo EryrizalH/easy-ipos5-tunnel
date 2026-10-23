@@ -514,6 +514,8 @@ func InstallServiceWithProgress(cfg Config, reporter progress.Reporter) error {
 	reporter.FinishStep("sync-client-config", true, "DB diarahkan ke 127.0.0.1:5444")
 
 	err = executeInstallModeWithHandlers(cfg, paths, logRoot, reporter, runner, installModeHandlers{
+		tunePostgres:         tunePostgresWithProgress,
+		migratePostgresPort:  migratePostgresPort,
 		installTunnelService: installOrUpdateTunnelServiceWithProgress,
 		installPgBouncer:     installOrUpdatePgBouncerWithProgress,
 		waitPgBouncerHealth:  waitPgBouncerHealthyWithProgress,
@@ -532,6 +534,8 @@ func InstallServiceWithProgress(cfg Config, reporter progress.Reporter) error {
 }
 
 type installModeHandlers struct {
+	tunePostgres         func(string, progress.Reporter) error
+	migratePostgresPort  func(string) error
 	installTunnelService func(Config, BundlePaths, string, progress.Reporter, commandRunner) error
 	installPgBouncer     func(Config, BundlePaths, string, progress.Reporter, commandRunner) error
 	waitPgBouncerHealth  func(string, time.Duration, progress.Reporter) error
@@ -542,7 +546,10 @@ func executeInstallModeWithHandlers(cfg Config, paths BundlePaths, logRoot strin
 	case InstallModePgBouncerOnly:
 		reporter.StartStep("migrate-postgres-port", "Migrasi port PostgreSQL ke 5445")
 		reporter.Log("Menjalankan migrasi PostgreSQL ke 127.0.0.1:5445")
-		if err := migratePostgresPort(cfg.PGBinPath); err != nil {
+		if handlers.migratePostgresPort == nil {
+			return errors.New("handler migrasi PostgreSQL belum tersedia")
+		}
+		if err := handlers.migratePostgresPort(cfg.PGBinPath); err != nil {
 			reporter.FinishStep("migrate-postgres-port", false, err.Error())
 			return err
 		}
@@ -559,6 +566,12 @@ func executeInstallModeWithHandlers(cfg Config, paths BundlePaths, logRoot strin
 		reporter.FinishStep("health-check-pgbouncer", true, "PgBouncer menerima koneksi dengan normal")
 		return nil
 	default:
+		if handlers.tunePostgres == nil {
+			return errors.New("handler tuning PostgreSQL belum tersedia")
+		}
+		if err := handlers.tunePostgres(cfg.PGBinPath, reporter); err != nil {
+			return fmt.Errorf("tuning PostgreSQL gagal; pemasangan tunnel dibatalkan: %w", err)
+		}
 		return handlers.installTunnelService(cfg, paths, logRoot, reporter, runner)
 	}
 }

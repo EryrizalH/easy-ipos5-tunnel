@@ -133,12 +133,17 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 	case 1:
 		actionTitle = "Install IP Public"
 		actionDesc = "Anda akan menginstall/update service sambungan publik tanpa install ulang Pengoptimal Database."
-		consequence = "Installer akan membuat service sambungan."
+		consequence = "PostgreSQL akan direstart bila diperlukan; koneksi database terputus sementara. Restart dilewati jika semua nilai efektif sudah sesuai."
 		detailLines = []string{
 			"Service Name: " + serviceName,
 			"Runtime    : " + bundleDir,
 			"Wajib ada  : client.toml di folder yang sama dengan setup.exe",
 			"Runtime tunnel, GUI, dan service sudah ada di dalam setup.exe",
+			"PostgreSQL: max_connections=200, work_mem=8MB",
+			"Keepalive : idle=60, interval=10, count=0 (Windows/PG 9.5)",
+			"Memori    : shared_buffers=25% RAM, min 128 MB, maks 512 MB",
+			"Logging   : koneksi, diskoneksi, waktu/PID/user/DB/client",
+			"Config dibackup; kegagalan dipulihkan sebelum proses dihentikan",
 		}
 	case 2:
 		actionTitle = "Install Pengoptimal Database"
@@ -153,7 +158,7 @@ func RenderConfirm(styles *Styles, option int, canCreateDB bool, serviceName, bu
 	case 3:
 		actionTitle = "Uninstall Service IP Public"
 		actionDesc = "Anda akan menghapus service sambungan publik."
-		consequence = "Service NusaTunnelClient dan Pengoptimal Database akan dihentikan lalu dihapus dari Windows Service, kemudian PostgreSQL dikembalikan ke port 127.0.0.1:5444."
+		consequence = "Service NusaTunnelClient dan Pengoptimal Database akan dihentikan lalu dihapus dari Windows Service, kemudian PostgreSQL dikembalikan ke port 127.0.0.1:5444. Tuning PostgreSQL tetap tersimpan."
 		detailLines = []string{
 			"Service Name: " + serviceName,
 		}

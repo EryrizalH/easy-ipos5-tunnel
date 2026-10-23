@@ -632,6 +632,11 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 			{ID: "resolve-bundle", Label: "Validasi bundle installer"},
 			{ID: "prepare-log-dir", Label: "Menyiapkan folder log runtime"},
 			{ID: "sync-client-config", Label: "Sinkronisasi client.toml DB"},
+			{ID: "tune-postgres-detect", Label: "Mendeteksi konfigurasi PostgreSQL"},
+			{ID: "tune-postgres-backup", Label: "Backup konfigurasi PostgreSQL"},
+			{ID: "tune-postgres-apply", Label: "Menerapkan tuning PostgreSQL"},
+			{ID: "tune-postgres-restart", Label: "Restart PostgreSQL bila diperlukan"},
+			{ID: "tune-postgres-verify", Label: "Verifikasi tuning PostgreSQL"},
 			{ID: "remove-tunnel-service", Label: "Menyiapkan reinstall service tunnel"},
 			{ID: "install-tunnel-service", Label: "Install/update NusaTunnelClient"},
 			{ID: "wait-tunnel-running", Label: "Menunggu service RUNNING"},
@@ -690,7 +695,7 @@ func progressPlan(option int) (string, []progress.StepDefinition) {
 }
 
 func installIPPublicSuccessMessage(bundleDir string) string {
-	base := "Install IP publik berhasil: service NusaTunnelClient terpasang."
+	base := "Install IP publik berhasil: tuning PostgreSQL terverifikasi dan service NusaTunnelClient terpasang."
 	if winservice.BundleIncludesGUI(bundleDir) {
 		return base + " GUI dibuka lewat shortcut desktop 'nusatunnel' (Izin Administrator)."
 	}
@@ -698,7 +703,7 @@ func installIPPublicSuccessMessage(bundleDir string) string {
 }
 
 func uninstallSuccessMessage(bundleDir string) string {
-	base := "Service IP Public dan Pengoptimal Database berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444."
+	base := "Service IP Public dan Pengoptimal Database berhasil di-uninstall, PostgreSQL dikembalikan ke port 127.0.0.1:5444. Tuning PostgreSQL tetap tersimpan."
 	if winservice.BundleIncludesGUI(bundleDir) {
 		return base + " GUI shortcut desktop sudah dibersihkan."
 	}
