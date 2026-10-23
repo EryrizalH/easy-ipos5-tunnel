@@ -32,6 +32,18 @@ class QuietServer(http.server.SimpleHTTPRequestHandler):
 
 
 class ReleaseTest(unittest.TestCase):
+    @unittest.skipUnless(BASH, "Bash tidak tersedia")
+    def test_stdin_entrypoint_runs_without_bash_source(self):
+        source = (ROOT / "public-install.sh").read_text(encoding="utf-8")
+        body, guard = source.rsplit("\nif [[", 1)
+        # Replace only the installation function with a spy, leaving the real
+        # entrypoint guard unchanged. Never execute an actual system installer.
+        script = body + '\nmain() { printf ENTRYPOINT_CALLED; }\nif [[' + guard
+        result = subprocess.run([BASH, "--noprofile", "--norc"], input=script,
+                                text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "ENTRYPOINT_CALLED")
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="nusa release test ")
         self.addCleanup(self.temporary.cleanup)
