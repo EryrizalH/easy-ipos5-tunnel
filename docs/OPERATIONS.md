@@ -1,5 +1,13 @@
 # Panduan Operasional NusaTunnel
 
+## PostgreSQL pada lokasi kustom
+
+Masukkan folder `bin` instalasi yang digunakan IPOS, misalnya `E:\Projects\ipos\Server System 1.0\pgsql9.5\bin`. Installer mencocokkan folder tersebut dengan executable service Windows, argumen `-D`, `postmaster.pid`, dan `postmaster.opts`; lokasi tidak perlu masuk daftar path default.
+
+PostgreSQL 9.5 dapat menulis executable tanpa tanda kutip di `postmaster.opts`, termasuk pada path dengan spasi. Parser memeriksa path terhadap instalasi terpilih sebelum membaca argumen, sehingga tidak memilih database lain hanya berdasarkan nama service.
+
+Jalankan setup sebagai Administrator. Bila proses PostgreSQL menolak pembacaan identitas, installer mencoba hak `SeDebugPrivilege` yang sudah tersedia pada akun admin hanya pada thread pemeriksaan sementara. Hak akses akun maupun DACL proses tidak diubah; ketidakcocokan identitas tetap menghentikan tuning. Jika Windows tidak memberikan hak itu, pesan error menyebut penyebabnya. Jangan memindahkan folder data atau mengubah password database untuk mengatasi error identitas service.
+
 ## Cek status service
 
 ```bash

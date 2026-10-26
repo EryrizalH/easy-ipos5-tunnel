@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -179,6 +180,29 @@ func postgresServiceArguments(commandLine string) (string, []string, error) {
 	}
 }
 
+// PostgreSQL 9.5 writes the executable in postmaster.opts without quoting it,
+// even when the installation directory contains spaces. This is not an SCM
+// command line: identify the executable against the selected installation
+// before parsing its quoted arguments. Never guess a binary from its basename.
+var postgresExecutableSuffix = regexp.MustCompile(`(?i)postgres\.exe`)
+
+func postgresPostmasterArguments(commandLine, expectedExecutable string) (string, []string, error) {
+	commandLine = strings.TrimSpace(commandLine)
+	if executable, args, err := postgresServiceArguments(commandLine); err == nil && samePostgresPath(executable, expectedExecutable) {
+		return executable, args, nil
+	}
+	if !strings.HasPrefix(commandLine, `"`) {
+		for _, match := range postgresExecutableSuffix.FindAllStringIndex(commandLine, -1) {
+			end := match[1]
+			executable := commandLine[:end]
+			if (end == len(commandLine) || commandLine[end] == ' ' || commandLine[end] == '\t') && samePostgresPath(executable, expectedExecutable) {
+				return postgresServiceArguments(windows.ComposeCommandLine([]string{executable}) + commandLine[end:])
+			}
+		}
+	}
+	return "", nil, errors.New("program postmaster.opts tidak cocok dengan instalasi terpilih")
+}
+
 func postgresArgumentDataDir(args []string) (string, error) {
 	var directory string
 	for i := 0; i < len(args); i++ {
@@ -284,9 +308,9 @@ func inspectPostgresTarget(name, executable string, args []string, servicePID ui
 	if err != nil {
 		return postgresTarget{}, fmt.Errorf("postmaster.opts tidak dapat dibaca: %w", err)
 	}
-	activeExe, activeArgs, err := postgresServiceArguments(strings.TrimSpace(string(opts)))
-	if err != nil || !samePostgresPath(activeExe, filepath.Join(filepath.Dir(executable), "postgres.exe")) {
-		return postgresTarget{}, errors.New("program postmaster.opts tidak cocok dengan instalasi terpilih")
+	activeExe, activeArgs, err := postgresPostmasterArguments(string(opts), filepath.Join(filepath.Dir(executable), "postgres.exe"))
+	if err != nil {
+		return postgresTarget{}, err
 	}
 	activeConfig, activeDirectory, err := readPostgresConfigPaths(activeExe, activeArgs)
 	if err != nil {
@@ -326,7 +350,7 @@ func verifyPostgresProcess(pid, servicePID uint32, executable string) error {
 	if servicePID == 0 {
 		return errors.New("PID service PostgreSQL kosong")
 	}
-	process, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	process, err := openPostgresProcessForQuery(pid)
 	if err != nil {
 		return fmt.Errorf("proses postmaster tidak dapat diperiksa: %w", err)
 	}
