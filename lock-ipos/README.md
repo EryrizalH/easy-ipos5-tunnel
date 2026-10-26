@@ -106,6 +106,12 @@ lock-ipos/
 
 ## Verification
 
+### Log kegagalan setup
+
+Layar hasil menampilkan error lengkap sesuai lebar terminal dan lokasi log setup yang benar. Error instalasi dicatat ke `log.txt` di folder `setup.exe`. Jika folder tersebut tidak dapat ditulis, setup mencoba `%ProgramData%\nusatunnel-client\logs\setup.log`, lalu `%TEMP%\nusatunnel-client\setup.log`. Jika semua lokasi gagal ditulis, layar memberi tahu bahwa log setup tidak tersedia.
+
+Folder log service bisa masih kosong jika instalasi berhenti pada deteksi atau tuning PostgreSQL, sebelum service tunnel berjalan. Untuk error `identitas PostgreSQL ... tidak pasti`, salin pesan lengkap dari layar atau log setup; penyebab lanjutannya menentukan apakah masalah berada pada izin pemeriksaan proses, lokasi program, atau hubungan proses dengan service.
+
 ### Testing Steps
 
 1. **Install Dependencies**

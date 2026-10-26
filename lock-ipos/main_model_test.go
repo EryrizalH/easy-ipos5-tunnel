@@ -1,12 +1,30 @@
 package main
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	tui "github.com/lock-ipos/lock-ipos/internal/tui"
 )
+
+func TestResultViewUsesTerminalWidthAndRetainsFailureCause(t *testing.T) {
+	m := &model{styles: tui.DefaultStyles()}
+	_, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
+	_, _ = m.handleServiceCompleted(serviceActionCompletedMsg{err: errors.New("tuning PostgreSQL gagal; identitas PostgreSQL iPgSql.9.5 tidak pasti: proses postmaster tidak dapat diperiksa: Access is denied.")})
+	view := m.View()
+	if !strings.Contains(view, "Access is denied.") {
+		t.Fatalf("missing failure cause:\n%s", view)
+	}
+	for _, line := range strings.Split(view, "\n") {
+		if lipgloss.Width(line) > 80 {
+			t.Fatalf("result exceeds terminal width: %s", line)
+		}
+	}
+}
 
 func TestMainMenu_SelectAndConfirmOption4(t *testing.T) {
 	m := &model{

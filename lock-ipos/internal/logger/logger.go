@@ -1,15 +1,18 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
 var (
 	logFile *os.File
 	enabled bool
+	mu      sync.Mutex
 )
 
 // Init initializes the logger
@@ -20,30 +23,64 @@ func Init() error {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 
-	exeDir := filepath.Dir(exePath)
-	logPath := filepath.Join(exeDir, "log.txt")
-
-	// Open log file in append mode, create if not exists
-	logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open log file: %w", err)
+	paths := []string{filepath.Join(filepath.Dir(exePath), "log.txt")}
+	if programData := os.Getenv("ProgramData"); programData != "" {
+		paths = append(paths, filepath.Join(programData, "nusatunnel-client", "logs", "setup.log"))
 	}
-
-	enabled = true
+	paths = append(paths, filepath.Join(os.TempDir(), "nusatunnel-client", "setup.log"))
+	if err := initAtPaths(paths); err != nil {
+		return err
+	}
 
 	// Write startup message
 	Info("=== Application Started ===")
 	Info(fmt.Sprintf("Executable: %s", exePath))
-	Info(fmt.Sprintf("Log file: %s", logPath))
+	Info(fmt.Sprintf("Log file: %s", Path()))
 
 	return nil
 }
 
+func initAtPaths(paths []string) error {
+	mu.Lock()
+	defer mu.Unlock()
+	var failures []error
+	for _, path := range paths {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			failures = append(failures, err)
+			continue
+		}
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			failures = append(failures, err)
+			continue
+		}
+		if logFile != nil {
+			logFile.Close()
+		}
+		logFile, enabled = file, true
+		return nil
+	}
+	return fmt.Errorf("failed to open setup log: %w", errors.Join(failures...))
+}
+
+// Path is the actual setup log location, including a writable fallback.
+func Path() string {
+	mu.Lock()
+	defer mu.Unlock()
+	if !enabled || logFile == nil {
+		return ""
+	}
+	return logFile.Name()
+}
+
 // Close closes the log file
 func Close() {
+	Info("=== Application Closed ===")
+	mu.Lock()
+	defer mu.Unlock()
 	if logFile != nil {
-		Info("=== Application Closed ===")
 		logFile.Close()
+		logFile = nil
 	}
 	enabled = false
 }
@@ -70,6 +107,8 @@ func Warn(message string) {
 
 // log writes a log entry with timestamp and level
 func log(level, message string) {
+	mu.Lock()
+	defer mu.Unlock()
 	if !enabled || logFile == nil {
 		return
 	}

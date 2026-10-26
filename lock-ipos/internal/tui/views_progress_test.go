@@ -3,7 +3,43 @@ package tui
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
+
+	"github.com/charmbracelet/lipgloss"
 )
+
+func TestRenderResultWrapsFullCauseAndLogLocation(t *testing.T) {
+	message := "tuning PostgreSQL gagal; pemasangan tunnel dibatalkan: identitas PostgreSQL iPgSql.9.5 tidak pasti: proses postmaster tidak dapat diperiksa: Access is denied."
+	for _, width := range []int{40, 80, 110} {
+		view := RenderResult(DefaultStyles(), false, false, 1, "", message, width, `C:\setup\log.txt`)
+		for _, line := range strings.Split(view, "\n") {
+			if got := lipgloss.Width(line); got > width {
+				t.Fatalf("line width %d exceeds terminal width %d: %s", got, width, line)
+			}
+		}
+		// Wrapping may split words; remove whitespace and the box's vertical
+		// borders so every original character must still be present in order.
+		compact := func(value string) string {
+			return strings.Join(strings.Fields(strings.ReplaceAll(value, "│", "")), "")
+		}
+		for _, want := range []string{message, `Log setup: C:\setup\log.txt`} {
+			if !strings.Contains(compact(view), compact(want)) {
+				t.Fatalf("missing full text %q at width %d:\n%s", want, width, view)
+			}
+		}
+	}
+}
+
+func TestRenderResultRetainsLongUnicodeCauseWithoutLog(t *testing.T) {
+	message := strings.Repeat("kesalahan 日本語 ", 40) + "PENYEBAB_AKHIR"
+	view := RenderResult(DefaultStyles(), false, false, 1, "", message, 0, "")
+	if !utf8.ValidString(view) || !strings.Contains(view, "PENYEBAB_AKHIR") {
+		t.Fatal("long error was truncated or corrupted")
+	}
+	if !strings.Contains(view, "Log setup tidak tersedia") {
+		t.Fatal("missing unavailable log explanation")
+	}
+}
 
 func TestRenderProgress_ShowsStepsAndLogs(t *testing.T) {
 	styles := DefaultStyles()

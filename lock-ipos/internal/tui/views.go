@@ -266,9 +266,21 @@ func RenderProgress(styles *Styles, vm ProgressViewModel) string {
 }
 
 // RenderResult renders the result screen
-func RenderResult(styles *Styles, success bool, canCreateDB bool, action int, resultMsg, errorMsg string) string {
+func RenderResult(styles *Styles, success bool, canCreateDB bool, action int, resultMsg, errorMsg string, terminalWidth int, logPath string) string {
 	var b strings.Builder
 	var content strings.Builder
+	if terminalWidth <= 0 {
+		terminalWidth = 80
+	}
+	// Wrap before Bubble Tea crops the view to the terminal width. MaxWidth
+	// would truncate the cause at the right edge instead of moving it down.
+	box := styles.Box.Copy()
+	textWidth := terminalWidth - box.GetHorizontalFrameSize()
+	if textWidth < 1 {
+		textWidth = 1
+	}
+	textStyle := styles.MutedText.Copy().Width(textWidth)
+	helpStyle := styles.HelpText.Copy().Width(textWidth)
 
 	if success {
 		content.WriteString(styles.SuccessText.Render("Berhasil!"))
@@ -283,13 +295,16 @@ func RenderResult(styles *Styles, success bool, canCreateDB bool, action int, re
 		content.WriteString("\n\n")
 		content.WriteString(styles.NormalText.Render("Terjadi kesalahan saat menjalankan aksi."))
 		if strings.TrimSpace(errorMsg) != "" {
-			if len(errorMsg) > 420 {
-				errorMsg = errorMsg[:417] + "..."
-			}
 			content.WriteString("\n\n")
-			content.WriteString(styles.MutedText.Render("Error: " + errorMsg))
+			content.WriteString(textStyle.Render("Error: " + errorMsg))
 			content.WriteString("\n")
-			content.WriteString(styles.HelpText.Render("Tip: cek log.txt (folder setup.exe) dan log service di C:\\ProgramData\\nusatunnel-client\\logs"))
+			if logPath != "" {
+				content.WriteString(helpStyle.Render("Log setup: " + logPath))
+			} else {
+				content.WriteString(helpStyle.Render("Log setup tidak tersedia. Salin pesan error lengkap di atas."))
+			}
+			content.WriteString("\n")
+			content.WriteString(helpStyle.Render("Log service bisa belum ada jika pemasangan berhenti sebelum service berjalan."))
 		}
 	}
 
@@ -306,7 +321,7 @@ func RenderResult(styles *Styles, success bool, canCreateDB bool, action int, re
 	content.WriteString("\n\n")
 	content.WriteString(styles.HelpText.Render("[Enter] Kembali ke Menu  [Q] Keluar"))
 
-	b.WriteString(styles.Box.Render(content.String()))
+	b.WriteString(box.Width(terminalWidth - box.GetHorizontalBorderSize()).Render(content.String()))
 	return b.String()
 }
 

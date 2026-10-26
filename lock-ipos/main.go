@@ -160,8 +160,9 @@ func (p *progressStateData) spinner() string {
 
 // Model is the main application model
 type model struct {
-	currentState state
-	styles       *tui.Styles
+	currentState  state
+	styles        *tui.Styles
+	terminalWidth int
 
 	serviceName      string
 	bundleDir        string
@@ -329,6 +330,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.WindowSizeMsg:
+		m.terminalWidth = msg.Width
 		return m, nil
 	}
 
@@ -549,6 +551,7 @@ func (m *model) handleServiceCompleted(msg serviceActionCompletedMsg) (tea.Model
 	}
 	m.resultMessage = ""
 	m.resultError = msg.err.Error()
+	logger.Errorf("Aksi service gagal: %s", m.resultError)
 	return m, nil
 }
 
@@ -761,7 +764,7 @@ func (m *model) View() string {
 			Logs: m.progressData.Logs.Lines(),
 		})
 	case stateResult:
-		return tui.RenderResult(m.styles, m.successResult, m.currentPerm, m.pendingOption, m.resultMessage, m.resultError)
+		return tui.RenderResult(m.styles, m.successResult, m.currentPerm, m.pendingOption, m.resultMessage, m.resultError, m.terminalWidth, logger.Path())
 	default:
 		return "Unknown state"
 	}
